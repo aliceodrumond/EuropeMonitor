@@ -25,9 +25,11 @@ type SpeakerRow = {
   position: string;
   country: string;
   event_type: string;
+  headline: string;
   policy_comments: string;
   bias: "hawkish" | "dovish" | "neutral";
   tags: string;
+  source_url: string;
 };
 
 type Metadata = {
@@ -701,6 +703,7 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
               <th>Member</th>
               <th>Position</th>
               <th>Country</th>
+              <th>Headline</th>
               <th>Policy Comments</th>
               <th>Bias</th>
             </tr>
@@ -712,6 +715,15 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
                 <td>{speaker.member}</td>
                 <td>{speaker.position}</td>
                 <td>{speaker.country}</td>
+                <td>
+                  {speaker.source_url ? (
+                    <a href={speaker.source_url} rel="noreferrer" target="_blank">
+                      {speaker.headline}
+                    </a>
+                  ) : (
+                    speaker.headline
+                  )}
+                </td>
                 <td>{speaker.policy_comments}</td>
                 <td>
                   <span className={`bias bias-${speaker.bias}`}>
@@ -759,10 +771,12 @@ function parseSpeakersCsv(text: string): SpeakerRow[] {
     position: row.position ?? "",
     country: row.country ?? "",
     event_type: row.event_type ?? "",
+    headline: row.headline ?? "",
     policy_comments: row.policy_comments ?? "",
     bias:
       row.bias === "hawkish" || row.bias === "dovish" ? row.bias : "neutral",
     tags: row.tags ?? "",
+    source_url: row.source_url ?? "",
   }));
 }
 

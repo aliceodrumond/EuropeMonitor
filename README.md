@@ -31,6 +31,12 @@ Os CSVs de series incluem `source` e `source_url`, preenchidos a partir de
 catalogo primeiro; o pipeline R aplica esses metadados automaticamente aos CSVs
 publicos usados pelos graficos.
 
+A aba ECB Speakers e atualizada por `R/fetch_ecb_speakers.R` a partir de
+`https://www.econostream-media.com/news/topic/centralbank`. O script extrai
+headline, resumo, data e link dos artigos, classifica a fala como hawkish,
+dovish ou neutral por palavras-chave e preserva um fallback local caso a pagina
+esteja temporariamente indisponivel.
+
 ## Estrutura
 
 - `app/`: site React/vinext.
