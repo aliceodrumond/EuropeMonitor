@@ -1,17 +1,17 @@
 # Europe Client Monitor
 
-Site para clientes com três superfícies iniciais:
+Site para clientes com tres superficies iniciais:
 
 - Monitor de Atividade
-- Monitor de Inflação
+- Monitor de Inflacao
 - ECB speakers
 
-O site lê arquivos estáticos em `public/data/`. O R é responsável por atualizar
+O site le arquivos estaticos em `public/data/`. O R e responsavel por atualizar
 esses arquivos diariamente.
 
-## Fluxo Diário
+## Fluxo Diario
 
-No diretório do projeto:
+No diretorio do projeto:
 
 ```powershell
 & 'C:\Program Files\R\R-4.3.1\bin\Rscript.exe' 'R\run_daily_update.R'
@@ -24,28 +24,37 @@ Esse comando gera:
 - `public/data/ecb_speakers.csv`
 - `public/data/metadata.json`
 
-Também grava cópias tratadas em `data/processed/`.
+Tambem grava copias tratadas em `data/processed/`.
+
+Os CSVs de series incluem `source` e `source_url`, preenchidos a partir de
+`config/series_catalog.csv`. Ao adicionar ou trocar uma fonte, atualize o
+catalogo primeiro; o pipeline R aplica esses metadados automaticamente aos CSVs
+publicos usados pelos graficos.
 
 ## Estrutura
 
 - `app/`: site React/vinext.
-- `R/`: pipeline diário.
-- `config/series_catalog.csv`: catálogo de séries e fontes planejadas.
-- `data/raw/`: espaço para dados baixados sem tratamento.
+- `R/`: pipeline diario.
+- `config/series_catalog.csv`: catalogo de series, fontes e URLs oficiais.
+- `data/raw/`: espaco para dados baixados sem tratamento.
 - `data/processed/`: bases tratadas.
 - `public/data/`: arquivos consumidos pelo site.
 
-## Adicionar Séries e Gráficos
+## Adicionar Series e Graficos
 
-1. Inclua a série no `config/series_catalog.csv`.
-2. Adicione a coleta/tratamento no script R do domínio.
+1. Inclua a serie no `config/series_catalog.csv`.
+2. Adicione a coleta/tratamento no script R do dominio.
 3. Garanta que o CSV final tenha as colunas:
 
 ```text
-date,chart_id,series_id,series_name,country,value,axis,unit,source
+date,chart_id,series_id,series_name,country,value,axis,unit,source,source_url
 ```
 
-4. Se for um gráfico novo, registre o `chart_id` em `app/page.tsx`.
+4. Se for um grafico novo, registre o `chart_id` em `app/page.tsx`.
+
+Observacao: as series de PMI da SP Global estao linkadas a fonte oficial, mas
+exigem feed licenciado ou importacao manual de CSV para substituir os valores
+mockados por dados reais.
 
 ## Rodar o Site
 
@@ -57,6 +66,9 @@ npm run dev
 npm run build
 ```
 
-Nesta sessão, `node`, `npm` e `git` não estavam disponíveis no PATH, então a
-validação completa do site e a publicação ainda dependem de habilitar esses
-executáveis no ambiente.
+Se `node` e `npm` nao estiverem no PATH, use o caminho instalado diretamente:
+
+```powershell
+$env:Path = 'C:\Program Files\nodejs;' + $env:Path
+& 'C:\Program Files\nodejs\npm.cmd' run build
+```

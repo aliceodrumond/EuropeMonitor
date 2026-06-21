@@ -16,6 +16,7 @@ type SeriesRow = {
   axis: AxisSide;
   unit: string;
   source: string;
+  source_url: string;
 };
 
 type SpeakerRow = {
@@ -53,6 +54,7 @@ type ChartSeries = {
   axis: AxisSide;
   unit: string;
   source: string;
+  sourceUrl: string;
   color: string;
   points: Array<{ date: string; value: number; time: number }>;
 };
@@ -333,7 +335,9 @@ function TimeSeriesChart({
   rows: SeriesRow[];
 }) {
   const [windowKey, setWindowKey] = useState<WindowKey>("all");
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
+    () => new Set(defaultHiddenSeries(definition)),
+  );
   const [hover, setHover] = useState<HoverState | null>(null);
 
   const series = useMemo(() => buildSeries(rows, definition), [definition, rows]);
@@ -467,8 +471,31 @@ function TimeSeriesChart({
           </div>
         ) : null}
       </div>
-      <p className="source-note">Source: {formatSources(series)}</p>
+      <p className="source-note">
+        Source: <SourceLinks series={series} />
+      </p>
     </article>
+  );
+}
+
+function SourceLinks({ series }: { series: ChartSeries[] }) {
+  const sources = uniqueSources(series);
+
+  return (
+    <>
+      {sources.map((source, index) => (
+        <span key={`${source.label}-${source.url}`}>
+          {index > 0 ? "; " : ""}
+          {source.url ? (
+            <a href={source.url} rel="noreferrer" target="_blank">
+              {source.label}
+            </a>
+          ) : (
+            source.label
+          )}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -720,6 +747,7 @@ function parseSeriesCsv(text: string): SeriesRow[] {
       axis: row.axis === "right" ? "right" : "left",
       unit: row.unit ?? "",
       source: row.source ?? "",
+      source_url: row.source_url ?? "",
     }))
     .filter((row) => row.date && row.chart_id && Number.isFinite(row.value));
 }
@@ -800,6 +828,7 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
         axis: row.axis,
         unit: row.unit,
         source: row.source,
+        sourceUrl: row.source_url,
         color: palette[seriesMap.size % palette.length],
         points: [],
       });
@@ -944,7 +973,15 @@ function buildHoverState(
 
   return {
     date: anchor.date,
-    points: points.map(({ date: _date, time: _time, ...point }) => point),
+    points: points.map((point) => ({
+      color: point.color,
+      name: point.name,
+      seriesId: point.seriesId,
+      unit: point.unit,
+      value: point.value,
+      x: point.x,
+      y: point.y,
+    })),
     x: anchor.x,
     y: Math.min(...points.map((point) => point.y)),
   };
@@ -1017,16 +1054,26 @@ function formatYear(time: number) {
   return new Date(time).getFullYear().toString().slice(2);
 }
 
-function formatSources(series: ChartSeries[]) {
-  const sources = Array.from(new Set(series.map((item) => friendlySource(item.source))));
-  return sources.join("; ");
+function defaultHiddenSeries(definition: ChartDefinition) {
+  if (!definition.id.startsWith("pmi_")) {
+    return [];
+  }
+
+  return (definition.seriesOrder ?? []).filter((seriesId) => !seriesId.endsWith("_ea"));
 }
 
-function friendlySource(source: string) {
-  if (!source || source === "mock_pending_source") {
-    return "placeholder data, pending source integration";
-  }
-  return source;
+function uniqueSources(series: ChartSeries[]) {
+  const sourceMap = new Map<string, { label: string; url: string }>();
+
+  series.forEach((item) => {
+    const label = item.source || "Unspecified source";
+    const key = `${label}|${item.sourceUrl}`;
+    if (!sourceMap.has(key)) {
+      sourceMap.set(key, { label, url: item.sourceUrl });
+    }
+  });
+
+  return [...sourceMap.values()];
 }
 
 function formatDateLabel(date: string) {

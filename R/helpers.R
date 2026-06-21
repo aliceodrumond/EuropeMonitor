@@ -72,7 +72,8 @@ make_series_frame <- function(
   values,
   axis = "left",
   unit = "",
-  source = "mock"
+  source = "mock",
+  source_url = ""
 ) {
   data.frame(
     date = format(dates, "%Y-%m-%d"),
@@ -84,8 +85,44 @@ make_series_frame <- function(
     axis = axis,
     unit = unit,
     source = source,
+    source_url = source_url,
     stringsAsFactors = FALSE
   )
+}
+
+read_series_catalog <- function(project_root) {
+  catalog_path <- file.path(project_root, "config/series_catalog.csv")
+  utils::read.csv(
+    catalog_path,
+    stringsAsFactors = FALSE,
+    fileEncoding = "UTF-8",
+    check.names = FALSE
+  )
+}
+
+apply_series_catalog <- function(data, catalog) {
+  if (!nrow(data)) {
+    return(data)
+  }
+
+  catalog_subset <- catalog[, c("series_id", "preferred_source", "source_url")]
+  names(catalog_subset) <- c("series_id", "catalog_source", "catalog_source_url")
+  enriched <- merge(data, catalog_subset, by = "series_id", all.x = TRUE, sort = FALSE)
+
+  enriched$source <- ifelse(
+    is.na(enriched$catalog_source) | enriched$catalog_source == "",
+    enriched$source,
+    enriched$catalog_source
+  )
+  enriched$source_url <- ifelse(
+    is.na(enriched$catalog_source_url) | enriched$catalog_source_url == "",
+    enriched$source_url,
+    enriched$catalog_source_url
+  )
+
+  enriched$catalog_source <- NULL
+  enriched$catalog_source_url <- NULL
+  enriched[, c("date", "chart_id", "series_id", "series_name", "country", "value", "axis", "unit", "source", "source_url")]
 }
 
 clip_values <- function(values, lower, upper) {

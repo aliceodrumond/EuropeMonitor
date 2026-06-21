@@ -1,4 +1,5 @@
 build_inflation_series <- function(project_root) {
+  catalog <- read_series_catalog(project_root)
   dates <- month_sequence("2010-01-01", current_month_start())
 
   inflation_shock <- list(
@@ -26,7 +27,7 @@ build_inflation_series <- function(project_root) {
       )
     ),
     unit = "balance",
-    source = "mock_pending_source"
+    source = "synthetic seed"
   )
 
   expected_services <- make_series_frame(
@@ -49,7 +50,7 @@ build_inflation_series <- function(project_root) {
       )
     ),
     unit = "balance",
-    source = "mock_pending_source"
+    source = "synthetic seed"
   )
 
   wage_tracker <- make_series_frame(
@@ -72,12 +73,12 @@ build_inflation_series <- function(project_root) {
       )
     ),
     unit = "% y/y",
-    source = "mock_pending_source"
+    source = "synthetic seed"
   )
 
   country_specs <- data.frame(
     series_id = c("hicp_de", "hicp_fr", "hicp_it", "hicp_es"),
-    series_name = c("Germany", "França", "Italy", "Spain"),
+    series_name = c("Germany", "France", "Italy", "Spain"),
     country = c("Germany", "France", "Italy", "Spain"),
     base = c(1.9, 1.6, 1.7, 1.8),
     amplitude = c(0.55, 0.45, 0.65, 0.75),
@@ -104,7 +105,7 @@ build_inflation_series <- function(project_root) {
         shocks = inflation_shock
       ),
       unit = "% y/y",
-      source = "mock_pending_source"
+      source = "synthetic seed"
     )
   }))
 
@@ -126,7 +127,7 @@ build_inflation_series <- function(project_root) {
         shocks = inflation_shock
       ),
       unit = "% y/y",
-      source = "mock_pending_source"
+      source = "synthetic seed"
     ),
     make_series_frame(
       dates,
@@ -148,7 +149,7 @@ build_inflation_series <- function(project_root) {
         )
       ),
       unit = "% y/y",
-      source = "mock_pending_source"
+      source = "synthetic seed"
     )
   )
 
@@ -173,7 +174,7 @@ build_inflation_series <- function(project_root) {
         )
       ),
       unit = "% y/y",
-      source = "mock_pending_source"
+      source = "synthetic seed"
     ),
     make_series_frame(
       dates,
@@ -195,11 +196,14 @@ build_inflation_series <- function(project_root) {
         )
       ),
       unit = "% y/y",
-      source = "mock_pending_source"
+      source = "synthetic seed"
     )
   )
 
-  inflation <- rbind(expected_prices, expected_services, wage_tracker, regional, hicp, components)
+  inflation <- apply_series_catalog(
+    rbind(expected_prices, expected_services, wage_tracker, regional, hicp, components),
+    catalog
+  )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
 }

@@ -1,37 +1,37 @@
-tab_id,chart_id,series_id,label,country,frequency,preferred_source,transformation,status,proprietary_fallback
-activity,pmi_composite,pmi_ea,Europe,Euro Area,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_composite,pmi_de,Germany,Germany,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_composite,pmi_fr,França,France,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_composite,pmi_es,Spain,Spain,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_composite,pmi_uk,UK,United Kingdom,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_composite,pmi_it,Italy,Italy,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_ea,Europe,Euro Area,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_de,Germany,Germany,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_fr,France,France,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_es,Spain,Spain,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_uk,UK,United Kingdom,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_manufacturing,pmi_mfg_it,Italy,Italy,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_ea,Europe,Euro Area,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_de,Germany,Germany,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_fr,France,France,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_es,Spain,Spain,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_uk,UK,United Kingdom,monthly,SP Global PMI,level,mock_pending_source,
-activity,pmi_services,pmi_srv_it,Italy,Italy,monthly,SP Global PMI,level,mock_pending_source,
-activity,sentix_pmi,pmi_ea_sentix,PMI Composite,Euro Area,monthly,SP Global PMI,level,mock_pending_source,
-activity,sentix_pmi,sentix_ea,Sentix,Euro Area,monthly,Sentix,level,mock_pending_source,
-activity,weekly_activity,wai_ea,Euro Area WAI,Euro Area,weekly,ECB or national high-frequency,standardized,mock_pending_source,
-activity,toll_mileage,toll_de,Germany toll mileage,Germany,monthly,German toll statistics,index,mock_pending_source,
-activity,financial_conditions,fci_ea,Euro Area FCI,Euro Area,daily,market data,standardized,mock_pending_source,
-activity,gdp,gdp_ea,Euro Area GDP,Euro Area,quarterly,Eurostat,yoy,mock_pending_source,
-inflation,expected_selling_prices,esp_industry,Industry,Euro Area,monthly,European Commission survey,balance,mock_pending_source,
-inflation,expected_selling_prices,esp_services,Services,Euro Area,monthly,European Commission survey,balance,mock_pending_source,
-inflation,wage_tracker,wage_tracker_ea,ECB wage tracker,Euro Area,monthly,ECB wage tracker,yoy,mock_pending_source,
-inflation,regional_inflation,hicp_de,Germany,Germany,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,regional_inflation,hicp_fr,França,France,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,regional_inflation,hicp_it,Italy,Italy,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,regional_inflation,hicp_es,Spain,Spain,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,hicp_headline_core,hicp_headline,Headline,Euro Area,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,hicp_headline_core,hicp_core,Core,Euro Area,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,hicp_components,core_goods,Core goods,Euro Area,monthly,Eurostat HICP,yoy,mock_pending_source,
-inflation,hicp_components,core_services,Core services,Euro Area,monthly,Eurostat HICP,yoy,mock_pending_source,
-speakers,ecb_speakers,manual_table,ECB speakers,Euro Area,event,manual update,table,mock_pending_source,
+tab_id,chart_id,series_id,label,country,frequency,preferred_source,source_url,transformation,status,proprietary_fallback
+activity,pmi_composite,pmi_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,sentix_pmi,pmi_ea_sentix,PMI Composite,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,sentix_pmi,sentix_ea,Sentix,Euro Area,monthly,Sentix,https://www.sentix.de/index.php/en/sentix-Economic-Index/sentix-economic-index-euroland.html,level,source_linked,
+activity,weekly_activity,wai_ea,Euro Area WAI,Euro Area,weekly,ECB Data Portal,https://data.ecb.europa.eu/,standardized,source_linked,
+activity,toll_mileage,toll_de,Germany toll mileage,Germany,monthly,Destatis/BALM Lkw-Maut-Fahrleistungsindex,https://www.destatis.de/DE/Service/EXSTAT/Datensaetze/lkw-maut-artikel.html,index,source_linked,
+activity,financial_conditions,fci_ea,Euro Area FCI,Euro Area,daily,ECB Data Portal,https://data.ecb.europa.eu/,standardized,source_linked,
+activity,gdp,gdp_ea,Euro Area GDP,Euro Area,quarterly,Eurostat NAMQ_10_GDP,https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en,yoy,source_linked,
+inflation,expected_selling_prices,esp_industry,Industry,Euro Area,monthly,European Commission Business and Consumer Surveys,https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en,balance,source_linked,
+inflation,expected_selling_prices,esp_services,Services,Euro Area,monthly,European Commission Business and Consumer Surveys,https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en,balance,source_linked,
+inflation,wage_tracker,wage_tracker_ea,ECB Wage Tracker,Euro Area,monthly,ECB Wage Tracker,https://www.ecb.europa.eu/stats/ecb_surveys/wage_tracker/html/index.en.html,yoy,source_linked,
+inflation,regional_inflation,hicp_de,Germany,Germany,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,regional_inflation,hicp_fr,France,France,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,regional_inflation,hicp_it,Italy,Italy,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,regional_inflation,hicp_es,Spain,Spain,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,hicp_headline_core,hicp_headline,Headline,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,hicp_headline_core,hicp_core,Core,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,hicp_components,core_goods,Core goods,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,hicp_components,core_services,Core services,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+speakers,ecb_speakers,manual_table,ECB speakers,Euro Area,event,ECB Monetary Policy,https://www.ecb.europa.eu/press/html/index.en.html,table,source_linked,

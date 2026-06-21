@@ -1,4 +1,5 @@
 build_activity_series <- function(project_root) {
+  catalog <- read_series_catalog(project_root)
   dates <- month_sequence("2003-01-01", current_month_start())
 
   pmi_shocks <- list(
@@ -38,7 +39,7 @@ build_activity_series <- function(project_root) {
       country = spec$country,
       values = clip_values(values, 35, 65),
       unit = "index",
-      source = "SP Global PMI - placeholder series"
+      source = "synthetic seed"
     )
   }))
 
@@ -63,7 +64,7 @@ build_activity_series <- function(project_root) {
       country = spec$country,
       values = clip_values(values, 30, 65),
       unit = "index",
-      source = "SP Global PMI - placeholder series"
+      source = "synthetic seed"
     )
   }))
 
@@ -87,7 +88,7 @@ build_activity_series <- function(project_root) {
       country = spec$country,
       values = clip_values(values, 32, 66),
       unit = "index",
-      source = "SP Global PMI - placeholder series"
+      source = "synthetic seed"
     )
   }))
 
@@ -127,7 +128,7 @@ build_activity_series <- function(project_root) {
       "Euro Area",
       clip_values(pmi_sentix, 35, 65),
       unit = "index",
-      source = "SP Global PMI - placeholder series"
+      source = "synthetic seed"
     ),
     make_series_frame(
       dates,
@@ -138,7 +139,7 @@ build_activity_series <- function(project_root) {
       clip_values(sentix, -55, 50),
       axis = "right",
       unit = "balance",
-      source = "Sentix - latest point manually set to -13.372"
+      source = "synthetic seed"
     )
   )
 
@@ -163,7 +164,7 @@ build_activity_series <- function(project_root) {
       )
     ),
     unit = "z-score",
-    source = "placeholder data, pending source integration"
+    source = "synthetic seed"
   )
 
   toll <- make_series_frame(
@@ -186,7 +187,7 @@ build_activity_series <- function(project_root) {
       )
     ),
     unit = "index",
-    source = "placeholder data, pending source integration"
+    source = "synthetic seed"
   )
 
   financial <- make_series_frame(
@@ -211,7 +212,7 @@ build_activity_series <- function(project_root) {
       )
     ),
     unit = "z-score",
-    source = "placeholder data, pending source integration"
+    source = "synthetic seed"
   )
 
   gdp <- make_series_frame(
@@ -235,10 +236,10 @@ build_activity_series <- function(project_root) {
       )
     ),
     unit = "% y/y",
-    source = "placeholder data, pending source integration"
+    source = "synthetic seed"
   )
 
-  activity <- rbind(
+  activity <- apply_series_catalog(rbind(
     pmi_rows,
     pmi_manufacturing_rows,
     pmi_services_rows,
@@ -247,7 +248,7 @@ build_activity_series <- function(project_root) {
     toll,
     financial,
     gdp
-  )
+  ), catalog)
   write_csv_utf8(activity, file.path(project_root, "data/processed/activity_series.csv"))
   activity
 }
