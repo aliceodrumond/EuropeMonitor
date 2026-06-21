@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Europe Monitor",
-  description: "Activity, inflation and ECB communication monitor.",
+  title: "Legacy - Europe Monitor",
+  description: "Legacy Capital Europe activity, inflation and ECB communication monitor.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
