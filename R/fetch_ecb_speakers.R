@@ -14,26 +14,64 @@ build_ecb_speakers <- function(project_root) {
 }
 
 fetch_econostream_ecb_speakers <- function(url) {
-  page <- read_url_text(url)
-  html <- normalize_html(page)
-
+  html <- normalize_html(read_url_text(url))
   pattern <- "<h2[^>]*>\\s*<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>\\s*</h2>\\s*<p>(.*?)</p>\\s*<span[^>]*class=\"date\"[^>]*>([0-9]{1,2} [A-Za-z]+ [0-9]{4})"
-  matches <- gregexpr(pattern, html, perl = TRUE)
-  items <- regmatches(html, matches)[[1]]
+  items <- regmatches(html, gregexpr(pattern, html, perl = TRUE))[[1]]
 
   if (!length(items) || identical(items, character(0))) {
     stop("No Econostream article cards found")
   }
 
-  rows <- lapply(items, parse_econostream_item)
-  speakers <- do.call(rbind, rows)
-  speakers <- speakers[grepl("^ECB", speakers$headline), ]
+  rows <- do.call(rbind, lapply(items, parse_econostream_item))
+  rows <- rows[rows$is_member_speech, ]
 
-  if (!nrow(speakers)) {
-    stop("No ECB speaker rows found")
+  if (!nrow(rows)) {
+    stop("No ECB member speech rows found")
   }
 
-  speakers[seq_len(min(30, nrow(speakers))), ]
+  rows <- rows[order(rows$member, as.Date(rows$date), decreasing = TRUE), ]
+  rows$stance_change <- compare_member_stance(rows)
+  rows <- rows[order(as.Date(rows$date), decreasing = TRUE), ]
+
+  rows$is_member_speech <- NULL
+  rows$stance_score <- NULL
+  rownames(rows) <- NULL
+  rows[seq_len(min(30, nrow(rows))), ]
+}
+
+parse_econostream_item <- function(item) {
+  values <- regmatches(
+    item,
+    regexec(
+      "<h2[^>]*>\\s*<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>\\s*</h2>\\s*<p>(.*?)</p>\\s*<span[^>]*class=\"date\"[^>]*>([0-9]{1,2} [A-Za-z]+ [0-9]{4})",
+      item,
+      perl = TRUE
+    )
+  )[[1]]
+
+  headline <- clean_html(values[[3]])
+  summary <- strip_econostream_byline(clean_html(values[[4]]))
+  member <- extract_ecb_member(headline)
+  profile <- member_profile(member)
+  text <- paste(headline, summary)
+  score <- policy_score(text)
+
+  data.frame(
+    date = format(as.Date(values[[5]], format = "%d %B %Y"), "%Y-%m-%d"),
+    member = member,
+    position = profile$position,
+    country = profile$country,
+    event_type = infer_event_type(headline, summary),
+    policy_comments = extract_policy_highlight(headline, summary),
+    bias = score_to_bias(score),
+    stance_change = "",
+    tags = infer_policy_tags(text),
+    source = "Econostream Central Bank",
+    source_url = absolute_econostream_url(values[[2]]),
+    is_member_speech = is_ecb_member_headline(headline, member),
+    stance_score = score,
+    stringsAsFactors = FALSE
+  )
 }
 
 read_url_text <- function(url) {
@@ -62,74 +100,81 @@ read_url_text <- function(url) {
   paste(output, collapse = "\n")
 }
 
-parse_econostream_item <- function(item) {
-  parts <- regexec(
-    "<h2[^>]*>\\s*<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>\\s*</h2>\\s*<p>(.*?)</p>\\s*<span[^>]*class=\"date\"[^>]*>([0-9]{1,2} [A-Za-z]+ [0-9]{4})",
-    item,
-    perl = TRUE
-  )
-  values <- regmatches(item, parts)[[1]]
-
-  link <- absolute_econostream_url(values[[2]])
-  headline <- clean_html(values[[3]])
-  summary <- clean_html(values[[4]])
-  date <- as.Date(values[[5]], format = "%d %B %Y")
-  member <- extract_ecb_member(headline)
-  profile <- member_profile(member)
-  combined_text <- paste(headline, summary)
-
-  data.frame(
-    date = format(date, "%Y-%m-%d"),
-    member = member,
-    position = profile$position,
-    country = profile$country,
-    event_type = infer_event_type(headline, summary),
-    headline = headline,
-    policy_comments = summary,
-    bias = infer_policy_bias(combined_text),
-    tags = infer_policy_tags(combined_text),
-    source = "Econostream Central Bank",
-    source_url = link,
-    stringsAsFactors = FALSE
-  )
-}
-
 normalize_html <- function(value) {
   value <- gsub("\r|\n|\t", " ", value)
   gsub("\\s+", " ", value)
 }
 
 clean_html <- function(value) {
+  replacements <- c(
+    "&nbsp;" = " ",
+    "&amp;" = "&",
+    "&aacute;" = "á",
+    "&eacute;" = "é",
+    "&iacute;" = "í",
+    "&oacute;" = "ó",
+    "&uacute;" = "ú",
+    "&Aacute;" = "Á",
+    "&Eacute;" = "É",
+    "&Iacute;" = "Í",
+    "&Oacute;" = "Ó",
+    "&Uacute;" = "Ú",
+    "&ccedil;" = "ç",
+    "&Scaron;" = "Š",
+    "&scaron;" = "š",
+    "&ndash;" = "-",
+    "&rsquo;" = "'",
+    "&lsquo;" = "'",
+    "&ldquo;" = "\"",
+    "&rdquo;" = "\"",
+    "&quot;" = "\"",
+    "&#39;" = "'",
+    "â€™" = "'",
+    "â€œ" = "\"",
+    "â€" = "\"",
+    "â€“" = "-",
+    "â€”" = "-"
+  )
   value <- gsub("<[^>]+>", "", value)
-  value <- gsub("&nbsp;", " ", value, fixed = TRUE)
-  value <- gsub("â€™", "'", value, fixed = TRUE)
-  value <- gsub("â€œ", "\"", value, fixed = TRUE)
-  value <- gsub("â€", "\"", value, fixed = TRUE)
-  value <- gsub("â€“", "-", value, fixed = TRUE)
-  value <- gsub("â€”", "-", value, fixed = TRUE)
-  value <- gsub("&amp;", "&", value, fixed = TRUE)
-  value <- gsub("&ndash;", "-", value, fixed = TRUE)
-  value <- gsub("&rsquo;", "'", value, fixed = TRUE)
-  value <- gsub("&lsquo;", "'", value, fixed = TRUE)
-  value <- gsub("&ldquo;", "\"", value, fixed = TRUE)
-  value <- gsub("&rdquo;", "\"", value, fixed = TRUE)
-  value <- gsub("&quot;", "\"", value, fixed = TRUE)
-  value <- gsub("&#39;", "'", value, fixed = TRUE)
+  for (pattern in names(replacements)) {
+    value <- gsub(pattern, replacements[[pattern]], value, fixed = TRUE)
+  }
   trimws(gsub("\\s+", " ", value))
 }
 
+strip_econostream_byline <- function(value) {
+  value <- sub("^By [^-]+ - [A-Z][A-Z ]+ \\(Econostream\\) -\\s*", "", value)
+  value <- sub("^By [^-]+ - [A-Za-z ]+ \\(Econostream\\) -\\s*", "", value)
+  trimws(value)
+}
+
 absolute_econostream_url <- function(path) {
-  path <- gsub("â€™", "'", path, fixed = TRUE)
+  path <- clean_html(path)
   if (grepl("^https?://", path)) {
     return(path)
   }
   paste0("https://www.econostream-media.com", path)
 }
 
+is_ecb_member_headline <- function(headline, member) {
+  grepl("^ECB", headline) &&
+    !grepl("Insight|Tone Meter|Weekly Update", headline, ignore.case = TRUE) &&
+    !member %in% c("Insight", "Tone Meter", "ECB")
+}
+
 extract_ecb_member <- function(headline) {
-  headline <- sub("^ECB.s\\s+", "", headline)
-  headline <- sub("^ECB\\s+", "", headline)
-  name <- sub(":.*$", "", headline)
+  known <- names(member_profiles())
+  for (member in known) {
+    if (grepl(member, headline, fixed = TRUE)) {
+      return(member)
+    }
+  }
+
+  name <- headline
+  name <- sub("^ECB'?s\\s+", "", name)
+  name <- sub("^ECB.s\\s+", "", name)
+  name <- sub("^ECB\\s+", "", name)
+  name <- sub(":.*$", "", name)
   name <- sub("\\s+Says.*$", "", name)
   name <- sub("\\s+Would.*$", "", name)
   name <- sub("\\s+Will.*$", "", name)
@@ -137,17 +182,22 @@ extract_ecb_member <- function(headline) {
   name <- sub("\\s+Can.*$", "", name)
   name <- trimws(name)
 
-  if (grepl("^Insight", name, ignore.case = TRUE)) {
-    return("Insight")
-  }
-  if (grepl("^Tone Meter", name, ignore.case = TRUE)) {
-    return("Tone Meter")
-  }
+  if (grepl("^Insight", name, ignore.case = TRUE)) return("Insight")
+  if (grepl("^Tone Meter", name, ignore.case = TRUE)) return("Tone Meter")
   name
 }
 
 member_profile <- function(member) {
-  profiles <- list(
+  profiles <- member_profiles()
+
+  if (!is.null(profiles[[member]])) {
+    return(profiles[[member]])
+  }
+  list(position = "ECB speaker", country = "Euro Area")
+}
+
+member_profiles <- function() {
+  list(
     "Lagarde" = list(position = "President", country = "ECB"),
     "Lane" = list(position = "Chief Economist", country = "Ireland"),
     "Schnabel" = list(position = "Executive Board", country = "Germany"),
@@ -162,47 +212,86 @@ member_profile <- function(member) {
     "Moulin" = list(position = "Treasury / ECB context", country = "France"),
     "Rehn" = list(position = "Governing Council", country = "Finland"),
     "Makhlouf" = list(position = "Governing Council", country = "Ireland"),
+    "Escrivá" = list(position = "Governing Council", country = "Spain"),
+    "Šimkus" = list(position = "Governing Council", country = "Lithuania"),
     "Kaasik" = list(position = "Governing Council", country = "Estonia"),
     "Kocher" = list(position = "Governing Council", country = "Austria"),
     "Dolenc" = list(position = "Governing Council", country = "Slovenia"),
     "Wunsch" = list(position = "Governing Council", country = "Belgium"),
-    "Cipollone" = list(position = "Executive Board", country = "Italy"),
-    "Insight" = list(position = "Analysis", country = "ECB"),
-    "Tone Meter" = list(position = "Analysis", country = "ECB")
+    "Cipollone" = list(position = "Executive Board", country = "Italy")
   )
-
-  if (!is.null(profiles[[member]])) {
-    return(profiles[[member]])
-  }
-  list(position = "ECB speaker", country = "Euro Area")
 }
 
 infer_event_type <- function(headline, summary) {
   text <- tolower(paste(headline, summary))
-  if (grepl("press conference", text)) return("Press conference")
   if (grepl("interview", text)) return("Interview")
-  if (grepl("insight|tone meter|weekly update", text)) return("Analysis")
-  if (grepl("said|speech", text)) return("Speech")
+  if (grepl("press conference", text)) return("Press conference")
+  if (grepl("speech|said", text)) return("Speech")
   "Article"
 }
 
-infer_policy_bias <- function(text) {
+extract_policy_highlight <- function(headline, summary) {
+  claim <- sub("^ECB'?s\\s+[^:]+:\\s*", "", headline)
+  claim <- sub("^ECB.s\\s+[^:]+:\\s*", "", claim)
+  claim <- if (identical(claim, headline)) "" else claim
+  summary_sentence <- sub("(?<=[.!?])\\s+.*$", "", summary, perl = TRUE)
+  highlight <- trimws(paste(claim, summary_sentence))
+  shorten_text(highlight, 170)
+}
+
+shorten_text <- function(value, max_chars) {
+  value <- trimws(value)
+  if (nchar(value) <= max_chars) {
+    return(value)
+  }
+  paste0(trimws(substr(value, 1, max_chars - 3)), "...")
+}
+
+policy_score <- function(text) {
   text <- tolower(text)
-  hawkish <- c("rate hike", "hike", "more work", "inflation pressures", "restrictive", "not finished", "not complete", "further rate", "second-round", "wages", "upside", "necessary")
-  dovish <- c("no commitment", "gradual", "no forward guidance", "wait", "pause", "less hawkish", "no roadmap", "monitor developments")
+  hawkish <- c("rate hike", "hike", "inflation pressures", "restrictive", "not finished", "further rate", "upside", "wages", "deterioration in the inflation outlook", "high inflation")
+  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged")
 
   hawkish_score <- sum(vapply(hawkish, grepl, logical(1), x = text, fixed = TRUE))
   dovish_score <- sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))
+  hawkish_score - dovish_score
+}
 
-  if (hawkish_score > dovish_score) return("hawkish")
-  if (dovish_score > hawkish_score) return("dovish")
+score_to_bias <- function(score) {
+  if (score > 0) return("hawkish")
+  if (score < 0) return("dovish")
   "neutral"
+}
+
+compare_member_stance <- function(rows) {
+  result <- rep("First recent item", nrow(rows))
+
+  for (member in unique(rows$member)) {
+    idx <- which(rows$member == member)
+    if (length(idx) < 2) {
+      next
+    }
+    for (pos in seq_len(length(idx) - 1)) {
+      current <- rows$stance_score[idx[[pos]]]
+      previous <- rows$stance_score[idx[[pos + 1]]]
+      delta <- current - previous
+      result[idx[[pos]]] <- if (delta > 0) {
+        "More hawkish than prior"
+      } else if (delta < 0) {
+        "Less hawkish than prior"
+      } else {
+        "Similar to prior"
+      }
+    }
+  }
+
+  result
 }
 
 infer_policy_tags <- function(text) {
   text <- tolower(text)
   tags <- character(0)
-  if (grepl("rate|hike|interest", text)) tags <- c(tags, "rates")
+  if (grepl("rate|hike|interest|hold", text)) tags <- c(tags, "rates")
   if (grepl("inflation|price", text)) tags <- c(tags, "inflation")
   if (grepl("wage|second-round", text)) tags <- c(tags, "wages")
   if (grepl("energy|oil|middle east", text)) tags <- c(tags, "energy")
@@ -219,9 +308,9 @@ fallback_ecb_speakers <- function() {
     position = "President",
     country = "ECB",
     event_type = "Speech",
-    headline = "ECB speaker data unavailable",
     policy_comments = "Econostream could not be reached; rerun R/run_daily_update.R to refresh.",
     bias = "neutral",
+    stance_change = "Not available",
     tags = "fallback",
     source = "Fallback",
     source_url = econostream_central_bank_url,

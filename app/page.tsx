@@ -25,9 +25,9 @@ type SpeakerRow = {
   position: string;
   country: string;
   event_type: string;
-  headline: string;
   policy_comments: string;
   bias: "hawkish" | "dovish" | "neutral";
+  stance_change: string;
   tags: string;
   source_url: string;
 };
@@ -702,34 +702,32 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
               <th>Date</th>
               <th>Member</th>
               <th>Position</th>
-              <th>Country</th>
-              <th>Headline</th>
               <th>Policy Comments</th>
               <th>Bias</th>
+              <th>vs Previous</th>
             </tr>
           </thead>
           <tbody>
             {filteredSpeakers.map((speaker, index) => (
               <tr key={`${speaker.date}-${speaker.member}-${index}`}>
                 <td>{formatFullDateLabel(speaker.date)}</td>
-                <td>{speaker.member}</td>
-                <td>{speaker.position}</td>
-                <td>{speaker.country}</td>
                 <td>
                   {speaker.source_url ? (
                     <a href={speaker.source_url} rel="noreferrer" target="_blank">
-                      {speaker.headline}
+                      {speaker.member} ({speaker.country})
                     </a>
                   ) : (
-                    speaker.headline
+                    `${speaker.member} (${speaker.country})`
                   )}
                 </td>
+                <td>{speaker.position}</td>
                 <td>{speaker.policy_comments}</td>
                 <td>
                   <span className={`bias bias-${speaker.bias}`}>
                     {speaker.bias}
                   </span>
                 </td>
+                <td>{speaker.stance_change}</td>
               </tr>
             ))}
           </tbody>
@@ -771,10 +769,10 @@ function parseSpeakersCsv(text: string): SpeakerRow[] {
     position: row.position ?? "",
     country: row.country ?? "",
     event_type: row.event_type ?? "",
-    headline: row.headline ?? "",
     policy_comments: row.policy_comments ?? "",
     bias:
       row.bias === "hawkish" || row.bias === "dovish" ? row.bias : "neutral",
+    stance_change: row.stance_change ?? "",
     tags: row.tags ?? "",
     source_url: row.source_url ?? "",
   }));
