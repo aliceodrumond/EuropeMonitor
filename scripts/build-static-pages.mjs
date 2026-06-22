@@ -84,11 +84,11 @@ const html = String.raw`<!doctype html>
         ["toll_mileage","activity","Toll Mileage","Mobility","Index"],
         ["financial_conditions","activity","Financial Conditions","Markets","z-score"],
         ["gdp","activity","GDP","National accounts","% y/y"],
+        ["hicp_headline_core","inflation","HICP","Headline and core","% y/y"],
+        ["hicp_components","inflation","HICP core goods and services","Components","% y/y"],
         ["expected_selling_prices","inflation","Expected Selling Prices","Price pressures","Balance",null,true],
         ["wage_tracker","inflation","Wage Tracker","Wages","% y/y",null,true],
-        ["regional_inflation","inflation","Regional Inflation","Countries","% y/y",null,true,["hicp_de","hicp_fr","hicp_it","hicp_es"]],
-        ["hicp_headline_core","inflation","HICP","Headline and core","% y/y"],
-        ["hicp_components","inflation","HICP core goods and services","Components","% y/y"]
+        ["regional_inflation","inflation","Regional Inflation","Countries","% y/y",null,true,["hicp_de","hicp_fr","hicp_it","hicp_es"]]
       ].map(([id,tab,title,kicker,yLeft,yRight,wide,order]) => ({id,tab,title,kicker,yLeft,yRight,wide,order}));
       const tabs = [{id:"speakers",label:"ECB Speakers"},{id:"activity",label:"Activity Monitor"},{id:"inflation",label:"Inflation Monitor"}];
       const palette = ["#204f86","#c47a20","#11675f","#a83f39","#3f7f52","#6c5f8d","#111111","#8c7b57"];

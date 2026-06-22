@@ -165,6 +165,20 @@ const charts: ChartDefinition[] = [
     yLeftLabel: "% y/y",
   },
   {
+    id: "hicp_headline_core",
+    tab: "inflation",
+    title: "HICP",
+    kicker: "Headline and core",
+    yLeftLabel: "% y/y",
+  },
+  {
+    id: "hicp_components",
+    tab: "inflation",
+    title: "HICP core goods and services",
+    kicker: "Components",
+    yLeftLabel: "% y/y",
+  },
+  {
     id: "expected_selling_prices",
     tab: "inflation",
     title: "Expected Selling Prices",
@@ -188,20 +202,6 @@ const charts: ChartDefinition[] = [
     yLeftLabel: "% y/y",
     wide: true,
     seriesOrder: ["hicp_de", "hicp_fr", "hicp_it", "hicp_es"],
-  },
-  {
-    id: "hicp_headline_core",
-    tab: "inflation",
-    title: "HICP",
-    kicker: "Headline and core",
-    yLeftLabel: "% y/y",
-  },
-  {
-    id: "hicp_components",
-    tab: "inflation",
-    title: "HICP core goods and services",
-    kicker: "Components",
-    yLeftLabel: "% y/y",
   },
 ];
 
