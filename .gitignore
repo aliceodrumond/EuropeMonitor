@@ -27,6 +27,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 dev-server.log
+logs/
 
 # local npm cache used by Codex installs
 /.npm-cache/
