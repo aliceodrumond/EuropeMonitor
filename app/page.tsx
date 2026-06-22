@@ -282,7 +282,7 @@ export default function Home() {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Europe Monitor</p>
+          <p className="eyebrow">Macro Europe Monitor</p>
         </div>
         <div className="status-strip" aria-label="Data status">
           <span className="status-pill">

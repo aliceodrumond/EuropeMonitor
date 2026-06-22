@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Europe Monitor",
+  title: "Macro Europe Monitor",
   description: "Europe activity, inflation and ECB communication monitor.",
   icons: {
     icon: "/favicon.svg",

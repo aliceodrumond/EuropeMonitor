@@ -13,24 +13,24 @@ const html = String.raw`<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Europe Monitor</title>
+    <title>Macro Europe Monitor</title>
     <link rel="icon" href="/favicon.svg" />
     <style>
-      :root { --bg:#f6f5f1; --paper:#fffdfa; --ink:#151515; --muted:#6d6a63; --line:#dedbd2; --brand:#203764; --teal:#11675f; --red:#a83f39; }
+      :root { --bg:#f7f7f5; --paper:#ffffff; --ink:#191919; --muted:#707070; --line:#e4e1da; --line-strong:#c9c4b8; --brand:#191919; --teal:#11675f; --red:#a83f39; }
       * { box-sizing: border-box; }
       body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,Segoe UI,Arial,sans-serif; }
-      .shell { width:min(1480px, calc(100vw - 32px)); margin:0 auto; padding:28px 0 48px; }
-      .topbar { display:flex; justify-content:space-between; gap:18px; align-items:center; padding:10px 16px; border-radius:4px; background:var(--brand); color:#fff; }
-      .brand { margin:0; font-size:clamp(1.05rem,1.65vw,1.45rem); font-weight:750; text-transform:uppercase; letter-spacing:.06em; }
-      .status { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; font-size:.78rem; }
-      .pill { border:1px solid rgba(255,255,255,.35); border-radius:999px; padding:5px 9px; background:rgba(255,255,255,.12); }
-      .tabs { display:flex; gap:8px; margin:24px 0; overflow-x:auto; }
+      .shell { width:min(1480px, calc(100vw - 32px)); margin:0 auto; padding:30px 0 48px; }
+      .topbar { display:flex; flex-direction:column; align-items:center; gap:18px; padding:28px 20px 18px; border:1px solid var(--line); border-radius:2px; background:var(--paper); box-shadow:0 14px 38px rgba(32,32,32,.05); }
+      .brand { margin:0; color:var(--ink); font-family:Georgia,'Times New Roman',serif; font-size:clamp(2.5rem,5vw,4.75rem); font-weight:400; letter-spacing:.02em; line-height:.92; text-align:center; text-transform:uppercase; }
+      .status { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; color:var(--muted); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+      .pill { border:0; border-radius:0; padding:0; background:transparent; }
+      .tabs { display:flex; justify-content:center; gap:34px; margin:18px 0 24px; overflow-x:auto; padding:0 8px 8px; border-bottom:1px solid var(--line); }
       button { font:inherit; cursor:pointer; }
       .tab,.legend-button,.window-button { border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); min-height:34px; padding:0 12px; font-weight:650; }
-      .tab { min-height:42px; padding:0 16px; }
-      .tab.active { border-color:var(--ink); background:var(--ink); color:#fff; }
+      .tab { min-height:30px; border:0; border-radius:0; background:transparent; padding:0; color:#333; font-size:.78rem; font-weight:760; letter-spacing:.14em; text-transform:uppercase; }
+      .tab.active { border-bottom:1px solid var(--ink); background:transparent; color:var(--ink); }
       .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
-      .panel { min-width:0; border:1px solid var(--line); border-radius:8px; background:rgba(255,253,250,.92); box-shadow:0 18px 55px rgba(41,36,25,.08); padding:18px; }
+      .panel { min-width:0; border:1px solid var(--line); border-radius:4px; background:var(--paper); box-shadow:0 12px 34px rgba(32,32,32,.045); padding:18px; }
       .wide { grid-column:1/-1; }
       .head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:14px; }
       .kicker { margin:0 0 5px; color:var(--muted); font-size:.78rem; font-weight:750; text-transform:uppercase; }
@@ -55,7 +55,7 @@ const html = String.raw`<!doctype html>
       .tooltip-row { display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:8px; }
       .tooltip-row + .tooltip-row { margin-top:4px; }
       table { width:100%; min-width:980px; border-collapse:collapse; font-size:.9rem; }
-      th { background:#123f73; color:#fff; font-size:.78rem; padding:8px 10px; text-align:left; text-transform:uppercase; }
+      th { border-top:1px solid var(--ink); border-bottom:1px solid var(--line-strong); background:#fff; color:var(--ink); font-size:.72rem; letter-spacing:.08em; padding:8px 10px; text-align:left; text-transform:uppercase; }
       td { border-bottom:1px solid var(--line); padding:10px; vertical-align:top; line-height:1.42; }
       tr:nth-child(even) td { background:rgba(222,219,210,.28); }
       .table-wrap { overflow-x:auto; }
@@ -64,12 +64,12 @@ const html = String.raw`<!doctype html>
       .dovish { background:rgba(17,103,95,.12); color:var(--teal); }
       .neutral { background:rgba(109,106,99,.12); color:var(--muted); }
       .footer { margin:20px 0 0; color:var(--muted); font-size:.82rem; }
-      @media (max-width:940px){ .shell{width:min(100% - 20px,1480px);padding-top:16px}.topbar,.head{flex-direction:column;align-items:stretch}.status,.window{justify-content:flex-start}.grid{grid-template-columns:1fr}.panel{padding:14px} }
+      @media (max-width:940px){ .shell{width:min(100% - 20px,1480px);padding-top:16px}.topbar,.head{flex-direction:column}.brand{text-align:center}.status,.window{justify-content:center}.tabs{gap:20px;justify-content:flex-start}.grid{grid-template-columns:1fr}.panel{padding:14px} }
     </style>
   </head>
   <body>
     <main class="shell">
-      <header class="topbar"><p class="brand">Europe Monitor</p><div class="status" id="status"></div></header>
+      <header class="topbar"><p class="brand">Macro Europe Monitor</p><div class="status" id="status"></div></header>
       <nav class="tabs" id="tabs"></nav>
       <section class="grid" id="content"></section>
       <p class="footer" id="footer"></p>
