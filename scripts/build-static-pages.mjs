@@ -19,12 +19,12 @@ const html = String.raw`<!doctype html>
       :root { --bg:#f7f7f5; --paper:#ffffff; --ink:#191919; --muted:#707070; --line:#e4e1da; --line-strong:#c9c4b8; --brand:#191919; --teal:#11675f; --red:#a83f39; }
       * { box-sizing: border-box; }
       body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,Segoe UI,Arial,sans-serif; }
-      .shell { width:min(1480px, calc(100vw - 32px)); margin:0 auto; padding:30px 0 48px; }
-      .topbar { display:flex; flex-direction:column; align-items:center; gap:18px; padding:28px 20px 18px; border:1px solid var(--line); border-radius:2px; background:var(--paper); box-shadow:0 14px 38px rgba(32,32,32,.05); }
-      .brand { margin:0; color:var(--ink); font-family:Georgia,'Times New Roman',serif; font-size:clamp(2.5rem,5vw,4.75rem); font-weight:400; letter-spacing:.02em; line-height:.92; text-align:center; text-transform:uppercase; }
-      .status { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; color:var(--muted); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+      .shell { width:min(1480px, calc(100vw - 32px)); margin:0 auto; padding:22px 0 48px; }
+      .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+      .brand { margin:0; color:var(--ink); font-size:.92rem; font-weight:760; letter-spacing:.12em; line-height:1.2; text-align:left; text-transform:uppercase; }
+      .status { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; color:var(--muted); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; }
       .pill { border:0; border-radius:0; padding:0; background:transparent; }
-      .tabs { display:flex; justify-content:center; gap:34px; margin:18px 0 24px; overflow-x:auto; padding:0 8px 8px; border-bottom:1px solid var(--line); }
+      .tabs { display:flex; justify-content:flex-start; gap:28px; margin:14px 0 24px; overflow-x:auto; padding:0 0 8px; border-bottom:1px solid var(--line); }
       button { font:inherit; cursor:pointer; }
       .tab,.legend-button,.window-button { border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); min-height:34px; padding:0 12px; font-weight:650; }
       .tab { min-height:30px; border:0; border-radius:0; background:transparent; padding:0; color:#333; font-size:.78rem; font-weight:760; letter-spacing:.14em; text-transform:uppercase; }
@@ -64,7 +64,7 @@ const html = String.raw`<!doctype html>
       .dovish { background:rgba(17,103,95,.12); color:var(--teal); }
       .neutral { background:rgba(109,106,99,.12); color:var(--muted); }
       .footer { margin:20px 0 0; color:var(--muted); font-size:.82rem; }
-      @media (max-width:940px){ .shell{width:min(100% - 20px,1480px);padding-top:16px}.topbar,.head{flex-direction:column}.brand{text-align:center}.status,.window{justify-content:center}.tabs{gap:20px;justify-content:flex-start}.grid{grid-template-columns:1fr}.panel{padding:14px} }
+      @media (max-width:940px){ .shell{width:min(100% - 20px,1480px);padding-top:16px}.topbar,.head{flex-direction:column}.brand{text-align:left}.status,.window{justify-content:flex-start}.tabs{gap:20px;justify-content:flex-start}.grid{grid-template-columns:1fr}.panel{padding:14px} }
     </style>
   </head>
   <body>
