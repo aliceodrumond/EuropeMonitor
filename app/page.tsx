@@ -440,7 +440,7 @@ function TimeSeriesChart({
             setHover(buildHoverState(chartModel, svgX, svgY));
           }}
           role="img"
-          viewBox={`0 0 ${chartModel?.width ?? 920} ${chartModel?.height ?? 380}`}
+          viewBox={`0 0 ${chartModel?.width ?? 920} ${chartModel?.height ?? 470}`}
         >
           {chartModel ? (
             <ChartSvgContent
@@ -456,7 +456,7 @@ function TimeSeriesChart({
             className="tooltip"
             style={{
               left: `${(hover.x / (chartModel?.width ?? 920)) * 100}%`,
-              top: `${(hover.y / (chartModel?.height ?? 380)) * 100}%`,
+              top: `${(hover.y / (chartModel?.height ?? 470)) * 100}%`,
             }}
           >
             <div className="tooltip-date">{formatDateLabel(hover.date)}</div>
@@ -878,8 +878,8 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
 
 function buildChartModel(series: ChartSeries[]) {
   const width = 920;
-  const height = 390;
-  const margin = { top: 36, right: 58, bottom: 48, left: 54 };
+  const height = 470;
+  const margin = { top: 30, right: 54, bottom: 42, left: 50 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   const allPoints = series.flatMap((item) => item.points);

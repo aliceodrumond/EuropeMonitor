@@ -136,6 +136,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  align-items: stretch;
 }
 
 .chart-panel,
@@ -212,7 +213,7 @@ h1 {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 280px;
+  min-height: 330px;
   overflow: visible;
 }
 
@@ -295,7 +296,7 @@ h1 {
   flex-wrap: wrap;
   justify-content: center;
   gap: 7px;
-  margin: 10px 0 6px;
+  margin: 8px 0 4px;
 }
 
 .legend-button {
@@ -309,7 +310,7 @@ h1 {
 }
 
 .source-note {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 0.74rem;
   line-height: 1.45;
@@ -365,7 +366,39 @@ h1 {
   width: 100%;
   min-width: 980px;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  table-layout: fixed;
+  font-size: 0.86rem;
+}
+
+.speaker-table th:nth-child(1),
+.speaker-table td:nth-child(1) {
+  width: 10%;
+}
+
+.speaker-table th:nth-child(2),
+.speaker-table td:nth-child(2) {
+  width: 18%;
+}
+
+.speaker-table th:nth-child(3),
+.speaker-table td:nth-child(3) {
+  width: 18%;
+}
+
+.speaker-table th:nth-child(4),
+.speaker-table td:nth-child(4) {
+  width: 34%;
+  font-size: inherit;
+}
+
+.speaker-table th:nth-child(5),
+.speaker-table td:nth-child(5) {
+  width: 9%;
+}
+
+.speaker-table th:nth-child(6),
+.speaker-table td:nth-child(6) {
+  width: 11%;
 }
 
 .speaker-table th {
@@ -450,7 +483,12 @@ h1 {
     padding: 14px;
   }
 
+  .chart-svg {
+    min-height: 300px;
+  }
+
   .speaker-table {
-    min-width: 860px;
+    min-width: 900px;
+    font-size: 0.84rem;
   }
 }
