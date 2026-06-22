@@ -223,6 +223,14 @@ h1 {
   font-size: 12px;
 }
 
+.sentix-pmi-left-tick {
+  fill: #204f86;
+}
+
+.sentix-pmi-right-tick {
+  fill: #c47a20;
+}
+
 .grid-line {
   stroke: #dedbd2;
   stroke-width: 1;
@@ -243,6 +251,10 @@ h1 {
   stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.series-point {
+  opacity: 0.42;
 }
 
 .hover-line {

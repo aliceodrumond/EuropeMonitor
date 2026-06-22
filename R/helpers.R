@@ -26,6 +26,12 @@ month_sequence <- function(start_date, end_date) {
   seq(as.Date(start_date), as.Date(end_date), by = "month")
 }
 
+add_months <- function(dates, months) {
+  parts <- as.POSIXlt(as.Date(dates))
+  parts$mon <- parts$mon + months
+  as.Date(parts)
+}
+
 current_month_start <- function() {
   as.Date(format(Sys.Date(), "%Y-%m-01"))
 }
@@ -73,7 +79,9 @@ make_series_frame <- function(
   axis = "left",
   unit = "",
   source = "mock",
-  source_url = ""
+  source_url = "",
+  frequency = "",
+  source_note = ""
 ) {
   data.frame(
     date = format(dates, "%Y-%m-%d"),
@@ -86,6 +94,8 @@ make_series_frame <- function(
     unit = unit,
     source = source,
     source_url = source_url,
+    frequency = frequency,
+    source_note = source_note,
     stringsAsFactors = FALSE
   )
 }
@@ -96,7 +106,8 @@ read_series_catalog <- function(project_root) {
     catalog_path,
     stringsAsFactors = FALSE,
     fileEncoding = "UTF-8",
-    check.names = FALSE
+    check.names = FALSE,
+    fill = TRUE
   )
 }
 
@@ -105,8 +116,15 @@ apply_series_catalog <- function(data, catalog) {
     return(data)
   }
 
-  catalog_subset <- catalog[, c("series_id", "preferred_source", "source_url")]
-  names(catalog_subset) <- c("series_id", "catalog_source", "catalog_source_url")
+  if (!"source_note" %in% names(catalog)) {
+    catalog$source_note <- ""
+  }
+  if (!"source_note" %in% names(data)) {
+    data$source_note <- ""
+  }
+
+  catalog_subset <- catalog[, c("series_id", "preferred_source", "source_url", "frequency", "source_note")]
+  names(catalog_subset) <- c("series_id", "catalog_source", "catalog_source_url", "catalog_frequency", "catalog_source_note")
   enriched <- merge(data, catalog_subset, by = "series_id", all.x = TRUE, sort = FALSE)
 
   enriched$source <- ifelse(
@@ -119,10 +137,22 @@ apply_series_catalog <- function(data, catalog) {
     enriched$source_url,
     enriched$catalog_source_url
   )
+  enriched$frequency <- ifelse(
+    is.na(enriched$catalog_frequency) | enriched$catalog_frequency == "",
+    enriched$frequency,
+    enriched$catalog_frequency
+  )
+  enriched$source_note <- ifelse(
+    is.na(enriched$catalog_source_note) | enriched$catalog_source_note == "",
+    enriched$source_note,
+    enriched$catalog_source_note
+  )
 
   enriched$catalog_source <- NULL
   enriched$catalog_source_url <- NULL
-  enriched[, c("date", "chart_id", "series_id", "series_name", "country", "value", "axis", "unit", "source", "source_url")]
+  enriched$catalog_frequency <- NULL
+  enriched$catalog_source_note <- NULL
+  enriched[, c("date", "chart_id", "series_id", "series_name", "country", "value", "axis", "unit", "source", "source_url", "frequency", "source_note")]
 }
 
 clip_values <- function(values, lower, upper) {

@@ -1,15 +1,28 @@
 econostream_central_bank_url <- "https://www.econostream-media.com/news/topic/centralbank"
 
 build_ecb_speakers <- function(project_root) {
+  processed_path <- file.path(project_root, "data/processed/ecb_speakers.csv")
   speakers <- tryCatch(
     fetch_econostream_ecb_speakers(econostream_central_bank_url),
     error = function(error) {
-      warning(sprintf("Econostream fetch failed: %s. Using fallback ECB speaker table.", error$message))
-      fallback_ecb_speakers()
+      previous <- tryCatch(
+        read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(...) NULL
+      )
+      has_valid_previous <- !is.null(previous) && nrow(previous) > 0 &&
+        !any(previous$tags == "fallback", na.rm = TRUE)
+
+      if (has_valid_previous) {
+        warning(sprintf("Econostream fetch failed: %s. Keeping last valid speaker table.", error$message))
+        previous
+      } else {
+        warning(sprintf("Econostream fetch failed: %s. Using fallback ECB speaker table.", error$message))
+        fallback_ecb_speakers()
+      }
     }
   )
 
-  write_csv_utf8(speakers, file.path(project_root, "data/processed/ecb_speakers.csv"))
+  write_csv_utf8(speakers, processed_path)
   speakers
 }
 
@@ -23,6 +36,7 @@ fetch_econostream_ecb_speakers <- function(url) {
   }
 
   rows <- do.call(rbind, lapply(items, parse_econostream_item))
+  rows$source_order <- seq_len(nrow(rows))
   rows <- rows[rows$is_member_speech, ]
 
   if (!nrow(rows)) {
@@ -31,10 +45,11 @@ fetch_econostream_ecb_speakers <- function(url) {
 
   rows <- rows[order(rows$member, as.Date(rows$date), decreasing = TRUE), ]
   rows$stance_change <- compare_member_stance(rows)
-  rows <- rows[order(as.Date(rows$date), decreasing = TRUE), ]
+  rows <- rows[order(-as.numeric(as.Date(rows$date)), rows$source_order), ]
 
   rows$is_member_speech <- NULL
   rows$stance_score <- NULL
+  rows$source_order <- NULL
   rownames(rows) <- NULL
   rows[seq_len(min(30, nrow(rows))), ]
 }
@@ -75,6 +90,21 @@ parse_econostream_item <- function(item) {
 }
 
 read_url_text <- function(url) {
+  tmp <- tempfile(fileext = ".html")
+  script <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  tryCatch(system2("powershell", c("-NoProfile", "-Command", script), stdout = FALSE, stderr = FALSE), error = function(error) NULL)
+
+  if (file.exists(tmp) && file.info(tmp)$size > 0) {
+    value <- paste(readLines(tmp, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    if (nzchar(value)) {
+      return(value)
+    }
+  }
+
   native <- tryCatch(
     paste(readLines(url, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
     error = function(error) NULL
@@ -84,20 +114,7 @@ read_url_text <- function(url) {
     return(native)
   }
 
-  script <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new(); (Invoke-WebRequest -Uri '%s' -UseBasicParsing).Content",
-    url
-  )
-  output <- tryCatch(
-    system2("powershell", c("-NoProfile", "-Command", script), stdout = TRUE, stderr = TRUE),
-    error = function(error) NULL
-  )
-
-  if (is.null(output) || !length(output)) {
-    stop(sprintf("Could not download %s", url))
-  }
-
-  paste(output, collapse = "\n")
+  stop(sprintf("Could not download %s", url))
 }
 
 normalize_html <- function(value) {
@@ -250,7 +267,7 @@ shorten_text <- function(value, max_chars) {
 policy_score <- function(text) {
   text <- tolower(text)
   hawkish <- c("rate hike", "hike", "inflation pressures", "restrictive", "not finished", "further rate", "upside", "wages", "deterioration in the inflation outlook", "high inflation")
-  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged")
+  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged", "not yet warranted", "forceful response not warranted")
 
   hawkish_score <- sum(vapply(hawkish, grepl, logical(1), x = text, fixed = TRUE))
   dovish_score <- sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))

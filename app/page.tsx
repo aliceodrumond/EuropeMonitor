@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type TabId = "activity" | "inflation" | "speakers";
 type AxisSide = "left" | "right";
-type WindowKey = "all" | "10y" | "5y" | "2y";
+type WindowKey = "all" | "10y" | "5y" | "2y" | "1y" | "6m";
 
 type SeriesRow = {
   date: string;
@@ -17,6 +17,8 @@ type SeriesRow = {
   unit: string;
   source: string;
   source_url: string;
+  frequency: string;
+  source_note: string;
 };
 
 type SpeakerRow = {
@@ -45,6 +47,8 @@ type ChartDefinition = {
   kicker: string;
   yLeftLabel: string;
   yRightLabel?: string;
+  fixedDomains?: Partial<Record<AxisSide, { min: number; max: number }>>;
+  defaultWindow?: WindowKey;
   wide?: boolean;
   seriesOrder?: string[];
 };
@@ -57,6 +61,8 @@ type ChartSeries = {
   unit: string;
   source: string;
   sourceUrl: string;
+  frequency: string;
+  sourceNote: string;
   color: string;
   points: Array<{ date: string; value: number; time: number }>;
 };
@@ -91,7 +97,6 @@ const charts: ChartDefinition[] = [
     title: "PMI Composite",
     kicker: "Activity",
     yLeftLabel: "Index",
-    wide: true,
     seriesOrder: ["pmi_ea", "pmi_de", "pmi_fr", "pmi_es", "pmi_uk", "pmi_it"],
   },
   {
@@ -100,7 +105,6 @@ const charts: ChartDefinition[] = [
     title: "PMI Manufacturing",
     kicker: "Activity",
     yLeftLabel: "Index",
-    wide: true,
     seriesOrder: [
       "pmi_mfg_ea",
       "pmi_mfg_de",
@@ -116,7 +120,6 @@ const charts: ChartDefinition[] = [
     title: "PMI Services",
     kicker: "Activity",
     yLeftLabel: "Index",
-    wide: true,
     seriesOrder: [
       "pmi_srv_ea",
       "pmi_srv_de",
@@ -133,15 +136,24 @@ const charts: ChartDefinition[] = [
     kicker: "Sentiment",
     yLeftLabel: "PMI",
     yRightLabel: "Sentix",
-    wide: true,
+    fixedDomains: { left: { min: 40, max: 64 }, right: { min: -55, max: 50 } },
     seriesOrder: ["pmi_ea_sentix", "sentix_ea"],
+  },
+  {
+    id: "zew_sentiment",
+    tab: "activity",
+    title: "ZEW Indicator",
+    kicker: "Sentiment",
+    yLeftLabel: "Balance",
+    seriesOrder: ["zew_de"],
   },
   {
     id: "weekly_activity",
     tab: "activity",
-    title: "Weekly Activity Index",
+    title: "Germany Weekly Activity Index",
     kicker: "High frequency",
-    yLeftLabel: "z-score",
+    yLeftLabel: "%",
+    defaultWindow: "2y",
   },
   {
     id: "toll_mileage",
@@ -149,20 +161,8 @@ const charts: ChartDefinition[] = [
     title: "Toll Mileage",
     kicker: "Mobility",
     yLeftLabel: "Index",
-  },
-  {
-    id: "financial_conditions",
-    tab: "activity",
-    title: "Financial Conditions",
-    kicker: "Markets",
-    yLeftLabel: "z-score",
-  },
-  {
-    id: "gdp",
-    tab: "activity",
-    title: "GDP",
-    kicker: "National accounts",
-    yLeftLabel: "% y/y",
+    defaultWindow: "6m",
+    seriesOrder: ["toll_de", "toll_de_daily"],
   },
   {
     id: "hicp_headline_core",
@@ -181,10 +181,12 @@ const charts: ChartDefinition[] = [
   {
     id: "expected_selling_prices",
     tab: "inflation",
-    title: "Expected Selling Prices",
+    title: "Services HICP vs EC Services Survey",
     kicker: "Price pressures",
-    yLeftLabel: "Balance",
-    wide: true,
+    yLeftLabel: "Survey balance",
+    yRightLabel: "% y/y",
+    fixedDomains: { left: { min: -15, max: 40 }, right: { min: -1, max: 7 } },
+    seriesOrder: ["esp_services", "core_services_expected"],
   },
   {
     id: "wage_tracker",
@@ -192,16 +194,6 @@ const charts: ChartDefinition[] = [
     title: "Wage Tracker",
     kicker: "Wages",
     yLeftLabel: "% y/y",
-    wide: true,
-  },
-  {
-    id: "regional_inflation",
-    tab: "inflation",
-    title: "Regional Inflation",
-    kicker: "Countries",
-    yLeftLabel: "% y/y",
-    wide: true,
-    seriesOrder: ["hicp_de", "hicp_fr", "hicp_it", "hicp_es"],
   },
 ];
 
@@ -216,11 +208,13 @@ const palette = [
   "#8c7b57",
 ];
 
-const windows: Array<{ key: WindowKey; label: string; years?: number }> = [
+const windows: Array<{ key: WindowKey; label: string; months?: number; years?: number }> = [
   { key: "all", label: "All" },
   { key: "10y", label: "10Y", years: 10 },
   { key: "5y", label: "5Y", years: 5 },
   { key: "2y", label: "2Y", years: 2 },
+  { key: "1y", label: "1Y", years: 1 },
+  { key: "6m", label: "6M", months: 6 },
 ];
 
 export default function Home() {
@@ -336,7 +330,7 @@ function TimeSeriesChart({
   definition: ChartDefinition;
   rows: SeriesRow[];
 }) {
-  const [windowKey, setWindowKey] = useState<WindowKey>("all");
+  const [windowKey, setWindowKey] = useState<WindowKey>(definition.defaultWindow ?? "all");
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
     () => new Set(defaultHiddenSeries(definition)),
   );
@@ -347,12 +341,14 @@ function TimeSeriesChart({
 
   const filteredSeries = useMemo(() => {
     const allTimes = series.flatMap((item) => item.points.map((point) => point.time));
-    if (!allTimes.length || !selectedWindow?.years) {
+    if (!allTimes.length || (!selectedWindow?.years && !selectedWindow?.months)) {
       return series;
     }
 
     const maxTime = Math.max(...allTimes);
-    const minTime = addYears(maxTime, -selectedWindow.years);
+    const minTime = selectedWindow.years
+      ? addYears(maxTime, -selectedWindow.years)
+      : addMonths(maxTime, -(selectedWindow.months ?? 0));
 
     return series.map((item) => ({
       ...item,
@@ -361,7 +357,7 @@ function TimeSeriesChart({
   }, [selectedWindow, series]);
 
   const activeSeries = filteredSeries.filter((item) => !hiddenSeries.has(item.id));
-  const chartModel = useMemo(() => buildChartModel(activeSeries), [activeSeries]);
+  const chartModel = useMemo(() => buildChartModel(activeSeries, definition), [activeSeries, definition]);
 
   function toggleSeries(seriesId: string) {
     setHiddenSeries((current) => {
@@ -459,7 +455,7 @@ function TimeSeriesChart({
               top: `${(hover.y / (chartModel?.height ?? 470)) * 100}%`,
             }}
           >
-            <div className="tooltip-date">{formatDateLabel(hover.date)}</div>
+            <div className="tooltip-date">{formatDateLabel(hover.date, definition.id)}</div>
             {hover.points.map((point) => (
               <div className="tooltip-row" key={point.seriesId}>
                 <span
@@ -485,18 +481,24 @@ function SourceLinks({ series }: { series: ChartSeries[] }) {
 
   return (
     <>
-      {sources.map((source, index) => (
-        <span key={`${source.label}-${source.url}`}>
-          {index > 0 ? "; " : ""}
-          {source.url ? (
-            <a href={source.url} rel="noreferrer" target="_blank">
-              {source.label}
-            </a>
-          ) : (
-            source.label
-          )}
-        </span>
-      ))}
+      {sources.map((source, index) => {
+        const label = source.frequency
+          ? `${source.label} (${toTitleCase(source.frequency)})`
+          : source.label;
+        const labelWithNote = source.note ? `${label} ${source.note}` : label;
+        return (
+          <span key={`${source.label}-${source.url}-${source.frequency}-${source.note}`}>
+            {index > 0 ? "; " : ""}
+            {source.url ? (
+              <a href={source.url} rel="noreferrer" target="_blank">
+                {labelWithNote}
+              </a>
+            ) : (
+              labelWithNote
+            )}
+          </span>
+        );
+      })}
     </>
   );
 }
@@ -527,9 +529,20 @@ function ChartSvgContent({
     width,
     xTicks,
   } = model;
+  const clipId = `${definition.id}-plot-clip`;
 
   return (
     <>
+      <defs>
+        <clipPath id={clipId}>
+          <rect
+            height={innerHeight}
+            width={innerWidth}
+            x={margin.left}
+            y={margin.top}
+          />
+        </clipPath>
+      </defs>
       <rect
         fill="transparent"
         height={innerHeight}
@@ -549,7 +562,7 @@ function ChartSvgContent({
               y2={y}
             />
             <text
-              className="tick-label"
+              className={definition.id === "sentix_pmi" ? "tick-label sentix-pmi-left-tick" : "tick-label"}
               textAnchor="end"
               x={margin.left - 10}
               y={y + 4}
@@ -563,7 +576,7 @@ function ChartSvgContent({
         const y = scaleY(tick, "right");
         return (
           <text
-            className="tick-label"
+            className={definition.id === "sentix_pmi" ? "tick-label sentix-pmi-right-tick" : "tick-label"}
             key={`right-${tick}`}
             textAnchor="start"
             x={width - margin.right + 10}
@@ -618,6 +631,15 @@ function ChartSvgContent({
         y1={height - margin.bottom}
         y2={height - margin.bottom}
       />
+      {definition.yRightLabel ? (
+        <line
+          className="axis-line"
+          x1={width - margin.right}
+          x2={width - margin.right}
+          y1={margin.top}
+          y2={height - margin.bottom}
+        />
+      ) : null}
       <text
         className="axis-label"
         textAnchor="start"
@@ -636,14 +658,30 @@ function ChartSvgContent({
           {definition.yRightLabel}
         </text>
       ) : null}
-      {series.map((item) => (
-        <path
-          className="series-path"
-          d={pathForSeries(item, scaleX, scaleY)}
-          key={item.id}
-          stroke={item.color}
-        />
-      ))}
+      {series.map((item) =>
+        item.id.endsWith("_daily") ? (
+          <g clipPath={`url(#${clipId})`} key={item.id}>
+            {item.points.map((point) => (
+              <circle
+                className="series-point"
+                cx={scaleX(point.time)}
+                cy={scaleY(point.value, item.axis)}
+                fill={item.color}
+                key={`${item.id}-${point.date}`}
+                r={2.2}
+              />
+            ))}
+          </g>
+        ) : (
+          <path
+            className="series-path"
+            clipPath={`url(#${clipId})`}
+            d={pathForSeries(item, scaleX, scaleY)}
+            key={item.id}
+            stroke={item.color}
+          />
+        ),
+      )}
       {hover ? (
         <>
           <line
@@ -841,6 +879,8 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
         unit: row.unit,
         source: row.source,
         sourceUrl: row.source_url,
+        frequency: row.frequency,
+        sourceNote: row.source_note,
         color: palette[seriesMap.size % palette.length],
         points: [],
       });
@@ -876,7 +916,7 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
     .map((item, index) => ({ ...item, color: palette[index % palette.length] }));
 }
 
-function buildChartModel(series: ChartSeries[]) {
+function buildChartModel(series: ChartSeries[], definition?: ChartDefinition) {
   const width = 920;
   const height = 470;
   const margin = { top: 30, right: 54, bottom: 42, left: 50 };
@@ -895,8 +935,8 @@ function buildChartModel(series: ChartSeries[]) {
   const rightPoints = series
     .filter((item) => item.axis === "right")
     .flatMap((item) => item.points.map((point) => point.value));
-  const leftDomain = getValueDomain(leftPoints.length ? leftPoints : rightPoints);
-  const rightDomain = rightPoints.length ? getValueDomain(rightPoints) : leftDomain;
+  const leftDomain = definition?.fixedDomains?.left ?? getValueDomain(leftPoints.length ? leftPoints : rightPoints);
+  const rightDomain = definition?.fixedDomains?.right ?? (rightPoints.length ? getValueDomain(rightPoints) : leftDomain);
 
   const scaleX = (time: number) =>
     margin.left +
@@ -1058,6 +1098,12 @@ function addYears(time: number, years: number) {
   return date.getTime();
 }
 
+function addMonths(time: number, months: number) {
+  const date = new Date(time);
+  date.setMonth(date.getMonth() + months);
+  return date.getTime();
+}
+
 function parseTime(date: string) {
   return new Date(`${date}T00:00:00`).getTime();
 }
@@ -1075,27 +1121,42 @@ function defaultHiddenSeries(definition: ChartDefinition) {
 }
 
 function uniqueSources(series: ChartSeries[]) {
-  const sourceMap = new Map<string, { label: string; url: string }>();
+  const sourceMap = new Map<string, { frequency: string; label: string; note: string; url: string }>();
 
   series.forEach((item) => {
     const label = item.source || "Unspecified source";
-    const key = `${label}|${item.sourceUrl}`;
+    const key = `${label}|${item.sourceUrl}|${item.frequency}|${item.sourceNote}`;
     if (!sourceMap.has(key)) {
-      sourceMap.set(key, { label, url: item.sourceUrl });
+      sourceMap.set(key, { frequency: item.frequency, label, note: item.sourceNote, url: item.sourceUrl });
     }
   });
 
   return [...sourceMap.values()];
 }
 
-function formatDateLabel(date: string) {
+function formatDateLabel(date: string, chartId?: string) {
   if (!date) {
     return "";
+  }
+  if (chartId === "weekly_activity") {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(`${date}T00:00:00`));
   }
   return new Intl.DateTimeFormat("en-US", {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${date}T00:00:00`));
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
 function formatFullDateLabel(date: string) {

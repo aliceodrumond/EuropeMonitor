@@ -1,37 +1,42 @@
-tab_id,chart_id,series_id,label,country,frequency,preferred_source,source_url,transformation,status,proprietary_fallback
+tab_id,chart_id,series_id,label,country,frequency,preferred_source,source_url,transformation,status,proprietary_fallback,source_note
 activity,pmi_composite,pmi_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_composite,pmi_flash_ea,Europe Flash,Euro Area,monthly,HCOB / SP Global Flash PMI,https://www.spglobal.com/marketintelligence/en/mi/products/pmi.html,level,manual_import,official press release or licensed PMI feed
 activity,pmi_composite,pmi_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_manufacturing,pmi_mfg_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_manufacturing,pmi_mfg_flash_ea,Europe Flash,Euro Area,monthly,HCOB / SP Global Flash PMI,https://www.spglobal.com/marketintelligence/en/mi/products/pmi.html,level,manual_import,official press release or licensed PMI feed
 activity,pmi_manufacturing,pmi_mfg_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_manufacturing,pmi_mfg_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_manufacturing,pmi_mfg_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_manufacturing,pmi_mfg_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_manufacturing,pmi_mfg_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_services,pmi_srv_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_services,pmi_srv_flash_ea,Europe Flash,Euro Area,monthly,HCOB / SP Global Flash PMI,https://www.spglobal.com/marketintelligence/en/mi/products/pmi.html,level,manual_import,official press release or licensed PMI feed
 activity,pmi_services,pmi_srv_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_services,pmi_srv_fr,France,France,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_services,pmi_srv_es,Spain,Spain,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_services,pmi_srv_uk,UK,United Kingdom,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_services,pmi_srv_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,sentix_pmi,pmi_ea_sentix,PMI Composite,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
-activity,sentix_pmi,sentix_ea,Sentix,Euro Area,monthly,Sentix,https://www.sentix.de/index.php/en/sentix-Economic-Index/sentix-economic-index-euroland.html,level,source_linked,
-activity,weekly_activity,wai_ea,Euro Area WAI,Euro Area,weekly,ECB Data Portal,https://data.ecb.europa.eu/,standardized,source_linked,
-activity,toll_mileage,toll_de,Germany toll mileage,Germany,monthly,Destatis/BALM Lkw-Maut-Fahrleistungsindex,https://www.destatis.de/DE/Service/EXSTAT/Datensaetze/lkw-maut-artikel.html,index,source_linked,
+activity,sentix_pmi,sentix_ea,Sentix,Euro Area,monthly,Sentix / Investing.com,https://www.investing.com/economic-calendar/sentix-investor-confidence-268,level,source_linked,
+activity,zew_sentiment,zew_de,Germany ZEW,Germany,monthly,ZEW Financial Market Survey,https://www.zew.de/en/publications/zew-expertises-research-reports/research-reports/business-cycle/zew-financial-market-survey,level,source_linked,
+activity,weekly_activity,wai_de,Germany WAI,Germany,weekly,Deutsche Bundesbank,https://statistiken.bundesbank.de/statistiken-en/timeseries/BBDE1/W.DE.Y.WAI.A2N400000.A.N.R00.A,level,source_linked,,This data is up to revision
+activity,toll_mileage,toll_de,Germany toll mileage 7d MA,Germany,daily,Dashboard Konjunktur / Destatis,https://www.dashboard-konjunktur.de/indicator/tile_1667226778807,index,source_linked,
+activity,toll_mileage,toll_de_daily,Germany toll mileage daily,Germany,daily,Dashboard Konjunktur / Destatis,https://www.dashboard-konjunktur.de/indicator/tile_1667226778807,index,source_linked,
 activity,financial_conditions,fci_ea,Euro Area FCI,Euro Area,daily,ECB Data Portal,https://data.ecb.europa.eu/,standardized,source_linked,
 activity,gdp,gdp_ea,Euro Area GDP,Euro Area,quarterly,Eurostat NAMQ_10_GDP,https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en,yoy,source_linked,
-inflation,expected_selling_prices,esp_industry,Industry,Euro Area,monthly,European Commission Business and Consumer Surveys,https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en,balance,source_linked,
-inflation,expected_selling_prices,esp_services,Services,Euro Area,monthly,European Commission Business and Consumer Surveys,https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en,balance,source_linked,
-inflation,wage_tracker,wage_tracker_ea,ECB Wage Tracker,Euro Area,monthly,ECB Wage Tracker,https://www.ecb.europa.eu/stats/ecb_surveys/wage_tracker/html/index.en.html,yoy,source_linked,
+inflation,expected_selling_prices,esp_services,EC Services Prices Expected,Euro Area,monthly,European Commission Business and Consumer Surveys,https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en,balance,source_linked,
+inflation,expected_selling_prices,core_services_expected,HICP - Services,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/teicp280/default/table?lang=en,yoy,source_linked,
+inflation,wage_tracker,wage_tracker_ea,ECB Wage Tracker,Euro Area,monthly,ECB Data Portal,https://data.ecb.europa.eu/data/datasets/EWT/EWT.M.U2.N.WT.INWS._T.4F0.GY,yoy,source_linked,
 inflation,regional_inflation,hicp_de,Germany,Germany,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
 inflation,regional_inflation,hicp_fr,France,France,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
 inflation,regional_inflation,hicp_it,Italy,Italy,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
 inflation,regional_inflation,hicp_es,Spain,Spain,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
-inflation,hicp_headline_core,hicp_headline,Headline,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
-inflation,hicp_headline_core,hicp_core,Core,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
-inflation,hicp_components,core_goods,Core goods,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
-inflation,hicp_components,core_services,Core services,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table?lang=en,yoy,source_linked,
+inflation,hicp_headline_core,hicp_headline,Headline,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/product/view/teicp000?lang=en,yoy,source_linked,
+inflation,hicp_headline_core,hicp_core,Core,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/product/view/teicp200?lang=en,yoy,source_linked,
+inflation,hicp_components,core_goods,Core goods,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/product/view/teicp290?lang=en,yoy,source_linked,
+inflation,hicp_components,core_services,Core services,Euro Area,monthly,Eurostat HICP,https://ec.europa.eu/eurostat/databrowser/view/teicp280/default/table?lang=en,yoy,source_linked,
 speakers,ecb_speakers,manual_table,ECB speakers,Euro Area,event,ECB Monetary Policy,https://www.ecb.europa.eu/press/html/index.en.html,table,source_linked,
