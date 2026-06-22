@@ -1,4 +1,4 @@
-# Legacy - Europe Monitor
+# Europe Monitor
 
 Site para clientes com tres superficies iniciais:
 
@@ -25,6 +25,12 @@ Esse comando gera:
 - `public/data/metadata.json`
 
 Tambem grava copias tratadas em `data/processed/`.
+
+Esse unico comando atualiza as tres abas:
+
+- ECB Speakers: `R/fetch_ecb_speakers.R`
+- Activity Monitor: `R/fetch_activity.R`
+- Inflation Monitor: `R/fetch_inflation.R`
 
 Os CSVs de series incluem `source` e `source_url`, preenchidos a partir de
 `config/series_catalog.csv`. Ao adicionar ou trocar uma fonte, atualize o

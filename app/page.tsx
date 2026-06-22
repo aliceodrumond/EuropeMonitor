@@ -79,9 +79,9 @@ type HoverState = {
 };
 
 const tabs: Array<{ id: TabId; label: string }> = [
+  { id: "speakers", label: "ECB Speakers" },
   { id: "activity", label: "Activity Monitor" },
   { id: "inflation", label: "Inflation Monitor" },
-  { id: "speakers", label: "ECB Speakers" },
 ];
 
 const charts: ChartDefinition[] = [
@@ -224,7 +224,7 @@ const windows: Array<{ key: WindowKey; label: string; years?: number }> = [
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>("activity");
+  const [activeTab, setActiveTab] = useState<TabId>("speakers");
   const [seriesRows, setSeriesRows] = useState<SeriesRow[]>([]);
   const [speakers, setSpeakers] = useState<SpeakerRow[]>([]);
   const [metadata, setMetadata] = useState<Metadata>({});
@@ -282,7 +282,7 @@ export default function Home() {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Legacy - Europe Monitor</p>
+          <p className="eyebrow">Europe Monitor</p>
         </div>
         <div className="status-strip" aria-label="Data status">
           <span className="status-pill">
