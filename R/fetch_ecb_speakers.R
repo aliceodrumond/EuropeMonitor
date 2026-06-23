@@ -291,12 +291,28 @@ extract_policy_highlight <- function(headline, summary) {
   candidates <- unique(candidates)
 
   if (!length(candidates)) {
+    fallback <- clean_policy_comment_text(extract_headline_claim(headline))
+    fallback_candidates <- split_policy_sentences(fallback)
+    fallback_candidates <- fallback_candidates[nchar(fallback_candidates) >= 18]
+    fallback_candidates <- fallback_candidates[!is_boilerplate_policy_comment(fallback_candidates)]
+    fallback_scores <- vapply(fallback_candidates, policy_comment_score, numeric(1))
+    if (length(fallback_scores) && any(fallback_scores > 0)) {
+      return(shorten_text(fallback_candidates[order(fallback_scores, decreasing = TRUE)[[1]]], 150))
+    }
     return("No comments relevant for monetary policy")
   }
 
   scores <- vapply(candidates, policy_comment_score, numeric(1))
   keep <- scores > 0
   if (!any(keep)) {
+    fallback <- clean_policy_comment_text(extract_headline_claim(headline))
+    fallback_candidates <- split_policy_sentences(fallback)
+    fallback_candidates <- fallback_candidates[nchar(fallback_candidates) >= 18]
+    fallback_candidates <- fallback_candidates[!is_boilerplate_policy_comment(fallback_candidates)]
+    fallback_scores <- vapply(fallback_candidates, policy_comment_score, numeric(1))
+    if (length(fallback_scores) && any(fallback_scores > 0)) {
+      return(shorten_text(fallback_candidates[order(fallback_scores, decreasing = TRUE)[[1]]], 150))
+    }
     return("No comments relevant for monetary policy")
   }
 
