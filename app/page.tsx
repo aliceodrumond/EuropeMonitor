@@ -146,7 +146,7 @@ const charts: ChartDefinition[] = [
   {
     id: "bls_credit_standards",
     tab: "activity",
-    title: "Tight credit standards",
+    title: "ECB BLS: Credit standards",
     kicker: "ECB Lending Survey",
     yLeftLabel: "GDP q/q",
     yRightLabel: "Net %",
@@ -161,7 +161,7 @@ const charts: ChartDefinition[] = [
   {
     id: "bls_loan_demand",
     tab: "activity",
-    title: "... and weak demand",
+    title: "ECB BLS: Loan demand",
     kicker: "ECB Lending Survey",
     yLeftLabel: "GDP q/q",
     yRightLabel: "Net %",
