@@ -109,7 +109,7 @@ parse_econostream_item <- function(item) {
 read_url_text <- function(url) {
   tmp <- tempfile(fileext = ".html")
   script <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
   )

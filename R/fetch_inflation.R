@@ -82,7 +82,7 @@ read_eurostat_teicp_rows <- function(definition) {
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   tmp <- file.path(raw_dir, sprintf("eurostat_%s.json", definition$dataset))
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -154,7 +154,7 @@ read_ecb_wage_tracker_rows <- function() {
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   tmp <- file.path(raw_dir, "ecb_wage_tracker.csv")
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
   )

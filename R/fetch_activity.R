@@ -374,7 +374,7 @@ read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
   raw_path <- file.path(raw_dir, "eurostat_namq_10_gdp_qoq_sa.json")
 
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(raw_path, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -855,7 +855,7 @@ read_spglobal_text <- function(url) {
 
 download_binary <- function(url, path) {
   script <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(path, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -1064,7 +1064,7 @@ read_dashboard_highcharts_series <- function(topic_id) {
   url <- sprintf("https://www.dashboard-konjunktur.de/api/highcharts?topicId=%s&from=1577919600000", topic_id)
   tmp <- tempfile(fileext = ".json")
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -1092,7 +1092,7 @@ read_toll_level_scale <- function(raw) {
   url <- "https://www.dashboard-deutschland.de/api/tile/indicators?ids=tile_1667226778807"
   tmp <- tempfile(fileext = ".json")
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -1298,7 +1298,7 @@ download_binary_url <- function(url, path) {
   }
 
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
     shQuote(url, type = "sh"),
     shQuote(normalizePath(path, winslash = "\\", mustWork = FALSE), type = "sh")
   )
@@ -1318,7 +1318,7 @@ fetch_url_text <- function(url) {
   }
 
   command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; $r=Invoke-WebRequest -UseBasicParsing -Uri %s; if($r.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($r.Content)} else {$r.Content}",
+    "$ProgressPreference='SilentlyContinue'; $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s; if($r.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($r.Content)} else {$r.Content}",
     shQuote(url, type = "sh")
   )
   tryCatch(
