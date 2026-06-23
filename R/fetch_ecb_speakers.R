@@ -284,10 +284,8 @@ infer_event_type <- function(headline, summary) {
 }
 
 extract_policy_highlight <- function(headline, summary) {
-  claim <- extract_headline_claim(headline)
   summary_text <- clean_policy_comment_text(summary)
-  claim_text <- clean_policy_comment_text(claim)
-  candidates <- c(split_policy_sentences(summary_text), split_policy_sentences(claim_text))
+  candidates <- split_policy_sentences(summary_text)
   candidates <- candidates[nchar(candidates) >= 18]
   candidates <- candidates[!is_boilerplate_policy_comment(candidates)]
   candidates <- unique(candidates)
