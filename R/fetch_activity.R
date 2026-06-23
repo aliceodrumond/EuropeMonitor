@@ -218,6 +218,8 @@ build_activity_series <- function(project_root) {
   gdp_qoq <- read_eurostat_gdp_qoq_sa_rows(project_root)
   pmi_gdp <- rbind(pmi_gdp_rows, gdp_qoq)
 
+  ifo_rows <- read_ifo_business_climate_rows(project_root)
+
   zew_rows <- read_zew_rows(project_root)
 
   weekly <- read_bundesbank_wai_rows(project_root)
@@ -329,6 +331,7 @@ build_activity_series <- function(project_root) {
     flash_rows,
     sentix_rows,
     pmi_gdp,
+    ifo_rows,
     zew_rows,
     weekly,
     toll,
@@ -392,6 +395,102 @@ read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
     source = "Eurostat NAMQ_10_GDP",
     source_url = "https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en",
     frequency = "quarterly"
+  )
+}
+
+read_ifo_business_climate_rows <- function(project_root) {
+  if (!requireNamespace("openxlsx", quietly = TRUE)) {
+    return(data.frame())
+  }
+
+  source_page <- "https://www.ifo.de/en/ifo-time-series"
+  raw_dir <- file.path(project_root, "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  workbook_path <- file.path(raw_dir, "ifo_business_climate.xlsx")
+
+  html <- fetch_url_text(source_page)
+  matches <- regmatches(
+    html,
+    gregexpr("href=\"([^\"]*gsk-e-[0-9]{6}\\.xlsx[^\"]*)\"", html, perl = TRUE)
+  )[[1]]
+  if (length(matches) && !identical(matches, character(0))) {
+    paths <- sub("^href=\"", "", sub("\"$", "", matches))
+    paths <- sort(unique(paths), decreasing = TRUE)
+    url <- absolute_ifo_url(paths[[1]])
+    tryCatch(download_binary_url(url, workbook_path), error = function(e) NULL)
+  }
+
+  if (!file.exists(workbook_path) || file.info(workbook_path)$size == 0) {
+    return(data.frame())
+  }
+
+  headline <- tryCatch(
+    openxlsx::read.xlsx(workbook_path, sheet = "ifo Business Climate", startRow = 8, colNames = FALSE, skipEmptyRows = TRUE),
+    error = function(e) data.frame()
+  )
+  sectors <- tryCatch(
+    openxlsx::read.xlsx(workbook_path, sheet = "Sectors", startRow = 8, colNames = FALSE, skipEmptyRows = TRUE),
+    error = function(e) data.frame()
+  )
+
+  frames <- list()
+  if (nrow(headline) && ncol(headline) >= 4) {
+    dates <- parse_ifo_month(headline[[1]])
+    frames <- c(frames, list(
+      make_ifo_series(dates, headline[[2]], "ifo_headline", "ifo_business_climate_de", "IFO Business Climate", "index"),
+      make_ifo_series(dates, headline[[3]], "ifo_headline", "ifo_current_assessment_de", "IFO Current Assessment", "index"),
+      make_ifo_series(dates, headline[[4]], "ifo_headline", "ifo_expectations_de", "IFO Business Expectations", "index")
+    ))
+  }
+
+  if (nrow(sectors) && ncol(sectors) >= 25) {
+    dates <- parse_ifo_month(sectors[[1]])
+    frames <- c(frames, list(
+      make_ifo_series(dates, sectors[[8]], "ifo_sectors", "ifo_mfg_climate_de", "IFO Manufacturing", "balance"),
+      make_ifo_series(dates, sectors[[20]], "ifo_sectors", "ifo_retail_climate_de", "IFO Retail", "balance"),
+      make_ifo_series(dates, sectors[[11]], "ifo_sectors", "ifo_services_climate_de", "IFO Services", "balance"),
+      make_ifo_series(dates, sectors[[23]], "ifo_sectors", "ifo_construction_climate_de", "IFO Construction", "balance")
+    ))
+  }
+
+  frames <- Filter(function(frame) nrow(frame) > 0, frames)
+  if (length(frames)) do.call(rbind, frames) else data.frame()
+}
+
+absolute_ifo_url <- function(path) {
+  path <- sub("\\?.*$", "", path)
+  if (grepl("^https?://", path)) {
+    return(path)
+  }
+  paste0("https://www.ifo.de", path)
+}
+
+parse_ifo_month <- function(values) {
+  values <- trimws(as.character(values))
+  out <- rep(as.Date(NA), length(values))
+  valid <- grepl("^[0-9]{2}/[0-9]{4}$", values)
+  out[valid] <- as.Date(sprintf(
+    "%s-%s-01",
+    sub("^([0-9]{2})/([0-9]{4})$", "\\2", values[valid]),
+    sub("^([0-9]{2})/([0-9]{4})$", "\\1", values[valid])
+  ))
+  out
+}
+
+make_ifo_series <- function(dates, values, chart_id, series_id, series_name, unit) {
+  values <- suppressWarnings(as.numeric(values))
+  valid <- !is.na(dates) & !is.na(values)
+  make_series_frame(
+    dates[valid],
+    chart_id,
+    series_id,
+    series_name,
+    "Germany",
+    values[valid],
+    unit = unit,
+    source = "ifo Institute",
+    source_url = "https://www.ifo.de/en/ifo-time-series",
+    frequency = "monthly"
   )
 }
 

@@ -82,6 +82,8 @@ parse_econostream_item <- function(item) {
   headline <- clean_html(values[[3]])
   summary <- strip_econostream_byline(clean_html(values[[4]]))
   member <- extract_ecb_member(headline)
+  member <- normalize_ecb_member_name(member)
+  member <- normalize_ecb_member_name_ascii(member)
   profile <- member_profile(member)
   text <- paste(headline, summary)
   score <- policy_score(text)
@@ -219,6 +221,15 @@ extract_ecb_member <- function(headline) {
   name
 }
 
+normalize_ecb_member_name <- function(member) {
+  if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
+  if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
+    if (grepl("mir|mÃ­r|mír", member, ignore.case = TRUE)) return("Kazimir")
+  }
+  if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
+  member
+}
+
 member_profile <- function(member) {
   profiles <- member_profiles()
 
@@ -228,8 +239,18 @@ member_profile <- function(member) {
   list(position = "ECB speaker", country = "Euro Area")
 }
 
+normalize_ecb_member_name_ascii <- function(member) {
+  if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
+  if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
+  if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
+  member
+}
+
 member_profiles <- function() {
   list(
+    "Vujcic" = list(position = "Vice-President", country = "Croatia"),
+    "Kazimir" = list(position = "Governing Council", country = "Slovakia"),
+    "Escriva" = list(position = "Governing Council", country = "Spain"),
     "Lagarde" = list(position = "President", country = "ECB"),
     "Lane" = list(position = "Chief Economist", country = "Ireland"),
     "Schnabel" = list(position = "Executive Board", country = "Germany"),
@@ -316,6 +337,9 @@ clean_policy_comment_text <- function(value) {
     perl = TRUE
   )
   value <- gsub("\\b[A-Z][a-z]+\\s+said\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?", "", value, perl = TRUE)
+  value <- gsub("\\bEuropean Central Bank Vice President\\s+[^,.;:]+\\s+(said|told|argued|noted|warned|stressed|indicated)\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?", "", value, ignore.case = TRUE, perl = TRUE)
+  value <- gsub("\\bBoris\\s+Vuj\\S*\\s+(said|told|argued|noted|warned|stressed|indicated)\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?", "", value, ignore.case = TRUE, perl = TRUE)
+  value <- gsub("\\b[A-Z][A-Za-z]+\\s+[A-Z][A-Za-z]+\\s+(said|told|argued|noted|warned|stressed|indicated)\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?", "", value, perl = TRUE)
   trimws(value)
 }
 

@@ -87,6 +87,8 @@ const html = String.raw`<!doctype html>
         ["pmi_gdp","activity","PMI Composite vs GDP","Growth","PMI","% q/q SA",false,["pmi_ea_gdp","gdp_qoq_sa_ea"],{left:{min:35,max:65},right:{min:-2.5,max:2.5}},"all"],
         ["pmi_manufacturing","activity","PMI Manufacturing","Activity","Index",null,false,["pmi_mfg_ea","pmi_mfg_de","pmi_mfg_fr","pmi_mfg_es","pmi_mfg_uk","pmi_mfg_it"],null,"10y"],
         ["pmi_services","activity","PMI Services","Activity","Index",null,false,["pmi_srv_ea","pmi_srv_de","pmi_srv_fr","pmi_srv_es","pmi_srv_uk","pmi_srv_it"],null,"10y"],
+        ["ifo_headline","activity","GE IFO","Survey","Index",null,false,["ifo_business_climate_de","ifo_current_assessment_de","ifo_expectations_de"],{left:{min:70,max:110}}, "10y"],
+        ["ifo_sectors","activity","GE: IFO Climate by Sectors","Survey","Balance",null,false,["ifo_mfg_climate_de","ifo_retail_climate_de","ifo_services_climate_de","ifo_construction_climate_de"],{left:{min:-50,max:40}}, "10y"],
         ["sentix_pmi","activity","Sentix vs PMI Composite","Sentiment","PMI","Sentix",false,["pmi_ea_sentix","sentix_ea"],{left:{min:40,max:64},right:{min:-55,max:50}}],
         ["zew_sentiment","activity","ZEW Indicator","Sentiment","Balance",null,false,["zew_de"]],
         ["weekly_activity","activity","Germany Weekly Activity Index","High frequency","%",null,false,null,null,"2y"],
