@@ -453,8 +453,8 @@ read_ecb_bls_rows <- function(project_root, gdp_qoq) {
   })
   frames <- Filter(function(frame) nrow(frame) > 0, frames)
 
-  gdp_standards <- make_bls_gdp_rows(gdp_qoq, "bls_credit_standards", "gdp_qoq_sa_bls_standards", "GDP Q/Q")
-  gdp_demand <- make_bls_gdp_rows(gdp_qoq, "bls_loan_demand", "gdp_qoq_sa_bls_demand", "GDP q/q")
+  gdp_standards <- make_bls_gdp_rows(gdp_qoq, "bls_credit_standards", "gdp_qoq_sa_bls_standards", "GDP %QoQ sa")
+  gdp_demand <- make_bls_gdp_rows(gdp_qoq, "bls_loan_demand", "gdp_qoq_sa_bls_demand", "GDP %QoQ sa")
   frames <- c(list(gdp_standards, gdp_demand), frames)
   frames <- Filter(function(frame) nrow(frame) > 0, frames)
   if (length(frames)) do.call(rbind, frames) else data.frame()
