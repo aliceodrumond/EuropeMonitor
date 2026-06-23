@@ -285,9 +285,12 @@ infer_event_type <- function(headline, summary) {
 
 extract_policy_highlight <- function(headline, summary) {
   claim <- extract_headline_claim(headline)
-  text <- clean_policy_comment_text(paste(claim, summary))
-  candidates <- split_policy_sentences(text)
+  summary_text <- clean_policy_comment_text(summary)
+  claim_text <- clean_policy_comment_text(claim)
+  candidates <- c(split_policy_sentences(summary_text), split_policy_sentences(claim_text))
   candidates <- candidates[nchar(candidates) >= 18]
+  candidates <- candidates[!is_boilerplate_policy_comment(candidates)]
+  candidates <- unique(candidates)
 
   if (!length(candidates)) {
     return("No comments relevant for monetary policy")
@@ -348,6 +351,20 @@ split_policy_sentences <- function(value) {
   parts <- trimws(parts)
   parts <- parts[nzchar(parts)]
   unique(parts)
+}
+
+is_boilerplate_policy_comment <- function(value) {
+  text <- tolower(trimws(value))
+  grepl(
+    "^(european central bank|ecb)\\s+(president|chief economist|executive board member|governing council member|vice[- ]president)\\b",
+    text,
+    perl = TRUE
+  ) |
+    grepl(
+      "^(central bank|governing council|executive board)\\s+",
+      text,
+      perl = TRUE
+    )
 }
 
 policy_comment_score <- function(value) {

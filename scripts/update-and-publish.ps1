@@ -175,6 +175,21 @@ function Test-OutputData {
   if (@($speakers | Where-Object { $_.tags -eq "fallback" }).Count -gt 0) {
     throw "ECB Speakers is fallback data; refusing to publish"
   }
+  foreach ($speaker in $speakers) {
+    $comment = [string]$speaker.policy_comments
+    if ([string]::IsNullOrWhiteSpace($comment)) {
+      throw "ECB Speakers row for $($speaker.date) $($speaker.member) has empty Policy comments"
+    }
+    if ($comment -ne "No comments relevant for monetary policy") {
+      $parts = @($comment -split "\s+\|\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+      if ($parts.Count -lt 1 -or $parts.Count -gt 3) {
+        throw "Policy comments for $($speaker.date) $($speaker.member) must have 1-3 snippets; found $($parts.Count): $comment"
+      }
+      if ($comment -match "^(European Central Bank|ECB)\s+(President|Chief Economist|Executive Board member|Governing Council member|Vice[- ]President)\b") {
+        throw "Policy comments for $($speaker.date) $($speaker.member) starts with boilerplate title/name: $comment"
+      }
+    }
+  }
   Write-Log "Validated ECB Speakers: $($speakers.Count) rows, first=$($speakers[0].date) $($speakers[0].member)"
 }
 
