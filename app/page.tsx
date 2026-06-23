@@ -93,6 +93,16 @@ const tabs: Array<{ id: TabId; label: string }> = [
 
 const charts: ChartDefinition[] = [
   {
+    id: "pmi_ea_aggregate",
+    tab: "activity",
+    title: "Eurozone PMIs",
+    kicker: "Activity",
+    yLeftLabel: "Index",
+    seriesOrder: ["pmi_ea_aggregate", "pmi_mfg_ea_aggregate", "pmi_srv_ea_aggregate"],
+    fixedDomains: { left: { min: 35, max: 65 } },
+    defaultWindow: "10y",
+  },
+  {
     id: "pmi_composite",
     tab: "activity",
     title: "PMI Composite",

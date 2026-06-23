@@ -83,6 +83,7 @@ const html = String.raw`<!doctype html>
     </main>
     <script>
       const charts = [
+        ["pmi_ea_aggregate","activity","Eurozone PMIs","Activity","Index",null,false,["pmi_ea_aggregate","pmi_mfg_ea_aggregate","pmi_srv_ea_aggregate"],{left:{min:35,max:65}},"10y"],
         ["pmi_composite","activity","PMI Composite","Activity","Index",null,false,["pmi_ea","pmi_de","pmi_fr","pmi_es","pmi_uk","pmi_it"],null,"10y"],
         ["pmi_gdp","activity","PMI Composite vs GDP","Growth","PMI","% q/q SA",false,["pmi_ea_gdp","gdp_qoq_sa_ea"],{left:{min:35,max:65},right:{min:-2.5,max:2.5}},"all"],
         ["pmi_manufacturing","activity","PMI Manufacturing","Activity","Index",null,false,["pmi_mfg_ea","pmi_mfg_de","pmi_mfg_fr","pmi_mfg_es","pmi_mfg_uk","pmi_mfg_it"],null,"10y"],

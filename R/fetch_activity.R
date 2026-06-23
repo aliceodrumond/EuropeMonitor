@@ -219,6 +219,12 @@ build_activity_series <- function(project_root) {
   pmi_gdp <- rbind(pmi_gdp_rows, gdp_qoq)
   bls_rows <- read_ecb_bls_rows(project_root, gdp_qoq)
 
+  pmi_aggregate_rows <- rbind(
+    make_pmi_aggregate_rows(pmi_rows, "pmi_ea", "pmi_ea_aggregate", "Composite"),
+    make_pmi_aggregate_rows(pmi_manufacturing_rows, "pmi_mfg_ea", "pmi_mfg_ea_aggregate", "Manufacturing"),
+    make_pmi_aggregate_rows(pmi_services_rows, "pmi_srv_ea", "pmi_srv_ea_aggregate", "Services")
+  )
+
   ifo_rows <- read_ifo_business_climate_rows(project_root)
 
   zew_rows <- read_zew_rows(project_root)
@@ -326,6 +332,7 @@ build_activity_series <- function(project_root) {
   )
 
   activity <- apply_series_catalog(rbind(
+    pmi_aggregate_rows,
     pmi_rows,
     pmi_manufacturing_rows,
     pmi_services_rows,
@@ -342,6 +349,15 @@ build_activity_series <- function(project_root) {
   ), catalog)
   write_csv_utf8(activity, file.path(project_root, "data/processed/activity_series.csv"))
   activity
+}
+
+make_pmi_aggregate_rows <- function(rows, source_series_id, target_series_id, target_series_name) {
+  out <- rows[rows$series_id == source_series_id, ]
+  out$chart_id <- "pmi_ea_aggregate"
+  out$series_id <- target_series_id
+  out$series_name <- target_series_name
+  out$country <- "Euro Area"
+  out
 }
 
 read_eurostat_gdp_qoq_sa_rows <- function(project_root) {

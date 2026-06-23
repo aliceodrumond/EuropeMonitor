@@ -93,6 +93,7 @@ function Test-OutputData {
   $speakers = @(Import-Csv $speakersPath)
 
   foreach ($chart in @(
+    "pmi_ea_aggregate",
     "pmi_composite",
     "pmi_manufacturing",
     "pmi_services",
@@ -111,6 +112,9 @@ function Test-OutputData {
   }
 
   foreach ($series in @(
+    "pmi_ea_aggregate",
+    "pmi_mfg_ea_aggregate",
+    "pmi_srv_ea_aggregate",
     "pmi_ea",
     "pmi_mfg_ea",
     "pmi_srv_ea",

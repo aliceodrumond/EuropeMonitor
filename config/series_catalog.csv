@@ -1,4 +1,7 @@
 tab_id,chart_id,series_id,label,country,frequency,preferred_source,source_url,transformation,status,proprietary_fallback,source_note
+activity,pmi_ea_aggregate,pmi_ea_aggregate,Composite,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_ea_aggregate,pmi_mfg_ea_aggregate,Manufacturing,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_ea_aggregate,pmi_srv_ea_aggregate,Services,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_ea,Europe,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,pmi_composite,pmi_flash_ea,Europe Flash,Euro Area,monthly,HCOB / SP Global Flash PMI,https://www.spglobal.com/marketintelligence/en/mi/products/pmi.html,level,manual_import,official press release or licensed PMI feed
 activity,pmi_composite,pmi_de,Germany,Germany,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
