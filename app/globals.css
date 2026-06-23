@@ -436,6 +436,11 @@ h1 {
   background: rgba(222, 219, 210, 0.28);
 }
 
+.speaker-table td.priority-policy-comment {
+  color: var(--red);
+  font-weight: 650;
+}
+
 .bias {
   display: inline-block;
   border-radius: 999px;
@@ -449,8 +454,18 @@ h1 {
   color: var(--red);
 }
 
+.bias-mildly-hawkish {
+  background: rgba(168, 63, 57, 0.08);
+  color: var(--red);
+}
+
 .bias-dovish {
   background: rgba(17, 103, 95, 0.12);
+  color: var(--teal);
+}
+
+.bias-mildly-dovish {
+  background: rgba(17, 103, 95, 0.08);
   color: var(--teal);
 }
 

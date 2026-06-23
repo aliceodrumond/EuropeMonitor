@@ -266,18 +266,50 @@ shorten_text <- function(value, max_chars) {
 
 policy_score <- function(text) {
   text <- tolower(text)
-  hawkish <- c("rate hike", "hike", "inflation pressures", "restrictive", "not finished", "further rate", "upside", "wages", "deterioration in the inflation outlook", "high inflation")
-  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged", "not yet warranted", "forceful response not warranted")
+  hawkish <- c("rate hike", "hike", "inflation pressures", "restrictive", "wages", "high inflation")
+  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged")
 
   hawkish_score <- sum(vapply(hawkish, grepl, logical(1), x = text, fixed = TRUE))
   dovish_score <- sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))
+  if (grepl("case for holding rates", text, fixed = TRUE) &&
+      grepl("very hard", text, fixed = TRUE)) {
+    dovish_score <- max(0, dovish_score - 2)
+    hawkish_score <- hawkish_score + 2
+  }
+  if (grepl("forceful response not yet warranted", text, fixed = TRUE) ||
+      grepl("forceful response not warranted", text, fixed = TRUE)) {
+    dovish_score <- dovish_score + 3
+  } else if (grepl("not yet warranted", text, fixed = TRUE)) {
+    dovish_score <- dovish_score + 3
+  }
+  if (grepl("probably between the baseline and milder scenario", text, fixed = TRUE)) {
+    dovish_score <- dovish_score + 2
+  } else if (grepl("milder scenario", text, fixed = TRUE)) {
+    dovish_score <- dovish_score + 2
+  }
+  hawkish_score <- hawkish_score + 2 * sum(vapply(c("further rate", "not finished", "upside", "deterioration in the inflation outlook"), grepl, logical(1), x = text, fixed = TRUE))
   hawkish_score - dovish_score
 }
 
 score_to_bias <- function(score) {
-  if (score > 0) return("hawkish")
-  if (score < 0) return("dovish")
+  if (score >= 3) return("hawkish")
+  if (score > 0) return("mildly hawkish")
+  if (score <= -3) return("dovish")
+  if (score < 0) return("mildly dovish")
   "neutral"
+}
+
+score_to_stance_bucket <- function(score) {
+  bias <- score_to_bias(score)
+  switch(
+    bias,
+    "dovish" = -2,
+    "mildly dovish" = -1,
+    "neutral" = 0,
+    "mildly hawkish" = 1,
+    "hawkish" = 2,
+    0
+  )
 }
 
 compare_member_stance <- function(rows) {
@@ -289,8 +321,8 @@ compare_member_stance <- function(rows) {
       next
     }
     for (pos in seq_len(length(idx) - 1)) {
-      current <- rows$stance_score[idx[[pos]]]
-      previous <- rows$stance_score[idx[[pos + 1]]]
+      current <- score_to_stance_bucket(rows$stance_score[idx[[pos]]])
+      previous <- score_to_stance_bucket(rows$stance_score[idx[[pos + 1]]])
       delta <- current - previous
       result[idx[[pos]]] <- if (delta > 0) {
         "More hawkish than prior"

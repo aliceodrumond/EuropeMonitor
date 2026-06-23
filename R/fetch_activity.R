@@ -335,11 +335,12 @@ read_official_pmi_workbook <- function(project_root) {
   workbook_path <- file.path(project_root, "data/raw/pmi_official_history.xlsx")
   if (!file.exists(workbook_path)) stop("Missing official PMI workbook: data/raw/pmi_official_history.xlsx")
   if (!requireNamespace("openxlsx", quietly = TRUE)) stop("Package 'openxlsx' is required to import official PMI history")
+  online_flash <- fetch_spglobal_flash_pmi_values(project_root)
 
   definitions <- list(
-    composite = list(sheet = "Composite", chart_id = "pmi_composite", prefix = "pmi_"),
-    manufacturing = list(sheet = "Manufacturing", chart_id = "pmi_manufacturing", prefix = "pmi_mfg_"),
-    services = list(sheet = "Services", chart_id = "pmi_services", prefix = "pmi_srv_")
+    composite = list(sheet = "Composite", chart_id = "pmi_composite", prefix = "pmi_", value_column = "composite"),
+    manufacturing = list(sheet = "Manufacturing", chart_id = "pmi_manufacturing", prefix = "pmi_mfg_", value_column = "manufacturing"),
+    services = list(sheet = "Services", chart_id = "pmi_services", prefix = "pmi_srv_", value_column = "services")
   )
   countries <- data.frame(
     column = c("euro_area_final", "germany_final", "france_final", "spain_final", "uk_final", "italy_final"),
@@ -351,18 +352,23 @@ read_official_pmi_workbook <- function(project_root) {
 
   lapply(definitions, function(definition) {
     values <- openxlsx::read.xlsx(workbook_path, sheet = definition$sheet, detectDates = TRUE)
-    missing <- setdiff(c("date", "euro_area_flash", countries$column), names(values))
+    missing <- setdiff(c("date", countries$column), names(values))
     if (length(missing)) stop(sprintf("Missing columns in %s: %s", definition$sheet, paste(missing, collapse = ", ")))
     values$date <- as.Date(values$date)
+    for (flash_column in sub("_final$", "_flash", countries$column)) {
+      if (!flash_column %in% names(values)) {
+        values[[flash_column]] <- NA_real_
+      }
+    }
+    values <- merge_online_flash_pmi(values, online_flash, definition$value_column, countries)
     frames <- lapply(seq_len(nrow(countries)), function(i) {
       spec <- countries[i, ]
       series_values <- values[[spec$column]]
       source <- rep("S&P Global PMI official history", nrow(values))
-      if (identical(spec$column, "euro_area_final")) {
-        flash_valid <- is.na(series_values) & !is.na(values$euro_area_flash)
-        series_values[flash_valid] <- values$euro_area_flash[flash_valid]
-        source[flash_valid] <- "HCOB / SP Global Flash PMI"
-      }
+      flash_column <- sub("_final$", "_flash", spec$column)
+      flash_valid <- is.na(series_values) & !is.na(values[[flash_column]])
+      series_values[flash_valid] <- values[[flash_column]][flash_valid]
+      source[flash_valid] <- "HCOB / SP Global Flash PMI"
       valid <- !is.na(series_values)
       make_series_frame(
         values$date[valid], definition$chart_id,
@@ -373,6 +379,171 @@ read_official_pmi_workbook <- function(project_root) {
     })
     do.call(rbind, frames)
   })
+}
+
+merge_online_flash_pmi <- function(values, flash, value_column, countries) {
+  if (!nrow(flash)) {
+    return(values)
+  }
+  for (i in seq_len(nrow(flash))) {
+    row <- flash[i, ]
+    country <- countries[countries$suffix == row$suffix, ]
+    if (!nrow(country) || is.na(row[[value_column]])) {
+      next
+    }
+    if (!row$date %in% values$date) {
+      values[nrow(values) + 1, ] <- NA
+      values$date[nrow(values)] <- row$date
+    }
+    idx <- which(values$date == row$date)[[1]]
+    final_column <- country$column[[1]]
+    flash_column <- sub("_final$", "_flash", final_column)
+    if (is.na(values[[final_column]][idx])) {
+      values[[flash_column]][idx] <- row[[value_column]]
+    }
+  }
+  values[order(values$date), ]
+}
+
+fetch_spglobal_flash_pmi_values <- function(project_root) {
+  releases_url <- "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  if (!requireNamespace("pdftools", quietly = TRUE)) {
+    warning("Package 'pdftools' is required to import S&P Global Flash PMI PDFs")
+    return(empty_flash_pmi_values())
+  }
+  result <- tryCatch({
+    html <- read_spglobal_text(releases_url)
+    releases <- parse_spglobal_release_cards(html)
+    wanted <- releases[
+      grepl("Flash (France|Germany|Eurozone) PMI", releases$title, ignore.case = TRUE) &
+        !grepl("\\(|Consumer Sentiment|UK|US|Japan|India", releases$title, ignore.case = TRUE),
+    ]
+    if (!nrow(wanted)) {
+      return(empty_flash_pmi_values())
+    }
+    wanted <- wanted[order(wanted$date, decreasing = TRUE), ]
+    wanted <- wanted[!duplicated(wanted$region), ]
+    frames <- lapply(seq_len(nrow(wanted)), function(i) {
+      release <- wanted[i, ]
+      pdf_path <- file.path(project_root, "data/raw", paste0("spglobal_flash_pmi_", release$region, "_", format(release$date, "%Y%m%d"), ".pdf"))
+      download_binary(release$url, pdf_path)
+      text <- paste(pdftools::pdf_text(pdf_path), collapse = "\n")
+      parse_flash_pmi_pdf_text(text, release)
+    })
+    frames <- Filter(Negate(is.null), frames)
+    if (length(frames)) do.call(rbind, frames) else empty_flash_pmi_values()
+  }, error = function(error) {
+    warning(sprintf("S&P Global Flash PMI fetch failed: %s", error$message))
+    empty_flash_pmi_values()
+  })
+  result
+}
+
+empty_flash_pmi_values <- function() {
+  data.frame(
+    date = as.Date(character()),
+    suffix = character(),
+    composite = numeric(),
+    manufacturing = numeric(),
+    services = numeric(),
+    source_url = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
+parse_spglobal_release_cards <- function(html) {
+  pattern <- "<span class=\"releaseDate\">([A-Z][a-z]+)&nbsp;([0-9]{2})&nbsp;([0-9]{4})&nbsp;[0-9:]+&nbsp;UTC</span>\\s*<span class=\"releaseTitle\">([^<]+)</span>\\s*<span class=\"greenListItem\"><a href=\"([^\"]+)\""
+  matches <- regmatches(html, gregexpr(pattern, html, perl = TRUE))[[1]]
+  if (!length(matches) || identical(matches, character(0))) {
+    return(data.frame())
+  }
+  rows <- lapply(matches, function(item) {
+    values <- regmatches(item, regexec(pattern, item, perl = TRUE))[[1]]
+    title <- trimws(gsub("\\s+", " ", values[[5]]))
+    region <- if (grepl("France", title, ignore.case = TRUE)) {
+      "fr"
+    } else if (grepl("Germany", title, ignore.case = TRUE)) {
+      "de"
+    } else if (grepl("Eurozone", title, ignore.case = TRUE)) {
+      "ea"
+    } else {
+      NA_character_
+    }
+    data.frame(
+      date = as.Date(sprintf("%s %s %s", values[[3]], values[[2]], values[[4]]), format = "%d %B %Y"),
+      title = title,
+      region = region,
+      url = absolute_spglobal_url(values[[6]]),
+      stringsAsFactors = FALSE
+    )
+  })
+  rows <- do.call(rbind, rows)
+  rows[!is.na(rows$region), ]
+}
+
+parse_flash_pmi_pdf_text <- function(text, release) {
+  data.frame(
+    date = as.Date(format(release$date, "%Y-%m-01")),
+    suffix = release$region,
+    composite = extract_pmi_value(text, c("Composite PMI Output Index", "Composite PMI Output", "Composite Output Index")),
+    manufacturing = extract_manufacturing_pmi_value(text),
+    services = extract_pmi_value(text, c("Services PMI Business Activity Index", "Services PMI Business Activity", "Services Business Activity Index")),
+    source_url = release$url,
+    stringsAsFactors = FALSE
+  )
+}
+
+extract_manufacturing_pmi_value <- function(text) {
+  compact <- gsub("\\s+", " ", text)
+  patterns <- c(
+    "Manufacturing PMI\\([0-9]+\\)\\s*(?:\\bat\\s+|:\\s*)([0-9]+\\.?[0-9]*)",
+    "Manufacturing PMI\\s*(?:\\bat\\s+|:\\s*)([0-9]+\\.?[0-9]*)"
+  )
+  for (pattern in patterns) {
+    match <- regmatches(compact, regexec(pattern, compact, ignore.case = TRUE, perl = TRUE))[[1]]
+    if (length(match) >= 2) {
+      return(as.numeric(match[[2]]))
+    }
+  }
+  NA_real_
+}
+
+extract_pmi_value <- function(text, labels) {
+  compact <- gsub("\\s+", " ", text)
+  for (label in labels) {
+    pattern <- sprintf("%s.{0,220}?(?:\\bat\\s+|:\\s*)([0-9]+\\.?[0-9]*)", label)
+    match <- regmatches(compact, regexec(pattern, compact, ignore.case = TRUE, perl = TRUE))[[1]]
+    if (length(match) >= 2) {
+      return(as.numeric(match[[2]]))
+    }
+  }
+  NA_real_
+}
+
+read_spglobal_text <- function(url) {
+  tmp <- tempfile(fileext = ".html")
+  download_binary(url, tmp)
+  paste(readLines(tmp, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}
+
+download_binary <- function(url, path) {
+  script <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(path, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  status <- system2("powershell", c("-NoProfile", "-Command", script), stdout = FALSE, stderr = FALSE)
+  if (!identical(status, 0L) || !file.exists(path) || file.info(path)$size == 0) {
+    stop(sprintf("Could not download %s", url))
+  }
+  invisible(path)
+}
+
+absolute_spglobal_url <- function(path) {
+  if (grepl("^https?://", path)) {
+    return(path)
+  }
+  paste0("https://www.pmi.spglobal.com", path)
 }
 
 read_official_sentix_rows <- function(project_root) {

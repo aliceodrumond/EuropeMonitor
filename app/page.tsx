@@ -28,7 +28,7 @@ type SpeakerRow = {
   country: string;
   event_type: string;
   policy_comments: string;
-  bias: "hawkish" | "dovish" | "neutral";
+  bias: "hawkish" | "mildly hawkish" | "dovish" | "mildly dovish" | "neutral";
   stance_change: string;
   tags: string;
   source_url: string;
@@ -98,6 +98,7 @@ const charts: ChartDefinition[] = [
     kicker: "Activity",
     yLeftLabel: "Index",
     seriesOrder: ["pmi_ea", "pmi_de", "pmi_fr", "pmi_es", "pmi_uk", "pmi_it"],
+    defaultWindow: "10y",
   },
   {
     id: "pmi_manufacturing",
@@ -113,6 +114,7 @@ const charts: ChartDefinition[] = [
       "pmi_mfg_uk",
       "pmi_mfg_it",
     ],
+    defaultWindow: "10y",
   },
   {
     id: "pmi_services",
@@ -128,6 +130,7 @@ const charts: ChartDefinition[] = [
       "pmi_srv_uk",
       "pmi_srv_it",
     ],
+    defaultWindow: "10y",
   },
   {
     id: "sentix_pmi",
@@ -759,9 +762,11 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
                   )}
                 </td>
                 <td>{speaker.position}</td>
-                <td>{speaker.policy_comments}</td>
+                <td className={isPriorityEcbMember(speaker.member) ? "priority-policy-comment" : ""}>
+                  {speaker.policy_comments}
+                </td>
                 <td>
-                  <span className={`bias bias-${speaker.bias}`}>
+                  <span className={`bias ${biasClassName(speaker.bias)}`}>
                     {speaker.bias}
                   </span>
                 </td>
@@ -773,6 +778,14 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
       </div>
     </section>
   );
+}
+
+function isPriorityEcbMember(member: string) {
+  return ["lagarde", "lane", "schnabel"].includes(member.trim().toLowerCase());
+}
+
+function biasClassName(bias: SpeakerRow["bias"]) {
+  return `bias-${bias.replace(/\s+/g, "-")}`;
 }
 
 async function fetchText(path: string) {
@@ -808,12 +821,24 @@ function parseSpeakersCsv(text: string): SpeakerRow[] {
     country: row.country ?? "",
     event_type: row.event_type ?? "",
     policy_comments: row.policy_comments ?? "",
-    bias:
-      row.bias === "hawkish" || row.bias === "dovish" ? row.bias : "neutral",
+    bias: parseSpeakerBias(row.bias),
     stance_change: row.stance_change ?? "",
     tags: row.tags ?? "",
     source_url: row.source_url ?? "",
   }));
+}
+
+function parseSpeakerBias(value?: string): SpeakerRow["bias"] {
+  if (
+    value === "hawkish" ||
+    value === "mildly hawkish" ||
+    value === "dovish" ||
+    value === "mildly dovish" ||
+    value === "neutral"
+  ) {
+    return value;
+  }
+  return "neutral";
 }
 
 function parseCsv(text: string): Array<Record<string, string>> {

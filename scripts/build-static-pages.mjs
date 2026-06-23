@@ -62,10 +62,13 @@ const html = String.raw`<!doctype html>
       th { border-top:1px solid var(--ink); border-bottom:1px solid var(--line-strong); background:#fff; color:var(--ink); font-size:.72rem; letter-spacing:.08em; padding:8px 10px; text-align:left; text-transform:uppercase; }
       td { border-bottom:1px solid var(--line); padding:10px; vertical-align:top; line-height:1.42; }
       tr:nth-child(even) td { background:rgba(222,219,210,.28); }
+      td.priority-policy-comment { color:var(--red); font-weight:650; }
       .table-wrap { overflow-x:auto; }
       .bias { border-radius:999px; padding:4px 8px; font-size:.76rem; font-weight:700; }
       .hawkish { background:rgba(168,63,57,.12); color:var(--red); }
+      .mildly-hawkish { background:rgba(168,63,57,.08); color:var(--red); }
       .dovish { background:rgba(17,103,95,.12); color:var(--teal); }
+      .mildly-dovish { background:rgba(17,103,95,.08); color:var(--teal); }
       .neutral { background:rgba(109,106,99,.12); color:var(--muted); }
       .footer { margin:20px 0 0; color:var(--muted); font-size:.82rem; }
       @media (max-width:940px){ .shell{width:min(100% - 20px,1480px);padding-top:16px}.topbar,.head{flex-direction:column}.brand{text-align:left}.status,.window{justify-content:flex-start}.tabs{gap:20px;justify-content:flex-start}.grid{grid-template-columns:1fr}.panel{padding:14px} svg{min-height:300px} table{min-width:900px;font-size:.84rem} }
@@ -80,9 +83,9 @@ const html = String.raw`<!doctype html>
     </main>
     <script>
       const charts = [
-        ["pmi_composite","activity","PMI Composite","Activity","Index",null,false,["pmi_ea","pmi_de","pmi_fr","pmi_es","pmi_uk","pmi_it"]],
-        ["pmi_manufacturing","activity","PMI Manufacturing","Activity","Index",null,false,["pmi_mfg_ea","pmi_mfg_de","pmi_mfg_fr","pmi_mfg_es","pmi_mfg_uk","pmi_mfg_it"]],
-        ["pmi_services","activity","PMI Services","Activity","Index",null,false,["pmi_srv_ea","pmi_srv_de","pmi_srv_fr","pmi_srv_es","pmi_srv_uk","pmi_srv_it"]],
+        ["pmi_composite","activity","PMI Composite","Activity","Index",null,false,["pmi_ea","pmi_de","pmi_fr","pmi_es","pmi_uk","pmi_it"],null,"10y"],
+        ["pmi_manufacturing","activity","PMI Manufacturing","Activity","Index",null,false,["pmi_mfg_ea","pmi_mfg_de","pmi_mfg_fr","pmi_mfg_es","pmi_mfg_uk","pmi_mfg_it"],null,"10y"],
+        ["pmi_services","activity","PMI Services","Activity","Index",null,false,["pmi_srv_ea","pmi_srv_de","pmi_srv_fr","pmi_srv_es","pmi_srv_uk","pmi_srv_it"],null,"10y"],
         ["sentix_pmi","activity","Sentix vs PMI Composite","Sentiment","PMI","Sentix",false,["pmi_ea_sentix","sentix_ea"],{left:{min:40,max:64},right:{min:-55,max:50}}],
         ["zew_sentiment","activity","ZEW Indicator","Sentiment","Balance",null,false,["zew_de"]],
         ["weekly_activity","activity","Germany Weekly Activity Index","High frequency","%",null,false,null,null,"2y"],
@@ -115,7 +118,9 @@ const html = String.raw`<!doctype html>
       function ticks(d,n){ const min=d.min??d, max=d.max, step=(max-min)/Math.max(1,n-1); return Array.from({length:n},(_,i)=>min+i*step); }
       function fmt(v){ const a=Math.abs(v), d=a>=100?0:a>=10?1:2; return v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
       function dateLabel(date,chartId){ return new Intl.DateTimeFormat(chartId==="weekly_activity"?"en-GB":"en-US",chartId==="weekly_activity"?{day:"2-digit",month:"2-digit",year:"numeric"}:{month:"2-digit",year:"numeric"}).format(new Date(date+"T00:00:00")); }
-      function renderSpeakers(root){ const panel=document.createElement("article"); panel.className="panel wide"; panel.innerHTML='<div class="head"><div><p class="kicker">Communication</p><h2>ECB Speakers</h2></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Member</th><th>Position</th><th>Policy Comments</th><th>Bias</th><th>vs Previous</th></tr></thead><tbody>'+speakers.map(s=>'<tr><td>'+s.date+'</td><td>'+(s.source_url?'<a target="_blank" rel="noreferrer" href="'+s.source_url+'">'+s.member+' ('+s.country+')</a>':s.member+' ('+s.country+')')+'</td><td>'+s.position+'</td><td>'+s.policy_comments+'</td><td><span class="bias '+s.bias+'">'+s.bias+'</span></td><td>'+s.stance_change+'</td></tr>').join("")+'</tbody></table></div>'; root.appendChild(panel); }
+      function isPriorityEcbMember(member){ return ["lagarde","lane","schnabel"].includes(String(member||"").trim().toLowerCase()); }
+      function biasClassName(bias){ return String(bias||"neutral").replace(/\s+/g,"-"); }
+      function renderSpeakers(root){ const panel=document.createElement("article"); panel.className="panel wide"; panel.innerHTML='<div class="head"><div><p class="kicker">Communication</p><h2>ECB Speakers</h2></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Member</th><th>Position</th><th>Policy Comments</th><th>Bias</th><th>vs Previous</th></tr></thead><tbody>'+speakers.map(s=>'<tr><td>'+s.date+'</td><td>'+(s.source_url?'<a target="_blank" rel="noreferrer" href="'+s.source_url+'">'+s.member+' ('+s.country+')</a>':s.member+' ('+s.country+')')+'</td><td>'+s.position+'</td><td class="'+(isPriorityEcbMember(s.member)?'priority-policy-comment':'')+'">'+s.policy_comments+'</td><td><span class="bias '+biasClassName(s.bias)+'">'+s.bias+'</span></td><td>'+s.stance_change+'</td></tr>').join("")+'</tbody></table></div>'; root.appendChild(panel); }
     </script>
   </body>
 </html>`;
