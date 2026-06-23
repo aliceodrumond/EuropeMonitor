@@ -49,6 +49,7 @@ type ChartDefinition = {
   yRightLabel?: string;
   fixedDomains?: Partial<Record<AxisSide, { min: number; max: number }>>;
   defaultWindow?: WindowKey;
+  startDate?: string;
   wide?: boolean;
   seriesOrder?: string[];
 };
@@ -150,13 +151,14 @@ const charts: ChartDefinition[] = [
     kicker: "ECB Lending Survey",
     yLeftLabel: "GDP q/q",
     yRightLabel: "Net %",
-    fixedDomains: { left: { min: -3, max: 3 }, right: { min: -20, max: 30 } },
+    fixedDomains: { left: { min: -3, max: 3 }, right: { min: 30, max: -20 } },
     seriesOrder: [
       "gdp_qoq_sa_bls_standards",
       "bls_standards_corporate_ea",
       "bls_standards_consumer_ea",
     ],
     defaultWindow: "all",
+    startDate: "2005-01-01",
   },
   {
     id: "bls_loan_demand",
@@ -172,6 +174,7 @@ const charts: ChartDefinition[] = [
       "bls_demand_corporate_ea",
     ],
     defaultWindow: "all",
+    startDate: "2005-01-01",
   },
   {
     id: "bls_credit_factors",
@@ -430,9 +433,18 @@ function TimeSeriesChart({
   const selectedWindow = windows.find((item) => item.key === windowKey);
 
   const filteredSeries = useMemo(() => {
-    const allTimes = series.flatMap((item) => item.points.map((point) => point.time));
+    const startTime = definition.startDate
+      ? new Date(`${definition.startDate}T00:00:00`).getTime()
+      : null;
+    const startFiltered = startTime
+      ? series.map((item) => ({
+          ...item,
+          points: item.points.filter((point) => point.time >= startTime),
+        }))
+      : series;
+    const allTimes = startFiltered.flatMap((item) => item.points.map((point) => point.time));
     if (!allTimes.length || (!selectedWindow?.years && !selectedWindow?.months)) {
-      return series;
+      return startFiltered;
     }
 
     const maxTime = Math.max(...allTimes);
@@ -440,11 +452,11 @@ function TimeSeriesChart({
       ? addYears(maxTime, -selectedWindow.years)
       : addMonths(maxTime, -(selectedWindow.months ?? 0));
 
-    return series.map((item) => ({
+    return startFiltered.map((item) => ({
       ...item,
       points: item.points.filter((point) => point.time >= minTime),
     }));
-  }, [selectedWindow, series]);
+  }, [definition.startDate, selectedWindow, series]);
 
   const activeSeries = filteredSeries.filter((item) => !hiddenSeries.has(item.id));
   const chartModel = useMemo(() => buildChartModel(activeSeries, definition), [activeSeries, definition]);
