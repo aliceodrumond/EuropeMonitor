@@ -211,6 +211,13 @@ build_activity_series <- function(project_root) {
     pmi_sentix_rows,
     sentix_rows[sentix_rows$series_id == "sentix_ea", ]
   )
+  pmi_gdp_rows <- pmi_rows[pmi_rows$series_id == "pmi_ea", ]
+  pmi_gdp_rows$chart_id <- "pmi_gdp"
+  pmi_gdp_rows$series_id <- "pmi_ea_gdp"
+  pmi_gdp_rows$series_name <- "PMI Composite"
+  gdp_qoq <- read_eurostat_gdp_qoq_sa_rows(project_root)
+  pmi_gdp <- rbind(pmi_gdp_rows, gdp_qoq)
+
   zew_rows <- read_zew_rows(project_root)
 
   weekly <- read_bundesbank_wai_rows(project_root)
@@ -321,6 +328,7 @@ build_activity_series <- function(project_root) {
     pmi_services_rows,
     flash_rows,
     sentix_rows,
+    pmi_gdp,
     zew_rows,
     weekly,
     toll,
@@ -331,10 +339,71 @@ build_activity_series <- function(project_root) {
   activity
 }
 
+read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    return(data.frame())
+  }
+
+  url <- paste0(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp",
+    "?lang=en&freq=Q&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ&geo=EA20"
+  )
+  raw_dir <- file.path(project_root, "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  raw_path <- file.path(raw_dir, "eurostat_namq_10_gdp_qoq_sa.json")
+
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(raw_path, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  tryCatch(system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE), error = function(e) NULL)
+
+  if (!file.exists(raw_path) || file.info(raw_path)$size == 0) {
+    return(data.frame())
+  }
+
+  json <- tryCatch(jsonlite::fromJSON(raw_path, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(json) || is.null(json$dimension$time$category$index) || is.null(json$value)) {
+    return(data.frame())
+  }
+
+  times <- names(sort(unlist(json$dimension$time$category$index)))
+  quarters <- as.integer(sub(".*-Q([1-4])$", "\\1", times))
+  years <- as.integer(sub("-Q[1-4]$", "", times))
+  dates <- as.Date(sprintf("%04d-%02d-01", years, (quarters - 1) * 3 + 1))
+
+  value_map <- unlist(json$value)
+  values <- rep(NA_real_, length(times))
+  idx <- seq_along(times) - 1
+  present <- as.character(idx) %in% names(value_map)
+  values[present] <- as.numeric(value_map[as.character(idx[present])])
+  valid <- !is.na(dates) & !is.na(values)
+
+  make_series_frame(
+    dates[valid],
+    "pmi_gdp",
+    "gdp_qoq_sa_ea",
+    "GDP %QoQ SA",
+    "Euro Area",
+    values[valid],
+    axis = "right",
+    unit = "% q/q SA",
+    source = "Eurostat NAMQ_10_GDP",
+    source_url = "https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en",
+    frequency = "quarterly"
+  )
+}
+
 read_official_pmi_workbook <- function(project_root) {
   workbook_path <- file.path(project_root, "data/raw/pmi_official_history.xlsx")
+  root_workbook_path <- file.path(project_root, "PMI_official_data_template.xlsx")
+  if (!file.exists(workbook_path) && file.exists(root_workbook_path)) {
+    workbook_path <- root_workbook_path
+  }
   if (!file.exists(workbook_path)) stop("Missing official PMI workbook: data/raw/pmi_official_history.xlsx")
   if (!requireNamespace("openxlsx", quietly = TRUE)) stop("Package 'openxlsx' is required to import official PMI history")
+  workbook_path <- readable_pmi_workbook_path(workbook_path, root_workbook_path)
   online_flash <- fetch_spglobal_flash_pmi_values(project_root)
 
   definitions <- list(
@@ -379,6 +448,25 @@ read_official_pmi_workbook <- function(project_root) {
     })
     do.call(rbind, frames)
   })
+}
+
+readable_pmi_workbook_path <- function(workbook_path, fallback_path) {
+  is_readable <- function(path) {
+    if (!file.exists(path)) {
+      return(FALSE)
+    }
+    result <- tryCatch(openxlsx::getSheetNames(path), error = function(e) character())
+    all(c("Composite", "Manufacturing", "Services") %in% result)
+  }
+
+  if (is_readable(workbook_path)) {
+    return(workbook_path)
+  }
+  if (is_readable(fallback_path)) {
+    warning(sprintf("PMI workbook %s is not readable; using %s", workbook_path, fallback_path))
+    return(fallback_path)
+  }
+  stop(sprintf("PMI workbook is not readable: %s", workbook_path))
 }
 
 merge_online_flash_pmi <- function(values, flash, value_column, countries) {

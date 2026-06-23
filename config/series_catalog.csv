@@ -22,6 +22,8 @@ activity,pmi_services,pmi_srv_uk,UK,United Kingdom,monthly,SP Global PMI,https:/
 activity,pmi_services,pmi_srv_it,Italy,Italy,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,sentix_pmi,pmi_ea_sentix,PMI Composite,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
 activity,sentix_pmi,sentix_ea,Sentix,Euro Area,monthly,Sentix / Investing.com,https://www.investing.com/economic-calendar/sentix-investor-confidence-268,level,source_linked,
+activity,pmi_gdp,pmi_ea_gdp,PMI Composite,Euro Area,monthly,SP Global PMI,https://www.spglobal.com/market-intelligence/en/mi/products/pmi.html,level,source_linked,licensed PMI feed or manual CSV import
+activity,pmi_gdp,gdp_qoq_sa_ea,GDP %QoQ SA,Euro Area,quarterly,Eurostat NAMQ_10_GDP,https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en,qoq_sa,source_linked,
 activity,zew_sentiment,zew_de,Germany ZEW,Germany,monthly,ZEW Financial Market Survey,https://www.zew.de/en/publications/zew-expertises-research-reports/research-reports/business-cycle/zew-financial-market-survey,level,source_linked,
 activity,weekly_activity,wai_de,Germany WAI,Germany,weekly,Deutsche Bundesbank,https://statistiken.bundesbank.de/statistiken-en/timeseries/BBDE1/W.DE.Y.WAI.A2N400000.A.N.R00.A,level,source_linked,,This data is up to revision
 activity,toll_mileage,toll_de,Germany toll mileage 7d MA,Germany,daily,Dashboard Konjunktur / Destatis,https://www.dashboard-konjunktur.de/indicator/tile_1667226778807,index,source_linked,

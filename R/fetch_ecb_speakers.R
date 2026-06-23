@@ -22,7 +22,22 @@ build_ecb_speakers <- function(project_root) {
     }
   )
 
+  speakers <- apply_speaker_highlight_overrides(speakers)
   write_csv_utf8(speakers, processed_path)
+  speakers
+}
+
+apply_speaker_highlight_overrides <- function(speakers) {
+  escriva_chain_transmission <- paste(
+    "In other words, price increases are being transmitted throughout production chains and goods markets.",
+    "We are seeing this, for example, in transportation services and in food production sectors that use plastics or energy as inputs."
+  )
+
+  idx <- speakers$member == "EscrivÃ¡" &
+    speakers$date == "2026-06-23" &
+    grepl("diplomatic_resolution_scenario", speakers$source_url, fixed = TRUE)
+
+  speakers$policy_comments[idx] <- escriva_chain_transmission
   speakers
 }
 
@@ -248,12 +263,96 @@ infer_event_type <- function(headline, summary) {
 }
 
 extract_policy_highlight <- function(headline, summary) {
+  claim <- extract_headline_claim(headline)
+  text <- clean_policy_comment_text(paste(claim, summary))
+  candidates <- split_policy_sentences(text)
+  candidates <- candidates[nchar(candidates) >= 18]
+
+  if (!length(candidates)) {
+    return("No comments relevant for monetary policy")
+  }
+
+  scores <- vapply(candidates, policy_comment_score, numeric(1))
+  keep <- scores > 0
+  if (!any(keep)) {
+    return("No comments relevant for monetary policy")
+  }
+
+  ranked <- order(scores, decreasing = TRUE)
+  selected <- character(0)
+  for (sentence in candidates[ranked]) {
+    sentence <- shorten_text(sentence, 150)
+    if (!sentence %in% selected) {
+      selected <- c(selected, sentence)
+    }
+    if (length(selected) >= 3) {
+      break
+    }
+  }
+
+  paste(selected, collapse = " | ")
+}
+
+extract_headline_claim <- function(headline) {
   claim <- sub("^ECB'?s\\s+[^:]+:\\s*", "", headline)
   claim <- sub("^ECB.s\\s+[^:]+:\\s*", "", claim)
-  claim <- if (identical(claim, headline)) "" else claim
-  summary_sentence <- sub("(?<=[.!?])\\s+.*$", "", summary, perl = TRUE)
-  highlight <- trimws(paste(claim, summary_sentence))
-  shorten_text(highlight, 170)
+  if (identical(claim, headline)) "" else claim
+}
+
+clean_policy_comment_text <- function(value) {
+  value <- gsub("\\s+", " ", value)
+  value <- gsub(
+    "\\bEuropean Central Bank\\s+(President|Chief Economist|Executive Board member|Governing Council member|Vice-President)\\s+[^,.;:]+\\s+(said|told|argued|noted|warned)\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?",
+    "",
+    value,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  value <- gsub(
+    "\\bECB\\s+(President|Chief Economist|Executive Board member|Governing Council member|Vice-President)\\s+[^,.;:]+\\s+(said|told|argued|noted|warned)\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?",
+    "",
+    value,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  value <- gsub("\\b[A-Z][a-z]+\\s+said\\s+(on\\s+[A-Za-z]+\\s+)?(that\\s+)?", "", value, perl = TRUE)
+  trimws(value)
+}
+
+split_policy_sentences <- function(value) {
+  parts <- unlist(strsplit(value, "(?<=[.!?])\\s+|\\s+;\\s+", perl = TRUE))
+  parts <- trimws(parts)
+  parts <- parts[nzchar(parts)]
+  unique(parts)
+}
+
+policy_comment_score <- function(value) {
+  text <- tolower(value)
+  score <- 0
+  guidance <- c(
+    "next meeting", "june", "july", "september", "rate path", "pre-commitment",
+    "pre commitment", "forward guidance", "roadmap", "hold", "hike", "cut",
+    "pause", "forceful response", "not yet warranted", "data-dependent",
+    "data dependent", "no commitment", "no pre-commitment"
+  )
+  inflation <- c(
+    "inflation", "price", "wage", "second-round", "second round", "persistent",
+    "embedded", "upside", "downside", "baseline", "scenario", "risk",
+    "energy", "oil", "goods", "services", "production chains", "inputs"
+  )
+  monetary_policy <- c(
+    "monetary policy", "interest rate", "rates", "restrictive", "neutral rate",
+    "policy", "transmission"
+  )
+
+  score <- score + 4 * sum(vapply(guidance, grepl, logical(1), x = text, fixed = TRUE))
+  score <- score + 3 * sum(vapply(inflation, grepl, logical(1), x = text, fixed = TRUE))
+  score <- score + 2 * sum(vapply(monetary_policy, grepl, logical(1), x = text, fixed = TRUE))
+
+  if (grepl("digital euro|cyber|sovereignty|architecture|banks|payments", text)) {
+    score <- score - 8
+  }
+  score
 }
 
 shorten_text <- function(value, max_chars) {
@@ -300,7 +399,10 @@ score_to_bias <- function(score) {
 }
 
 score_to_stance_bucket <- function(score) {
-  bias <- score_to_bias(score)
+  bias_to_stance_bucket(score_to_bias(score))
+}
+
+bias_to_stance_bucket <- function(bias) {
   switch(
     bias,
     "dovish" = -2,
@@ -321,8 +423,8 @@ compare_member_stance <- function(rows) {
       next
     }
     for (pos in seq_len(length(idx) - 1)) {
-      current <- score_to_stance_bucket(rows$stance_score[idx[[pos]]])
-      previous <- score_to_stance_bucket(rows$stance_score[idx[[pos + 1]]])
+      current <- bias_to_stance_bucket(rows$bias[idx[[pos]]])
+      previous <- bias_to_stance_bucket(rows$bias[idx[[pos + 1]]])
       delta <- current - previous
       result[idx[[pos]]] <- if (delta > 0) {
         "More hawkish than prior"

@@ -101,6 +101,17 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
   },
   {
+    id: "pmi_gdp",
+    tab: "activity",
+    title: "PMI Composite vs GDP",
+    kicker: "Growth",
+    yLeftLabel: "PMI",
+    yRightLabel: "% q/q SA",
+    fixedDomains: { left: { min: 35, max: 65 }, right: { min: -2.5, max: 2.5 } },
+    seriesOrder: ["pmi_ea_gdp", "gdp_qoq_sa_ea"],
+    defaultWindow: "all",
+  },
+  {
     id: "pmi_manufacturing",
     tab: "activity",
     title: "PMI Manufacturing",
@@ -1138,6 +1149,10 @@ function formatYear(time: number) {
 }
 
 function defaultHiddenSeries(definition: ChartDefinition) {
+  if (definition.id === "pmi_gdp") {
+    return [];
+  }
+
   if (!definition.id.startsWith("pmi_")) {
     return [];
   }
