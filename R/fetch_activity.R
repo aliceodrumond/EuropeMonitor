@@ -217,6 +217,7 @@ build_activity_series <- function(project_root) {
   pmi_gdp_rows$series_name <- "PMI Composite"
   gdp_qoq <- read_eurostat_gdp_qoq_sa_rows(project_root)
   pmi_gdp <- rbind(pmi_gdp_rows, gdp_qoq)
+  bls_rows <- read_ecb_bls_rows(project_root, gdp_qoq)
 
   ifo_rows <- read_ifo_business_climate_rows(project_root)
 
@@ -331,6 +332,7 @@ build_activity_series <- function(project_root) {
     flash_rows,
     sentix_rows,
     pmi_gdp,
+    bls_rows,
     ifo_rows,
     zew_rows,
     weekly,
@@ -396,6 +398,128 @@ read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
     source_url = "https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en",
     frequency = "quarterly"
   )
+}
+
+read_ecb_bls_rows <- function(project_root, gdp_qoq) {
+  definitions <- data.frame(
+    series_id = c(
+      "bls_standards_corporate_ea",
+      "bls_standards_consumer_ea",
+      "bls_demand_corporate_ea",
+      "bls_demand_consumer_ea",
+      "bls_factor_capital_ea",
+      "bls_factor_market_financing_ea",
+      "bls_factor_liquidity_ea",
+      "bls_factor_econ_outlook_ea",
+      "bls_factor_industry_firm_ea",
+      "bls_factor_collateral_ea"
+    ),
+    chart_id = c(
+      "bls_credit_standards",
+      "bls_credit_standards",
+      "bls_loan_demand",
+      "bls_loan_demand",
+      rep("bls_credit_factors", 6)
+    ),
+    series_name = c(
+      "Corporate",
+      "Consumer Credit",
+      "Corporate demand",
+      "Consumer demand",
+      "Cost of capital",
+      "Funding",
+      "Liquidity",
+      "Economic outlook",
+      "Industry-firm outlook",
+      "Risk on collateral"
+    ),
+    key = c(
+      "Q.U2.ALL.O.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.Z.H.C.B3.ST.S.WFNET",
+      "Q.U2.ALL.O.E.Z.B3.ZZ.D.WFNET",
+      "Q.U2.ALL.Z.H.C.B3.ZZ.D.WFNET",
+      "Q.U2.ALL.CP.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.MF.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.LP.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.GEA.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.IFO.E.Z.B3.ST.S.WFNET",
+      "Q.U2.ALL.RCD.E.Z.B3.ST.S.WFNET"
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  frames <- lapply(seq_len(nrow(definitions)), function(i) {
+    read_ecb_bls_series(project_root, definitions[i, ])
+  })
+  frames <- Filter(function(frame) nrow(frame) > 0, frames)
+
+  gdp_standards <- make_bls_gdp_rows(gdp_qoq, "bls_credit_standards", "gdp_qoq_sa_bls_standards", "GDP Q/Q")
+  gdp_demand <- make_bls_gdp_rows(gdp_qoq, "bls_loan_demand", "gdp_qoq_sa_bls_demand", "GDP q/q")
+  frames <- c(list(gdp_standards, gdp_demand), frames)
+  frames <- Filter(function(frame) nrow(frame) > 0, frames)
+  if (length(frames)) do.call(rbind, frames) else data.frame()
+}
+
+read_ecb_bls_series <- function(project_root, definition) {
+  raw_dir <- file.path(project_root, "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  raw_path <- file.path(raw_dir, paste0("ecb_bls_", definition$series_id, ".csv"))
+  url <- sprintf(
+    "https://data-api.ecb.europa.eu/service/data/BLS/%s?format=csvdata",
+    definition$key
+  )
+  csv_text <- fetch_url_text(url)
+  if (!nzchar(csv_text)) {
+    return(data.frame())
+  }
+  writeLines(csv_text, raw_path, useBytes = TRUE)
+
+  values <- tryCatch(
+    utils::read.csv(text = csv_text, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) data.frame()
+  )
+  if (!nrow(values) || !all(c("TIME_PERIOD", "OBS_VALUE") %in% names(values))) {
+    return(data.frame())
+  }
+
+  dates <- quarter_start(values$TIME_PERIOD)
+  obs <- suppressWarnings(as.numeric(values$OBS_VALUE))
+  valid <- !is.na(dates) & !is.na(obs)
+  make_series_frame(
+    dates[valid],
+    definition$chart_id,
+    definition$series_id,
+    definition$series_name,
+    "Euro Area",
+    obs[valid],
+    axis = if (definition$chart_id %in% c("bls_credit_standards", "bls_loan_demand")) "right" else "left",
+    unit = "net %",
+    source = "ECB Bank Lending Survey",
+    source_url = "https://data.ecb.europa.eu/data/datasets/BLS",
+    frequency = "quarterly"
+  )
+}
+
+make_bls_gdp_rows <- function(gdp_qoq, chart_id, series_id, series_name) {
+  if (!nrow(gdp_qoq)) {
+    return(data.frame())
+  }
+  rows <- gdp_qoq
+  rows$chart_id <- chart_id
+  rows$series_id <- series_id
+  rows$series_name <- series_name
+  rows$axis <- "left"
+  rows
+}
+
+quarter_start <- function(periods) {
+  periods <- as.character(periods)
+  quarter <- suppressWarnings(as.integer(sub("^([0-9]{4})-Q([1-4])$", "\\2", periods)))
+  year <- suppressWarnings(as.integer(sub("^([0-9]{4})-Q([1-4])$", "\\1", periods)))
+  valid <- !is.na(year) & !is.na(quarter)
+  out <- rep(as.Date(NA), length(periods))
+  out[valid] <- as.Date(sprintf("%04d-%02d-01", year[valid], (quarter[valid] - 1) * 3 + 1))
+  out
 }
 
 read_ifo_business_climate_rows <- function(project_root) {
