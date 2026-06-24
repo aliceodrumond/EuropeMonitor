@@ -33,7 +33,7 @@ read_ecb_ces_inflation_expectations_rows <- function() {
       "M.Z18.ALL.T.C1220.NUM_VAR.WM"
     ),
     series_id = c("ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y"),
-    series_name = c("1Y inflation expectations", "3Y inflation expectations"),
+    series_name = c("12M inflation expectations", "3Y inflation expectations"),
     stringsAsFactors = FALSE
   )
 
