@@ -20,7 +20,17 @@ $env:CLOUDFLARE_ACCOUNT_ID = [Environment]::GetEnvironmentVariable("CLOUDFLARE_A
 function Write-Log {
   param([string]$Message)
   $Line = "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") $Message"
-  Add-Content -Path $LogPath -Value $Line
+  $Logged = $false
+  for ($Attempt = 1; $Attempt -le 5 -and -not $Logged; $Attempt++) {
+    try {
+      Add-Content -Path $LogPath -Value $Line -ErrorAction Stop
+      $Logged = $true
+    } catch {
+      if ($Attempt -lt 5) {
+        Start-Sleep -Milliseconds 300
+      }
+    }
+  }
   Write-Output $Line
 }
 
