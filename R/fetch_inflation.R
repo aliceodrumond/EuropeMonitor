@@ -139,7 +139,7 @@ build_hicp_legacy_x13_rows <- function(definition, eurostat_input) {
   nsa <- extend_hicp_nsa_index_with_flash(nsa, eurostat_input)
   if (nrow(nsa) < 36) return(data.frame())
 
-  local_sa <- run_hicp_x13_adjustment(nsa$date, nsa$nsa_index)
+  local_sa <- run_hicp_x13_adjustment(nsa$date, nsa$nsa_index, coicop_code = definition$coicop)
   local_sa <- local_sa[order(local_sa$date), ]
   local_sa$mom_saar <- (local_sa$index / c(NA, head(local_sa$index, -1)))^12 * 100 - 100
   local_sa$qoq_saar <- (local_sa$index / c(rep(NA, 3), head(local_sa$index, -3)))^4 * 100 - 100
@@ -183,19 +183,26 @@ build_hicp_legacy_x13_rows <- function(definition, eurostat_input) {
   rbind(hoh, qoq, mom)
 }
 
-run_hicp_x13_adjustment <- function(dates, values) {
+run_hicp_x13_adjustment <- function(dates, values, coicop_code = "") {
   valid <- !is.na(dates) & !is.na(values) & values > 0
   dates <- as.Date(dates[valid])
   values <- as.numeric(values[valid])
   order_index <- order(dates)
   dates <- dates[order_index]
   values <- values[order_index]
+  if (identical(coicop_code, "IGD_NNRG")) {
+    segment_start <- as.Date("2011-01-01")
+    segment <- dates >= segment_start
+    dates <- dates[segment]
+    values <- values[segment]
+  }
+
   start_date <- as.POSIXlt(min(dates))
   series_ts <- stats::ts(values, start = c(start_date$year + 1900, start_date$mon + 1), frequency = 12)
   fit <- seasonal::seas(
     series_ts,
     transform.function = "log",
-    regression.aictest = c("td", "easter"),
+    regression.aictest = "easter",
     outlier = "",
     automdl = ""
   )

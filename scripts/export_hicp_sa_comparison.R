@@ -66,13 +66,18 @@ read_eurostat_hicp_midx_index <- function(coicop_code, label) {
   )
 }
 
-run_x13_adjustment <- function(dates, values) {
+run_x13_adjustment <- function(dates, values, coicop_code = "") {
   valid <- !is.na(dates) & !is.na(values) & values > 0
   dates <- as.Date(dates[valid])
   values <- as.numeric(values[valid])
   order_index <- order(dates)
   dates <- dates[order_index]
   values <- values[order_index]
+  if (identical(coicop_code, "IGD_NNRG")) {
+    segment <- dates >= as.Date("2011-01-01")
+    dates <- dates[segment]
+    values <- values[segment]
+  }
 
   start_date <- as.POSIXlt(min(dates))
   series_ts <- stats::ts(
@@ -84,7 +89,7 @@ run_x13_adjustment <- function(dates, values) {
   fit <- seasonal::seas(
     series_ts,
     transform.function = "log",
-    regression.aictest = c("td", "easter"),
+    regression.aictest = "easter",
     outlier = "",
     automdl = ""
   )
@@ -156,7 +161,7 @@ for (i in seq_len(nrow(series_definitions))) {
   definition <- make_definition(i)
   nsa <- read_eurostat_hicp_midx_index(series_definitions$coicop[i], series_definitions$label[i])
   ecb <- read_ecb_hicp_sa_index_rows(definition)
-  local <- run_x13_adjustment(nsa$date, nsa$nsa_index)
+  local <- run_x13_adjustment(nsa$date, nsa$nsa_index, series_definitions$coicop[i])
 
   data <- merge(nsa[, c("date", "nsa_index")], local, by = "date", all.x = TRUE)
   data <- merge(data, ecb[, c("date", "index")], by = "date", all.x = TRUE)
@@ -224,7 +229,8 @@ openxlsx::addWorksheet(wb, "Summary")
 openxlsx::writeData(wb, "Summary", data.frame(
   note = c(
     "Local seasonal adjustment uses X-13ARIMA-SEATS via the R seasonal package.",
-    "Specification: log transform, automatic ARIMA model, automatic outlier detection, AIC tests for trading day and Easter.",
+    "Specification: log transform, automatic ARIMA model, automatic outlier detection, AIC test for Easter.",
+    "For non-energy industrial goods, the operational X-13 adjustment uses the post-2011 segment to avoid distortions from documented HICP seasonal-product breaks.",
     "NSA source: Eurostat prc_hicp_midx HICP index, 2015=100. ECB comparison source: ECB HICP working-day and seasonally adjusted index, 2025=100.",
     "Local SA index is rescaled to ECB 2025=100 on the common 2025 window. SAAR rates are invariant to this rescaling.",
     "RMSE metrics are computed from 2018 onward."
