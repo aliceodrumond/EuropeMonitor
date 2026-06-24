@@ -349,6 +349,15 @@ const charts: ChartDefinition[] = [
     kicker: "Wages",
     yLeftLabel: "% y/y",
   },
+  {
+    id: "ecb_ces_inflation_expectations",
+    tab: "inflation",
+    title: "ECB Consumer Inflation Expectations",
+    kicker: "Expectations",
+    yLeftLabel: "%",
+    defaultWindow: "all",
+    seriesOrder: ["ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y"],
+  },
 ];
 
 const palette = [

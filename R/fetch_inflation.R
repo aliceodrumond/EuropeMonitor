@@ -14,15 +14,71 @@ build_inflation_series <- function(project_root) {
   headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp)
+  ces_expectations <- read_ecb_ces_inflation_expectations_rows()
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
   inflation <- apply_series_catalog(
-    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates),
+    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, ces_expectations),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
+}
+
+read_ecb_ces_inflation_expectations_rows <- function() {
+  definitions <- data.frame(
+    key = c(
+      "M.Z18.ALL.T.C1120.NUM_VAR.WM",
+      "M.Z18.ALL.T.C1220.NUM_VAR.WM"
+    ),
+    series_id = c("ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y"),
+    series_name = c("1Y inflation expectations", "3Y inflation expectations"),
+    stringsAsFactors = FALSE
+  )
+
+  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    read_ecb_ces_series_rows(definitions[i, ])
+  }))
+}
+
+read_ecb_ces_series_rows <- function(definition) {
+  url <- sprintf("https://data-api.ecb.europa.eu/service/data/CES/%s?format=csvdata", definition$key)
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("ecb_ces_%s.csv", definition$series_id))
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  tryCatch(system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE), error = function(e) NULL)
+
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) {
+    return(data.frame())
+  }
+
+  dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
+  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+  valid <- !is.na(dates) & !is.na(values)
+  make_series_frame(
+    dates[valid],
+    "ecb_ces_inflation_expectations",
+    definition$series_id,
+    definition$series_name,
+    "Euro Area",
+    values[valid],
+    unit = "%",
+    source = "ECB Consumer Expectations Survey",
+    source_url = sprintf("https://data.ecb.europa.eu/data/datasets/CES/CES.%s", definition$key),
+    frequency = "monthly",
+    source_note = "Weighted median, euro area 11."
+  )
 }
 
 read_hicp_rate_chart_rows <- function(yoy_rows) {

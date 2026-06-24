@@ -105,7 +105,8 @@ const html = String.raw`<!doctype html>
         ["hicp_headline_core","inflation","HICP","Headline and core","% y/y"],
         ["hicp_components","inflation","HICP core goods and services","Components","% y/y"],
         ["expected_selling_prices","inflation","Services HICP vs EC Services Survey","Price pressures","Survey balance","% y/y",false,["esp_services","core_services_expected"],{left:{min:-15,max:40},right:{min:-1,max:7}}],
-        ["wage_tracker","inflation","Wage Tracker","Wages","% y/y"]
+        ["wage_tracker","inflation","Wage Tracker","Wages","% y/y"],
+        ["ecb_ces_inflation_expectations","inflation","ECB Consumer Inflation Expectations","Expectations","%",null,false,["ecb_ces_infl_exp_1y","ecb_ces_infl_exp_3y"],null,"all"]
       ].map(([id,tab,title,kicker,yLeft,yRight,wide,order,fixedDomains,defaultWindow,startDate,seasonalToggle]) => ({id,tab,title,kicker,yLeft,yRight,wide,order,fixedDomains,defaultWindow,startDate,seasonalToggle}));
       const tabs = [{id:"speakers",label:"ECB Speakers"},{id:"activity",label:"Activity Monitor"},{id:"inflation",label:"Inflation Monitor"}];
       const palette = ["#204f86","#c47a20","#11675f","#a83f39","#3f7f52","#6c5f8d","#111111","#8c7b57"];

@@ -95,7 +95,8 @@ function Test-InflationOutput {
     "hicp_headline_core",
     "hicp_components",
     "expected_selling_prices",
-    "wage_tracker"
+    "wage_tracker",
+    "ecb_ces_inflation_expectations"
   )) {
     Assert-ChartRows -Rows $inflation -ChartId $chart -MinimumRows 1
   }
@@ -135,7 +136,9 @@ function Test-InflationOutput {
     "core_goods",
     "esp_services",
     "core_services_expected",
-    "wage_tracker_ea"
+    "wage_tracker_ea",
+    "ecb_ces_infl_exp_1y",
+    "ecb_ces_infl_exp_3y"
   )) {
     Assert-SeriesRows -Rows $inflation -SeriesId $series -MinimumRows 1
   }
