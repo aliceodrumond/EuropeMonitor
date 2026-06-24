@@ -2,13 +2,13 @@ econostream_central_bank_url <- "https://www.econostream-media.com/news/topic/ce
 
 build_ecb_speakers <- function(project_root) {
   processed_path <- file.path(project_root, "data/processed/ecb_speakers.csv")
+  previous <- tryCatch(
+    read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(...) NULL
+  )
   speakers <- tryCatch(
     fetch_econostream_ecb_speakers(econostream_central_bank_url),
     error = function(error) {
-      previous <- tryCatch(
-        read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE),
-        error = function(...) NULL
-      )
       has_valid_previous <- !is.null(previous) && nrow(previous) > 0 &&
         !any(previous$tags == "fallback", na.rm = TRUE)
 
@@ -22,8 +22,49 @@ build_ecb_speakers <- function(project_root) {
     }
   )
 
+  speakers <- keep_priority_member_latest_speeches(speakers, previous)
   speakers <- apply_speaker_highlight_overrides(speakers)
   write_csv_utf8(speakers, processed_path)
+  speakers
+}
+
+keep_priority_member_latest_speeches <- function(speakers, previous) {
+  priority_members <- c("Lagarde", "Lane", "Schnabel", "Nagel")
+  if (is.null(previous) || !nrow(previous) || any(previous$tags == "fallback", na.rm = TRUE)) {
+    return(order_speaker_rows(speakers))
+  }
+
+  common_columns <- intersect(names(speakers), names(previous))
+  combined <- rbind(
+    speakers[, common_columns, drop = FALSE],
+    previous[, common_columns, drop = FALSE]
+  )
+  combined <- combined[!duplicated(combined[, c("member", "date", "source_url")]), , drop = FALSE]
+  combined$date_value <- as.Date(combined$date)
+
+  priority_latest <- do.call(rbind, lapply(priority_members, function(member) {
+    rows <- combined[combined$member == member, , drop = FALSE]
+    if (!nrow(rows)) return(NULL)
+    rows <- rows[order(-as.numeric(rows$date_value)), , drop = FALSE]
+    rows[1, , drop = FALSE]
+  }))
+
+  base_rows <- speakers[, common_columns, drop = FALSE]
+  if (is.null(priority_latest) || !nrow(priority_latest)) {
+    return(order_speaker_rows(base_rows))
+  }
+
+  required <- rbind(base_rows, priority_latest[, common_columns, drop = FALSE])
+  required <- required[!duplicated(required[, c("member", "date", "source_url")]), , drop = FALSE]
+  order_speaker_rows(required)
+}
+
+order_speaker_rows <- function(speakers) {
+  if (!nrow(speakers)) return(speakers)
+  speakers$date_value <- as.Date(speakers$date)
+  speakers <- speakers[order(-as.numeric(speakers$date_value), speakers$member), , drop = FALSE]
+  speakers$date_value <- NULL
+  rownames(speakers) <- NULL
   speakers
 }
 

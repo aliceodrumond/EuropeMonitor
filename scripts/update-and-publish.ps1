@@ -205,6 +205,12 @@ function Test-OutputData {
   if (@($speakers | Where-Object { $_.tags -eq "fallback" }).Count -gt 0) {
     throw "ECB Speakers is fallback data; refusing to publish"
   }
+  foreach ($priorityMember in @("Lagarde", "Lane", "Schnabel", "Nagel")) {
+    $priorityRows = @($speakers | Where-Object { $_.member -eq $priorityMember })
+    if ($priorityRows.Count -lt 1) {
+      throw "ECB Speakers is missing required priority member: $priorityMember"
+    }
+  }
   foreach ($speaker in $speakers) {
     $comment = [string]$speaker.policy_comments
     if ([string]::IsNullOrWhiteSpace($comment)) {
