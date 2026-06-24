@@ -584,7 +584,7 @@ function TimeSeriesChart({
                 onClick={() => setSeasonalSource("legacy")}
                 type="button"
               >
-                SA - Legacy (X-13)
+                SA - Legacy (X-12)
               </button>
             </div>
           ) : null}
