@@ -31,6 +31,7 @@ read_hicp_rate_chart_rows <- function(yoy_rows) {
     chart_id = c("hicp_headline_rates", "hicp_core_rates", "hicp_goods_rates", "hicp_services_rates"),
     base_series_id = c("hicp_headline", "hicp_core", "core_goods", "core_services"),
     yoy_series_id = c("hicp_headline_yoy_nsa", "hicp_core_yoy_nsa", "hicp_goods_yoy_nsa", "hicp_services_yoy_nsa"),
+    hoh_series_id = c("hicp_headline_hoh_saar", "hicp_core_hoh_saar", "hicp_goods_hoh_saar", "hicp_services_hoh_saar"),
     qoq_series_id = c("hicp_headline_qoq_saar", "hicp_core_qoq_saar", "hicp_goods_qoq_saar", "hicp_services_qoq_saar"),
     mom_series_id = c("hicp_headline_mom_saar", "hicp_core_mom_saar", "hicp_goods_mom_saar", "hicp_services_mom_saar"),
     ecb_key = c(
@@ -75,9 +76,11 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows) {
   sa_index <- sa_index[order(sa_index$date), ]
   sa_index$mom_saar <- (sa_index$index / c(NA, head(sa_index$index, -1)))^12 * 100 - 100
   sa_index$qoq_saar <- (sa_index$index / c(rep(NA, 3), head(sa_index$index, -3)))^4 * 100 - 100
+  sa_index$hoh_saar <- (sa_index$index / c(rep(NA, 6), head(sa_index$index, -6)))^2 * 100 - 100
 
   mom_valid <- !is.na(sa_index$mom_saar)
   qoq_valid <- !is.na(sa_index$qoq_saar)
+  hoh_valid <- !is.na(sa_index$hoh_saar)
   mom <- make_series_frame(
     sa_index$date[mom_valid],
     definition$chart_id,
@@ -90,6 +93,19 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows) {
     source_url = sa_index$source_url[mom_valid],
     frequency = "monthly",
     source_note = sa_index$source_note[mom_valid]
+  )
+  hoh <- make_series_frame(
+    sa_index$date[hoh_valid],
+    definition$chart_id,
+    definition$hoh_series_id,
+    "% HoH SAAR",
+    "Euro Area",
+    sa_index$hoh_saar[hoh_valid],
+    unit = "%",
+    source = sa_index$source[hoh_valid],
+    source_url = sa_index$source_url[hoh_valid],
+    frequency = "monthly",
+    source_note = sa_index$source_note[hoh_valid]
   )
   qoq <- make_series_frame(
     sa_index$date[qoq_valid],
@@ -105,7 +121,7 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows) {
     source_note = sa_index$source_note[qoq_valid]
   )
 
-  rbind(yoy, qoq, mom)
+  rbind(yoy, hoh, qoq, mom)
 }
 
 read_ecb_hicp_sa_index_rows <- function(definition) {

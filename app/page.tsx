@@ -65,6 +65,7 @@ type ChartSeries = {
   frequency: string;
   sourceNote: string;
   color: string;
+  dashArray?: string;
   points: Array<{ date: string; value: number; time: number }>;
 };
 
@@ -276,7 +277,7 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -2, max: 12 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_headline_yoy_nsa", "hicp_headline_qoq_saar", "hicp_headline_mom_saar"],
+    seriesOrder: ["hicp_headline_yoy_nsa", "hicp_headline_hoh_saar", "hicp_headline_qoq_saar", "hicp_headline_mom_saar"],
   },
   {
     id: "hicp_core_rates",
@@ -287,7 +288,7 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -2, max: 8 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_core_yoy_nsa", "hicp_core_qoq_saar", "hicp_core_mom_saar"],
+    seriesOrder: ["hicp_core_yoy_nsa", "hicp_core_hoh_saar", "hicp_core_qoq_saar", "hicp_core_mom_saar"],
   },
   {
     id: "hicp_goods_rates",
@@ -298,7 +299,7 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -3, max: 8 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_goods_yoy_nsa", "hicp_goods_qoq_saar", "hicp_goods_mom_saar"],
+    seriesOrder: ["hicp_goods_yoy_nsa", "hicp_goods_hoh_saar", "hicp_goods_qoq_saar", "hicp_goods_mom_saar"],
   },
   {
     id: "hicp_services_rates",
@@ -309,7 +310,7 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -1, max: 9 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_qoq_saar", "hicp_services_mom_saar"],
+    seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_hoh_saar", "hicp_services_qoq_saar", "hicp_services_mom_saar"],
   },
   {
     id: "hicp_headline_core",
@@ -571,7 +572,13 @@ function TimeSeriesChart({
             onClick={() => toggleSeries(item.id)}
             type="button"
           >
-            <span className="legend-swatch" style={{ background: item.color }} />
+            <span
+              className="legend-swatch"
+              style={{
+                background: item.dashArray ? "transparent" : item.color,
+                borderColor: item.color,
+              }}
+            />
             {item.name}
           </button>
         ))}
@@ -835,6 +842,7 @@ function ChartSvgContent({
             d={pathForSeries(item, scaleX, scaleY)}
             key={item.id}
             stroke={item.color}
+            strokeDasharray={item.dashArray}
           />
         ),
       )}
@@ -1091,7 +1099,26 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
       }
       return aIndex - bIndex;
     })
-    .map((item, index) => ({ ...item, color: palette[index % palette.length] }));
+    .map((item, index) => {
+      const style = styleForSeries(item.id, palette[index % palette.length]);
+      return { ...item, ...style };
+    });
+}
+
+function styleForSeries(seriesId: string, fallbackColor: string) {
+  if (seriesId.endsWith("_yoy_nsa")) {
+    return { color: "#111111" };
+  }
+  if (seriesId.endsWith("_qoq_saar")) {
+    return { color: "#a83f39" };
+  }
+  if (seriesId.endsWith("_hoh_saar")) {
+    return { color: "#11675f" };
+  }
+  if (seriesId.endsWith("_mom_saar")) {
+    return { color: "#65b88f", dashArray: "6 5" };
+  }
+  return { color: fallbackColor };
 }
 
 function buildChartModel(series: ChartSeries[], definition?: ChartDefinition) {

@@ -300,6 +300,7 @@ h1 {
 .legend-swatch {
   width: 9px;
   height: 9px;
+  border: 1.5px solid transparent;
   border-radius: 999px;
 }
 
