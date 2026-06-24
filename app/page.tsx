@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type TabId = "activity" | "inflation" | "speakers";
 type AxisSide = "left" | "right";
 type WindowKey = "all" | "10y" | "5y" | "2y" | "1y" | "6m";
+type SeasonalSource = "ecb" | "legacy";
 
 type SeriesRow = {
   date: string;
@@ -52,6 +53,7 @@ type ChartDefinition = {
   startDate?: string;
   wide?: boolean;
   seriesOrder?: string[];
+  seasonalToggle?: boolean;
 };
 
 type ChartSeries = {
@@ -277,7 +279,8 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -2, max: 12 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_headline_yoy_nsa", "hicp_headline_hoh_saar", "hicp_headline_qoq_saar", "hicp_headline_mom_saar"],
+    seasonalToggle: true,
+    seriesOrder: ["hicp_headline_yoy_nsa", "hicp_headline_hoh_saar", "hicp_headline_qoq_saar", "hicp_headline_mom_saar", "hicp_headline_hoh_saar_legacy", "hicp_headline_qoq_saar_legacy", "hicp_headline_mom_saar_legacy"],
   },
   {
     id: "hicp_core_rates",
@@ -288,7 +291,8 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -2, max: 8 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_core_yoy_nsa", "hicp_core_hoh_saar", "hicp_core_qoq_saar", "hicp_core_mom_saar"],
+    seasonalToggle: true,
+    seriesOrder: ["hicp_core_yoy_nsa", "hicp_core_hoh_saar", "hicp_core_qoq_saar", "hicp_core_mom_saar", "hicp_core_hoh_saar_legacy", "hicp_core_qoq_saar_legacy", "hicp_core_mom_saar_legacy"],
   },
   {
     id: "hicp_goods_rates",
@@ -299,7 +303,8 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -3, max: 8 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_goods_yoy_nsa", "hicp_goods_hoh_saar", "hicp_goods_qoq_saar", "hicp_goods_mom_saar"],
+    seasonalToggle: true,
+    seriesOrder: ["hicp_goods_yoy_nsa", "hicp_goods_hoh_saar", "hicp_goods_qoq_saar", "hicp_goods_mom_saar", "hicp_goods_hoh_saar_legacy", "hicp_goods_qoq_saar_legacy", "hicp_goods_mom_saar_legacy"],
   },
   {
     id: "hicp_services_rates",
@@ -310,7 +315,8 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -1, max: 9 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_hoh_saar", "hicp_services_qoq_saar", "hicp_services_mom_saar"],
+    seasonalToggle: true,
+    seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_hoh_saar", "hicp_services_qoq_saar", "hicp_services_mom_saar", "hicp_services_hoh_saar_legacy", "hicp_services_qoq_saar_legacy", "hicp_services_mom_saar_legacy"],
   },
   {
     id: "hicp_headline_core",
@@ -482,9 +488,14 @@ function TimeSeriesChart({
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
     () => new Set(defaultHiddenSeries(definition)),
   );
+  const [seasonalSource, setSeasonalSource] = useState<SeasonalSource>("ecb");
   const [hover, setHover] = useState<HoverState | null>(null);
 
   const series = useMemo(() => buildSeries(rows, definition), [definition, rows]);
+  const displaySeries = useMemo(
+    () => filterSeasonalSource(series, definition, seasonalSource),
+    [definition, seasonalSource, series],
+  );
   const selectedWindow = windows.find((item) => item.key === windowKey);
 
   const filteredSeries = useMemo(() => {
@@ -492,11 +503,11 @@ function TimeSeriesChart({
       ? new Date(`${definition.startDate}T00:00:00`).getTime()
       : null;
     const startFiltered = startTime
-      ? series.map((item) => ({
+      ? displaySeries.map((item) => ({
           ...item,
           points: item.points.filter((point) => point.time >= startTime),
         }))
-      : series;
+      : displaySeries;
     const allTimes = startFiltered.flatMap((item) => item.points.map((point) => point.time));
     if (!allTimes.length || (!selectedWindow?.years && !selectedWindow?.months)) {
       return startFiltered;
@@ -511,7 +522,7 @@ function TimeSeriesChart({
       ...item,
       points: item.points.filter((point) => point.time >= minTime),
     }));
-  }, [definition.startDate, selectedWindow, series]);
+  }, [definition.startDate, displaySeries, selectedWindow]);
 
   const activeSeries = filteredSeries.filter((item) => !hiddenSeries.has(item.id));
   const chartModel = useMemo(() => buildChartModel(activeSeries, definition), [activeSeries, definition]);
@@ -549,22 +560,42 @@ function TimeSeriesChart({
           <p className="panel-kicker">{definition.kicker}</p>
           <h2 className="panel-title">{definition.title}</h2>
         </div>
-        <div className="window-controls" aria-label="Time window">
-          {windows.map((item) => (
-            <button
-              data-active={item.key === windowKey}
-              key={item.key}
-              onClick={() => setWindowKey(item.key)}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="chart-controls">
+          {definition.seasonalToggle ? (
+            <div className="seasonal-controls" aria-label="Seasonal adjustment source">
+              <button
+                data-active={seasonalSource === "ecb"}
+                onClick={() => setSeasonalSource("ecb")}
+                type="button"
+              >
+                SA - ECB
+              </button>
+              <button
+                data-active={seasonalSource === "legacy"}
+                onClick={() => setSeasonalSource("legacy")}
+                type="button"
+              >
+                SA - Legacy (X-13)
+              </button>
+            </div>
+          ) : null}
+          <div className="window-controls" aria-label="Time window">
+            {windows.map((item) => (
+              <button
+                data-active={item.key === windowKey}
+                key={item.key}
+                onClick={() => setWindowKey(item.key)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="legend" aria-label="Sections">
-        {series.map((item) => (
+        {displaySeries.map((item) => (
           <button
             className="legend-button"
             data-hidden={hiddenSeries.has(item.id)}
@@ -1106,19 +1137,44 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
 }
 
 function styleForSeries(seriesId: string, fallbackColor: string) {
-  if (seriesId.endsWith("_yoy_nsa")) {
+  const metricId = seriesId.replace("_legacy", "");
+  if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };
   }
-  if (seriesId.endsWith("_qoq_saar")) {
+  if (metricId.endsWith("_qoq_saar")) {
     return { color: "#a83f39" };
   }
-  if (seriesId.endsWith("_hoh_saar")) {
+  if (metricId.endsWith("_hoh_saar")) {
     return { color: "#11675f" };
   }
-  if (seriesId.endsWith("_mom_saar")) {
+  if (metricId.endsWith("_mom_saar")) {
     return { color: "#65b88f", dashArray: "6 5" };
   }
   return { color: fallbackColor };
+}
+
+function filterSeasonalSource(
+  series: ChartSeries[],
+  definition: ChartDefinition,
+  source: SeasonalSource,
+) {
+  if (!definition.seasonalToggle) {
+    return series;
+  }
+
+  const baseOrder = (definition.seriesOrder ?? []).filter((seriesId) => !seriesId.endsWith("_legacy"));
+  const visibleIds = new Set<string>();
+  baseOrder.forEach((seriesId) => {
+    visibleIds.add(source === "legacy" && !seriesId.endsWith("_yoy_nsa") ? `${seriesId}_legacy` : seriesId);
+  });
+
+  return series
+    .filter((item) => visibleIds.has(item.id))
+    .sort((a, b) => {
+      const aBase = a.id.replace("_legacy", "");
+      const bBase = b.id.replace("_legacy", "");
+      return baseOrder.indexOf(aBase) - baseOrder.indexOf(bBase);
+    });
 }
 
 function buildChartModel(series: ChartSeries[], definition?: ChartDefinition) {
