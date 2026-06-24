@@ -268,6 +268,7 @@ normalize_ecb_member_name <- function(member) {
     if (grepl("mir|mÃ­r|mír", member, ignore.case = TRUE)) return("Kazimir")
   }
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
+  if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
   member
 }
 
@@ -284,6 +285,7 @@ normalize_ecb_member_name_ascii <- function(member) {
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
+  if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
   member
 }
 
