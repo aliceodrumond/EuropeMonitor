@@ -149,6 +149,10 @@ function Test-OutputData {
   }
 
   foreach ($chart in @(
+    "hicp_headline_rates",
+    "hicp_core_rates",
+    "hicp_goods_rates",
+    "hicp_services_rates",
     "hicp_headline_core",
     "hicp_components",
     "expected_selling_prices",
@@ -158,6 +162,18 @@ function Test-OutputData {
   }
 
   foreach ($series in @(
+    "hicp_headline_yoy_nsa",
+    "hicp_headline_qoq_saar",
+    "hicp_headline_mom_saar",
+    "hicp_core_yoy_nsa",
+    "hicp_core_qoq_saar",
+    "hicp_core_mom_saar",
+    "hicp_goods_yoy_nsa",
+    "hicp_goods_qoq_saar",
+    "hicp_goods_mom_saar",
+    "hicp_services_yoy_nsa",
+    "hicp_services_qoq_saar",
+    "hicp_services_mom_saar",
     "hicp_headline",
     "hicp_core",
     "core_services",

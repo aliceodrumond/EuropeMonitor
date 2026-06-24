@@ -13,15 +13,225 @@ build_inflation_series <- function(project_root) {
   expected_chart <- rbind(expected_services, hicp_services_expected)
   headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
+  hicp_rates <- read_hicp_rate_chart_rows(hicp)
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
   inflation <- apply_series_catalog(
-    rbind(expected_chart, wage_tracker, headline_core, components),
+    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
+}
+
+read_hicp_rate_chart_rows <- function(yoy_rows) {
+  definitions <- data.frame(
+    dataset = c("teicp000", "teicp200", "teicp290", "teicp280"),
+    chart_id = c("hicp_headline_rates", "hicp_core_rates", "hicp_goods_rates", "hicp_services_rates"),
+    base_series_id = c("hicp_headline", "hicp_core", "core_goods", "core_services"),
+    yoy_series_id = c("hicp_headline_yoy_nsa", "hicp_core_yoy_nsa", "hicp_goods_yoy_nsa", "hicp_services_yoy_nsa"),
+    qoq_series_id = c("hicp_headline_qoq_saar", "hicp_core_qoq_saar", "hicp_goods_qoq_saar", "hicp_services_qoq_saar"),
+    mom_series_id = c("hicp_headline_mom_saar", "hicp_core_mom_saar", "hicp_goods_mom_saar", "hicp_services_mom_saar"),
+    ecb_key = c(
+      "M.U2.Y.000000.4F0.INX",
+      "M.U2.Y.XEF000.4F0.INX",
+      "M.U2.Y.IGXE00.4F0.INX",
+      "M.U2.Y.SERV00.4F0.INX"
+    ),
+    title = c("HICP Headline", "HICP Core", "HICP Goods", "HICP Services"),
+    eurostat_url = c(
+      "https://ec.europa.eu/eurostat/databrowser/product/view/teicp000?lang=en",
+      "https://ec.europa.eu/eurostat/databrowser/product/view/teicp200?lang=en",
+      "https://ec.europa.eu/eurostat/databrowser/product/view/teicp290?lang=en",
+      "https://ec.europa.eu/eurostat/databrowser/view/teicp280/default/table?lang=en"
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    build_hicp_rate_chart_rows(definitions[i, ], yoy_rows)
+  }))
+}
+
+build_hicp_rate_chart_rows <- function(definition, yoy_rows) {
+  yoy <- yoy_rows[yoy_rows$series_id == definition$base_series_id, ]
+  if (!nrow(yoy)) {
+    return(data.frame())
+  }
+  yoy$chart_id <- definition$chart_id
+  yoy$series_id <- definition$yoy_series_id
+  yoy$series_name <- "% YoY NSA"
+  yoy$unit <- "%"
+  yoy$source_note <- ifelse(yoy$source_note == "", "Flash estimate is used until final HICP is available.", yoy$source_note)
+
+  ecb_sa <- read_ecb_hicp_sa_index_rows(definition)
+  eurostat_input <- read_eurostat_hicp_input_rows(definition)
+  sa_index <- extend_hicp_sa_index_with_flash(ecb_sa, eurostat_input)
+  if (!nrow(sa_index)) {
+    return(yoy)
+  }
+
+  sa_index <- sa_index[order(sa_index$date), ]
+  sa_index$mom_saar <- (sa_index$index / c(NA, head(sa_index$index, -1)))^12 * 100 - 100
+  sa_index$qoq_saar <- (sa_index$index / c(rep(NA, 3), head(sa_index$index, -3)))^4 * 100 - 100
+
+  mom_valid <- !is.na(sa_index$mom_saar)
+  qoq_valid <- !is.na(sa_index$qoq_saar)
+  mom <- make_series_frame(
+    sa_index$date[mom_valid],
+    definition$chart_id,
+    definition$mom_series_id,
+    "% MoM SAAR",
+    "Euro Area",
+    sa_index$mom_saar[mom_valid],
+    unit = "%",
+    source = sa_index$source[mom_valid],
+    source_url = sa_index$source_url[mom_valid],
+    frequency = "monthly",
+    source_note = sa_index$source_note[mom_valid]
+  )
+  qoq <- make_series_frame(
+    sa_index$date[qoq_valid],
+    definition$chart_id,
+    definition$qoq_series_id,
+    "% QoQ SAAR",
+    "Euro Area",
+    sa_index$qoq_saar[qoq_valid],
+    unit = "%",
+    source = sa_index$source[qoq_valid],
+    source_url = sa_index$source_url[qoq_valid],
+    frequency = "monthly",
+    source_note = sa_index$source_note[qoq_valid]
+  )
+
+  rbind(yoy, qoq, mom)
+}
+
+read_ecb_hicp_sa_index_rows <- function(definition) {
+  url <- sprintf("https://data-api.ecb.europa.eu/service/data/HICP/%s?format=csvdata", definition$ecb_key)
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("ecb_hicp_sa_%s.csv", definition$base_series_id))
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  tryCatch(system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE), error = function(e) NULL)
+
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) {
+    return(data.frame())
+  }
+
+  dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
+  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+  valid <- !is.na(dates) & !is.na(values)
+  data.frame(
+    date = dates[valid],
+    index = values[valid],
+    source = "ECB Data Portal",
+    source_url = sprintf("https://data.ecb.europa.eu/data/datasets/HICP/HICP.%s", definition$ecb_key),
+    source_note = "Seasonally adjusted HICP index.",
+    stringsAsFactors = FALSE
+  )
+}
+
+read_eurostat_hicp_input_rows <- function(definition) {
+  url <- sprintf("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/%s?lang=en&geo=EA20", definition$dataset)
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("eurostat_%s_inputs.json", definition$dataset))
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  nsa <- read_eurostat_teicp_values(json, "I25")
+  yoy <- read_eurostat_teicp_values(json, "PCH_M12")
+  merged <- merge(nsa, yoy, by = "date", all = TRUE, suffixes = c("_nsa", "_yoy"))
+  names(merged)[names(merged) == "value_nsa"] <- "nsa_index"
+  names(merged)[names(merged) == "value_yoy"] <- "yoy"
+  merged[order(merged$date), ]
+}
+
+read_eurostat_teicp_values <- function(json, unit_code) {
+  times <- names(sort(unlist(json$dimension$time$category$index)))
+  dates <- as.Date(sprintf("%s-01", times))
+  n_time <- length(times)
+  n_geo <- length(unlist(json$dimension$geo$category$index))
+  unit_index <- unlist(json$dimension$unit$category$index)
+  if (!unit_code %in% names(unit_index)) {
+    return(data.frame(date = dates, value = NA_real_))
+  }
+  unit_pos <- as.integer(unit_index[[unit_code]])
+  value_map <- unlist(json$value)
+  idx <- unit_pos * n_geo * n_time + seq_len(n_time) - 1
+  values <- rep(NA_real_, n_time)
+  present <- as.character(idx) %in% names(value_map)
+  values[present] <- as.numeric(value_map[as.character(idx[present])])
+  data.frame(date = dates, value = values, stringsAsFactors = FALSE)
+}
+
+extend_hicp_sa_index_with_flash <- function(ecb_sa, eurostat_input) {
+  if (!nrow(ecb_sa) || !nrow(eurostat_input)) {
+    return(ecb_sa)
+  }
+
+  sa <- ecb_sa[order(ecb_sa$date), ]
+  input <- eurostat_input[order(eurostat_input$date), ]
+  latest_sa <- max(sa$date, na.rm = TRUE)
+  latest_eurostat <- max(input$date[!is.na(input$yoy) | !is.na(input$nsa_index)], na.rm = TRUE)
+  if (is.na(latest_eurostat) || latest_eurostat <= latest_sa) {
+    return(sa)
+  }
+
+  missing_dates <- input$date[input$date > latest_sa & input$date <= latest_eurostat]
+  for (target_date in missing_dates) {
+    row <- input[input$date == target_date, ]
+    nsa_index <- row$nsa_index[1]
+    if (is.na(nsa_index) && !is.na(row$yoy[1])) {
+      prior_date <- add_months(target_date, -12)
+      prior <- input[input$date == prior_date, ]
+      if (nrow(prior) && !is.na(prior$nsa_index[1])) {
+        nsa_index <- prior$nsa_index[1] * (1 + row$yoy[1] / 100)
+      }
+    }
+    if (is.na(nsa_index)) {
+      next
+    }
+
+    seasonal_date <- add_months(target_date, -12)
+    prior_sa <- sa$index[sa$date == seasonal_date]
+    prior_nsa <- input$nsa_index[input$date == seasonal_date]
+    if (!length(prior_sa) || !length(prior_nsa) || is.na(prior_sa[1]) || is.na(prior_nsa[1]) || prior_nsa[1] == 0) {
+      common <- merge(sa[, c("date", "index")], input[, c("date", "nsa_index")], by = "date")
+      common <- common[!is.na(common$index) & !is.na(common$nsa_index) & common$nsa_index != 0, ]
+      if (!nrow(common)) next
+      seasonal_factor <- tail(common$index / common$nsa_index, 1)
+    } else {
+      seasonal_factor <- prior_sa[1] / prior_nsa[1]
+    }
+
+    sa <- rbind(sa, data.frame(
+      date = target_date,
+      index = nsa_index * seasonal_factor,
+      source = "Eurostat HICP flash / ECB Data Portal",
+      source_url = "https://ec.europa.eu/eurostat/databrowser/product/view/teicp000?lang=en",
+      source_note = "Flash-implied seasonally adjusted index; replaced when ECB SA final is available.",
+      stringsAsFactors = FALSE
+    ))
+    sa <- sa[order(sa$date), ]
+  }
+
+  sa
 }
 
 read_eurostat_hicp_rows <- function() {
@@ -89,17 +299,9 @@ read_eurostat_teicp_rows <- function(definition) {
   system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
   json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
 
-  times <- names(sort(unlist(json$dimension$time$category$index)))
-  dates <- as.Date(sprintf("%s-01", times))
-  n_time <- length(times)
-  n_geo <- length(unlist(json$dimension$geo$category$index))
-  unit_index <- unlist(json$dimension$unit$category$index)
-  unit_pos <- as.integer(unit_index[["PCH_M12"]])
-  value_map <- unlist(json$value)
-  idx <- unit_pos * n_geo * n_time + seq_len(n_time) - 1
-  values <- rep(NA_real_, n_time)
-  present <- as.character(idx) %in% names(value_map)
-  values[present] <- as.numeric(value_map[as.character(idx[present])])
+  values_frame <- read_eurostat_teicp_values(json, "PCH_M12")
+  dates <- values_frame$date
+  values <- values_frame$value
   valid <- !is.na(values)
 
   make_series_frame(
