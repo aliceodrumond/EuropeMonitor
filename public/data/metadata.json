@@ -2,5 +2,5 @@
   "last_updated": "2026-06-24",
   "data_mode": "source_linked_mock_values",
   "generated_by": "R/run_inflation_update.R",
-  "inflation_rows": 10751
+  "inflation_rows": 9482
 }
