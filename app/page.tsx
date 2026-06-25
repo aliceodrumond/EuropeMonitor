@@ -1622,15 +1622,19 @@ function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
       qoq ? parseTime(qoq.date) : -Infinity,
       mom ? parseTime(mom.date) : -Infinity,
     );
+    const latestDate = Number.isFinite(latestTime) ? new Date(latestTime).toISOString().slice(0, 10) : "";
+    const alignedYoy = yoy?.date === latestDate ? yoy : undefined;
+    const alignedQoq = qoq?.date === latestDate ? qoq : undefined;
+    const alignedMom = mom?.date === latestDate ? mom : undefined;
     return {
-      date: Number.isFinite(latestTime) ? new Date(latestTime).toISOString().slice(0, 10) : "",
+      date: latestDate,
       label: definition.label,
-      mom: mom?.value,
-      momChange: mom?.change,
-      qoq: qoq?.value,
-      qoqChange: qoq?.change,
-      yoy: yoy?.value,
-      yoyChange: yoy?.change,
+      mom: alignedMom?.value,
+      momChange: alignedMom?.change,
+      qoq: alignedQoq?.value,
+      qoqChange: alignedQoq?.change,
+      yoy: alignedYoy?.value,
+      yoyChange: alignedYoy?.change,
     };
   });
 }
