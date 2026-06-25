@@ -556,11 +556,11 @@ function HicpSummaryTable({ rows }: { rows: SeriesRow[] }) {
             <tr>
               <th>Breakdown</th>
               <th>% YoY NSA</th>
-              <th>vs Prior Month</th>
+              <th>vs Prior</th>
               <th>% QoQ SAAR</th>
-              <th>vs Prior Month</th>
+              <th>vs Prior</th>
               <th>% MoM SAAR</th>
-              <th>vs Prior Month</th>
+              <th>vs Prior</th>
               <th>Latest</th>
             </tr>
           </thead>
