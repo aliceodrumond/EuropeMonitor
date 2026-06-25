@@ -1586,25 +1586,25 @@ function seasonalityRangePath(
 function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
   const definitions = [
     {
-      label: "HICP Headline",
+      label: "Headline",
       yoy: "hicp_headline_yoy_nsa",
       qoq: "hicp_headline_qoq_saar",
       mom: "hicp_headline_mom_saar",
     },
     {
-      label: "HICP Core ex-Energy, Food, Alcohol and Tobacco",
+      label: "Core",
       yoy: "hicp_core_yoy_nsa",
       qoq: "hicp_core_qoq_saar",
       mom: "hicp_core_mom_saar",
     },
     {
-      label: "HICP Non-Energy Industrial Goods",
+      label: "Goods",
       yoy: "hicp_goods_yoy_nsa",
       qoq: "hicp_goods_qoq_saar",
       mom: "hicp_goods_mom_saar",
     },
     {
-      label: "HICP Services",
+      label: "Services",
       yoy: "hicp_services_yoy_nsa",
       qoq: "hicp_services_qoq_saar",
       mom: "hicp_services_mom_saar",
