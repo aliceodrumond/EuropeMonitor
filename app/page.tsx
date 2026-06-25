@@ -467,15 +467,19 @@ export default function Home() {
       {activeTab === "speakers" ? (
         <SpeakerTable speakers={speakers} />
       ) : (
-        <section className="dashboard-grid">
-          {activeCharts.map((chart) => (
-            <TimeSeriesChart
-              definition={chart}
-              key={chart.id}
-              rows={seriesRows.filter((row) => row.chart_id === chart.id)}
-            />
-          ))}
-        </section>
+        <>
+          <TabDataBanner rows={seriesRows} tab={activeTab} />
+          {activeTab === "inflation" ? <HicpSummaryTable rows={seriesRows} /> : null}
+          <section className="dashboard-grid">
+            {activeCharts.map((chart) => (
+              <TimeSeriesChart
+                definition={chart}
+                key={chart.id}
+                rows={seriesRows.filter((row) => row.chart_id === chart.id)}
+              />
+            ))}
+          </section>
+        </>
       )}
 
       <p className="footer-note">
@@ -483,6 +487,82 @@ export default function Home() {
         CSVs in public/data.
       </p>
     </main>
+  );
+}
+
+function TabDataBanner({
+  rows,
+  tab,
+}: {
+  rows: SeriesRow[];
+  tab: Exclude<TabId, "speakers">;
+}) {
+  const summary = useMemo(() => latestTabUpdate(rows, tab), [rows, tab]);
+
+  return (
+    <section className="tab-data-banner">
+      <span>Last data updated: {summary.dateLabel}</span>
+      <strong>{summary.description}</strong>
+    </section>
+  );
+}
+
+function HicpSummaryTable({ rows }: { rows: SeriesRow[] }) {
+  const [seasonalSource, setSeasonalSource] = useState<SeasonalSource>("ecb");
+  const tableRows = useMemo(
+    () => buildHicpSummaryRows(rows, seasonalSource),
+    [rows, seasonalSource],
+  );
+
+  return (
+    <article className="chart-panel hicp-summary-panel" data-wide="true">
+      <div className="panel-head">
+        <div>
+          <p className="panel-kicker">Inflation</p>
+          <h2 className="panel-title">HICP Summary</h2>
+        </div>
+        <div className="seasonal-controls" aria-label="Seasonal adjustment source">
+          <button
+            data-active={seasonalSource === "ecb"}
+            onClick={() => setSeasonalSource("ecb")}
+            type="button"
+          >
+            SA - ECB
+          </button>
+          <button
+            data-active={seasonalSource === "legacy"}
+            onClick={() => setSeasonalSource("legacy")}
+            type="button"
+          >
+            SA - Legacy
+          </button>
+        </div>
+      </div>
+      <div className="hicp-summary-wrap">
+        <table className="hicp-summary-table">
+          <thead>
+            <tr>
+              <th>Breakdown</th>
+              <th>% YoY NSA</th>
+              <th>% QoQ SAAR</th>
+              <th>% MoM SAAR</th>
+              <th>Latest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.map((item) => (
+              <tr key={item.label}>
+                <td>{item.label}</td>
+                <td>{formatSummaryValue(item.yoy)}</td>
+                <td>{formatSummaryValue(item.qoq)}</td>
+                <td>{formatSummaryValue(item.mom)}</td>
+                <td>{item.date ? formatDateLabel(item.date) : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </article>
   );
 }
 
@@ -1010,6 +1090,8 @@ function parseSeriesCsv(text: string): SeriesRow[] {
       unit: row.unit ?? "",
       source: row.source ?? "",
       source_url: row.source_url ?? "",
+      frequency: row.frequency ?? "",
+      source_note: row.source_note ?? "",
     }))
     .filter((row) => row.date && row.chart_id && Number.isFinite(row.value));
 }
@@ -1184,6 +1266,82 @@ function filterSeasonalSource(
       const bBase = b.id.replace("_legacy", "");
       return baseOrder.indexOf(aBase) - baseOrder.indexOf(bBase);
     });
+}
+
+function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
+  const definitions = [
+    {
+      label: "HICP Headline",
+      yoy: "hicp_headline_yoy_nsa",
+      qoq: "hicp_headline_qoq_saar",
+      mom: "hicp_headline_mom_saar",
+    },
+    {
+      label: "HICP Core ex-Energy, Food, Alcohol and Tobacco",
+      yoy: "hicp_core_yoy_nsa",
+      qoq: "hicp_core_qoq_saar",
+      mom: "hicp_core_mom_saar",
+    },
+    {
+      label: "HICP Non-Energy Industrial Goods",
+      yoy: "hicp_goods_yoy_nsa",
+      qoq: "hicp_goods_qoq_saar",
+      mom: "hicp_goods_mom_saar",
+    },
+    {
+      label: "HICP Services",
+      yoy: "hicp_services_yoy_nsa",
+      qoq: "hicp_services_qoq_saar",
+      mom: "hicp_services_mom_saar",
+    },
+  ];
+
+  return definitions.map((definition) => {
+    const qoqId = source === "legacy" ? `${definition.qoq}_legacy` : definition.qoq;
+    const momId = source === "legacy" ? `${definition.mom}_legacy` : definition.mom;
+    const yoy = latestPoint(rows, definition.yoy);
+    const qoq = latestPoint(rows, qoqId);
+    const mom = latestPoint(rows, momId);
+    const latestTime = Math.max(
+      yoy ? parseTime(yoy.date) : -Infinity,
+      qoq ? parseTime(qoq.date) : -Infinity,
+      mom ? parseTime(mom.date) : -Infinity,
+    );
+    return {
+      date: Number.isFinite(latestTime) ? new Date(latestTime).toISOString().slice(0, 10) : "",
+      label: definition.label,
+      mom: mom?.value,
+      qoq: qoq?.value,
+      yoy: yoy?.value,
+    };
+  });
+}
+
+function latestPoint(rows: SeriesRow[], seriesId: string) {
+  return rows
+    .filter((row) => row.series_id === seriesId)
+    .sort((a, b) => parseTime(a.date) - parseTime(b.date))
+    .at(-1);
+}
+
+function latestTabUpdate(rows: SeriesRow[], tab: Exclude<TabId, "speakers">) {
+  const chartMap = new Map(charts.map((chart) => [chart.id, chart]));
+  const tabChartIds = new Set(charts.filter((chart) => chart.tab === tab).map((chart) => chart.id));
+  const tabRows = rows.filter((row) => tabChartIds.has(row.chart_id));
+  if (!tabRows.length) {
+    return { dateLabel: "pending", description: "Waiting for data" };
+  }
+
+  const maxTime = Math.max(...tabRows.map((row) => parseTime(row.date)));
+  const latestRows = tabRows.filter((row) => parseTime(row.date) === maxTime);
+  const descriptions = [...new Set(
+    latestRows.map((row) => chartMap.get(row.chart_id)?.title || row.series_name),
+  )].slice(0, 3);
+
+  return {
+    dateLabel: formatFullDateLabel(new Date(maxTime).toISOString().slice(0, 10)),
+    description: descriptions.join(", "),
+  };
 }
 
 function buildChartModel(series: ChartSeries[], definition?: ChartDefinition) {

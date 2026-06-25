@@ -139,6 +139,24 @@ h1 {
   align-items: stretch;
 }
 
+.tab-data-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.tab-data-banner strong {
+  color: var(--ink);
+  font-weight: 720;
+}
+
 .chart-panel,
 .speaker-panel {
   min-width: 0;
@@ -348,6 +366,48 @@ h1 {
 
 .source-note a:hover {
   text-decoration: underline;
+}
+
+.hicp-summary-panel {
+  margin: 0 0 18px;
+}
+
+.hicp-summary-wrap {
+  overflow-x: auto;
+}
+
+.hicp-summary-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.88rem;
+}
+
+.hicp-summary-table th,
+.hicp-summary-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 9px 10px;
+  text-align: right;
+}
+
+.hicp-summary-table th {
+  border-top: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hicp-summary-table th:first-child,
+.hicp-summary-table td:first-child {
+  text-align: left;
+  width: 38%;
+}
+
+.hicp-summary-table tr:nth-child(even) td {
+  background: rgba(222, 219, 210, 0.28);
 }
 
 .empty-state {
