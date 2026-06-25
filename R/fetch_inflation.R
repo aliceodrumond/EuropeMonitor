@@ -41,11 +41,14 @@ build_inflation_flash_fast_series <- function(project_root) {
   hicp_rates <- read_hicp_rate_chart_rows(hicp, include_ecb_sa = FALSE)
   hicp_seasonality <- read_hicp_seasonality_rows()
 
-  replacement_charts <- c(
+  rate_charts <- c(
     "hicp_headline_rates",
     "hicp_core_rates",
     "hicp_goods_rates",
-    "hicp_services_rates",
+    "hicp_services_rates"
+  )
+  replacement_charts <- c(
+    rate_charts,
     "hicp_headline_seasonality",
     "hicp_core_seasonality",
     "hicp_goods_seasonality",
@@ -54,8 +57,15 @@ build_inflation_flash_fast_series <- function(project_root) {
     "hicp_components"
   )
   kept <- previous[!previous$chart_id %in% replacement_charts, , drop = FALSE]
+  kept_ecb_sa <- previous[
+    previous$chart_id %in% rate_charts &
+      !grepl("_legacy$", previous$series_id) &
+      !grepl("_yoy_nsa$", previous$series_id),
+    ,
+    drop = FALSE
+  ]
   inflation <- apply_series_catalog(
-    rbind(kept, headline_core, components, hicp_rates, hicp_seasonality),
+    rbind(kept, kept_ecb_sa, headline_core, components, hicp_rates, hicp_seasonality),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
@@ -257,11 +267,10 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TR
   eurostat_input <- read_eurostat_hicp_input_rows(definition)
   legacy <- build_hicp_legacy_x12_rows(definition, eurostat_input)
   if (!include_ecb_sa) {
-    return(rbind(yoy, make_hicp_fast_ecb_proxy_rows(definition, legacy), legacy))
+    return(rbind(yoy, legacy))
   }
 
-  ecb_sa <- read_ecb_hicp_sa_index_rows(definition)
-  sa_index <- extend_hicp_sa_index_with_flash(ecb_sa, eurostat_input)
+  sa_index <- read_ecb_hicp_sa_index_rows(definition)
   if (!nrow(sa_index)) return(rbind(yoy, legacy))
   sa_index <- sa_index[order(sa_index$date), ]
   sa_index$mom_saar <- (sa_index$index / c(NA, head(sa_index$index, -1)))^12 * 100 - 100
@@ -312,20 +321,6 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TR
   )
 
   rbind(yoy, hoh, qoq, mom, legacy)
-}
-
-make_hicp_fast_ecb_proxy_rows <- function(definition, legacy) {
-  if (!nrow(legacy)) return(data.frame())
-
-  proxy <- legacy
-  proxy$series_id[proxy$series_id == definition$legacy_hoh_series_id] <- definition$hoh_series_id
-  proxy$series_id[proxy$series_id == definition$legacy_qoq_series_id] <- definition$qoq_series_id
-  proxy$series_id[proxy$series_id == definition$legacy_mom_series_id] <- definition$mom_series_id
-  proxy$source_note <- paste(
-    proxy$source_note,
-    "Temporary fast-release value shown in the SA - ECB view until the ECB SA index is available."
-  )
-  proxy
 }
 
 build_hicp_legacy_x12_rows <- function(definition, eurostat_input) {
