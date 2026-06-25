@@ -53,6 +53,37 @@ function Invoke-Logged {
   }
 }
 
+function Invoke-UpdatePipeline {
+  Invoke-Logged -FilePath $Rscript -Arguments @("R\run_daily_update.R")
+  Test-OutputData
+
+  Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
+  Test-OutputData
+
+  Invoke-Logged -FilePath $Npx -Arguments @(
+    "wrangler",
+    "pages",
+    "deploy",
+    "pages-dist/client",
+    "--project-name",
+    "legacy-europe-monitor",
+    "--branch",
+    "main"
+  )
+
+  if (Test-Path -LiteralPath $Git) {
+    & $Git add public/data data/processed data/raw config R app scripts package.json package-lock.json
+    $PendingChanges = & $Git status --porcelain public/data data/processed data/raw config R app scripts package.json package-lock.json
+    if ($PendingChanges) {
+      $CommitMessage = "Update Europe monitor data $(Get-Date -Format "yyyy-MM-dd HH:mm")"
+      Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", $CommitMessage)
+      Invoke-Logged -FilePath $Git -Arguments @("push")
+    } else {
+      Write-Log "No git changes to commit"
+    }
+  }
+}
+
 function Assert-FileExists {
   param([string]$Path)
   if (-not (Test-Path -LiteralPath $Path)) {
@@ -246,33 +277,24 @@ function Test-OutputData {
 
 Write-Log "Starting Europe monitor full update"
 
-Invoke-Logged -FilePath $Rscript -Arguments @("R\run_daily_update.R")
-Test-OutputData
-
-Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
-Test-OutputData
-
-Invoke-Logged -FilePath $Npx -Arguments @(
-  "wrangler",
-  "pages",
-  "deploy",
-  "pages-dist/client",
-  "--project-name",
-  "legacy-europe-monitor",
-  "--branch",
-  "main"
-)
-
-if (Test-Path -LiteralPath $Git) {
-  & $Git add public/data data/processed data/raw config R app scripts package.json package-lock.json
-  $PendingChanges = & $Git status --porcelain public/data data/processed data/raw config R app scripts package.json package-lock.json
-  if ($PendingChanges) {
-    $CommitMessage = "Update Europe monitor data $(Get-Date -Format "yyyy-MM-dd HH:mm")"
-    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", $CommitMessage)
-    Invoke-Logged -FilePath $Git -Arguments @("push")
-  } else {
-    Write-Log "No git changes to commit"
+$MaxAttempts = 3
+for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+  try {
+    if ($Attempt -gt 1) {
+      Write-Log "Retrying full update after previous failure; attempt $Attempt of $MaxAttempts"
+    }
+    Invoke-UpdatePipeline
+    Write-Log "Europe monitor full update completed"
+    exit 0
+  } catch {
+    $Message = $_.Exception.Message
+    Write-Log "Full update attempt $Attempt of $MaxAttempts failed: $Message"
+    if ($Attempt -ge $MaxAttempts) {
+      Write-Log "Europe monitor full update FAILED after $MaxAttempts attempts"
+      throw
+    }
+    $DelaySeconds = 60 * $Attempt
+    Write-Log "Waiting $DelaySeconds seconds before retrying full update"
+    Start-Sleep -Seconds $DelaySeconds
   }
 }
-
-Write-Log "Europe monitor full update completed"

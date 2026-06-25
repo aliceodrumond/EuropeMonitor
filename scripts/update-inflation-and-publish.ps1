@@ -53,6 +53,34 @@ function Invoke-Logged {
   }
 }
 
+function Invoke-InflationPipeline {
+  Invoke-Logged -FilePath $Rscript -Arguments @("R\run_inflation_update.R")
+  Test-InflationOutput
+
+  Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
+  Test-InflationOutput
+
+  Invoke-Logged -FilePath $Npx -Arguments @(
+    "wrangler",
+    "pages",
+    "deploy",
+    "pages-dist/client",
+    "--project-name",
+    "legacy-europe-monitor",
+    "--branch",
+    "main"
+  )
+
+  & $Git add public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
+  & $Git diff --cached --quiet
+  if ($LASTEXITCODE -ne 0) {
+    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation monitor data $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    Invoke-Logged -FilePath $Git -Arguments @("push")
+  } else {
+    Write-Log "No inflation data changes to commit"
+  }
+}
+
 function Assert-SeriesRows {
   param(
     [object[]]$Rows,
@@ -146,30 +174,24 @@ function Test-InflationOutput {
 
 Write-Log "Starting Europe monitor inflation-only update"
 
-Invoke-Logged -FilePath $Rscript -Arguments @("R\run_inflation_update.R")
-Test-InflationOutput
-
-Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
-Test-InflationOutput
-
-Invoke-Logged -FilePath $Npx -Arguments @(
-  "wrangler",
-  "pages",
-  "deploy",
-  "pages-dist/client",
-  "--project-name",
-  "legacy-europe-monitor",
-  "--branch",
-  "main"
-)
-
-& $Git add public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
-& $Git diff --cached --quiet
-if ($LASTEXITCODE -ne 0) {
-  Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation monitor data $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
-  Invoke-Logged -FilePath $Git -Arguments @("push")
-} else {
-  Write-Log "No inflation data changes to commit"
+$MaxAttempts = 3
+for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+  try {
+    if ($Attempt -gt 1) {
+      Write-Log "Retrying inflation-only update after previous failure; attempt $Attempt of $MaxAttempts"
+    }
+    Invoke-InflationPipeline
+    Write-Log "Europe monitor inflation-only update completed"
+    exit 0
+  } catch {
+    $Message = $_.Exception.Message
+    Write-Log "Inflation-only update attempt $Attempt of $MaxAttempts failed: $Message"
+    if ($Attempt -ge $MaxAttempts) {
+      Write-Log "Europe monitor inflation-only update FAILED after $MaxAttempts attempts"
+      throw
+    }
+    $DelaySeconds = 60 * $Attempt
+    Write-Log "Waiting $DelaySeconds seconds before retrying inflation-only update"
+    Start-Sleep -Seconds $DelaySeconds
+  }
 }
-
-Write-Log "Europe monitor inflation-only update completed"
