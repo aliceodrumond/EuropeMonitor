@@ -436,6 +436,11 @@ h1 {
   background: rgba(222, 219, 210, 0.28);
 }
 
+.latest-date {
+  color: var(--red);
+  font-weight: 780;
+}
+
 .empty-state {
   display: grid;
   min-height: 260px;

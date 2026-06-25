@@ -619,7 +619,7 @@ function HicpSummaryTable({ rows }: { rows: SeriesRow[] }) {
                 <td style={heatmapStyle(item.momChange, tableRows.map((row) => row.momChange))}>
                   {formatChangeValue(item.momChange)}
                 </td>
-                <td>{item.date ? formatDateLabel(item.date) : ""}</td>
+                <td>{item.date ? <span className="latest-date">{formatDateLabel(item.date)}</span> : ""}</td>
               </tr>
             ))}
           </tbody>
