@@ -378,7 +378,7 @@ h1 {
 
 .hicp-summary-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 920px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 0.88rem;
@@ -403,7 +403,7 @@ h1 {
 .hicp-summary-table th:first-child,
 .hicp-summary-table td:first-child {
   text-align: left;
-  width: 38%;
+  width: 30%;
 }
 
 .hicp-summary-table tr:nth-child(even) td {

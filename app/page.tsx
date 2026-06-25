@@ -544,8 +544,11 @@ function HicpSummaryTable({ rows }: { rows: SeriesRow[] }) {
             <tr>
               <th>Breakdown</th>
               <th>% YoY NSA</th>
+              <th>vs m/m</th>
               <th>% QoQ SAAR</th>
+              <th>vs m/m</th>
               <th>% MoM SAAR</th>
+              <th>vs m/m</th>
               <th>Latest</th>
             </tr>
           </thead>
@@ -554,8 +557,17 @@ function HicpSummaryTable({ rows }: { rows: SeriesRow[] }) {
               <tr key={item.label}>
                 <td>{item.label}</td>
                 <td>{formatSummaryValue(item.yoy)}</td>
+                <td style={heatmapStyle(item.yoyChange, tableRows.map((row) => row.yoyChange))}>
+                  {formatChangeValue(item.yoyChange)}
+                </td>
                 <td>{formatSummaryValue(item.qoq)}</td>
+                <td style={heatmapStyle(item.qoqChange, tableRows.map((row) => row.qoqChange))}>
+                  {formatChangeValue(item.qoqChange)}
+                </td>
                 <td>{formatSummaryValue(item.mom)}</td>
+                <td style={heatmapStyle(item.momChange, tableRows.map((row) => row.momChange))}>
+                  {formatChangeValue(item.momChange)}
+                </td>
                 <td>{item.date ? formatDateLabel(item.date) : ""}</td>
               </tr>
             ))}
@@ -1299,9 +1311,9 @@ function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
   return definitions.map((definition) => {
     const qoqId = source === "legacy" ? `${definition.qoq}_legacy` : definition.qoq;
     const momId = source === "legacy" ? `${definition.mom}_legacy` : definition.mom;
-    const yoy = latestPoint(rows, definition.yoy);
-    const qoq = latestPoint(rows, qoqId);
-    const mom = latestPoint(rows, momId);
+    const yoy = latestPointWithChange(rows, definition.yoy);
+    const qoq = latestPointWithChange(rows, qoqId);
+    const mom = latestPointWithChange(rows, momId);
     const latestTime = Math.max(
       yoy ? parseTime(yoy.date) : -Infinity,
       qoq ? parseTime(qoq.date) : -Infinity,
@@ -1311,17 +1323,28 @@ function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
       date: Number.isFinite(latestTime) ? new Date(latestTime).toISOString().slice(0, 10) : "",
       label: definition.label,
       mom: mom?.value,
+      momChange: mom?.change,
       qoq: qoq?.value,
+      qoqChange: qoq?.change,
       yoy: yoy?.value,
+      yoyChange: yoy?.change,
     };
   });
 }
 
-function latestPoint(rows: SeriesRow[], seriesId: string) {
-  return rows
+function latestPointWithChange(rows: SeriesRow[], seriesId: string) {
+  const points = rows
     .filter((row) => row.series_id === seriesId)
-    .sort((a, b) => parseTime(a.date) - parseTime(b.date))
-    .at(-1);
+    .sort((a, b) => parseTime(a.date) - parseTime(b.date));
+  const latest = points.at(-1);
+  if (!latest) {
+    return undefined;
+  }
+  const previous = points.at(-2);
+  return {
+    ...latest,
+    change: previous ? latest.value - previous.value : undefined,
+  };
 }
 
 function latestTabUpdate(rows: SeriesRow[], tab: Exclude<TabId, "speakers">) {
@@ -1605,6 +1628,37 @@ function formatFullDateLabel(date: string) {
 function formatValue(value: number, unit: string) {
   const formatted = formatNumber(value);
   return unit === "% y/y" ? `${formatted}%` : formatted;
+}
+
+function formatSummaryValue(value?: number) {
+  return Number.isFinite(value) ? formatNumber(value as number) : "";
+}
+
+function formatChangeValue(value?: number) {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  const numeric = value as number;
+  const sign = numeric > 0 ? "+" : "";
+  return `${sign}${formatNumber(numeric)}`;
+}
+
+function heatmapStyle(value: number | undefined, values: Array<number | undefined>) {
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  const numericValues = values.filter((item): item is number => Number.isFinite(item));
+  if (!numericValues.length) {
+    return undefined;
+  }
+  const maxAbs = Math.max(...numericValues.map((item) => Math.abs(item))) || 1;
+  const intensity = Math.min(Math.abs(value as number) / maxAbs, 1);
+  const color = (value as number) >= 0 ? "168, 63, 57" : "17, 103, 95";
+  return {
+    background: `rgba(${color}, ${0.1 + intensity * 0.24})`,
+    color: (value as number) >= 0 ? "#7f2f2a" : "#0f5f58",
+    fontWeight: 720,
+  };
 }
 
 function formatNumber(value: number) {
