@@ -1,0 +1,52 @@
+{
+  "snapshots": [
+    {
+      "id": "2026-06-25",
+      "date": "2026-06-25",
+      "trigger": "Initial scenario tracker snapshot",
+      "coreView": "ECB still cautious, activity soft but not breaking.",
+      "confidence": "Medium",
+      "activity": [
+        "PMIs: manufacturing holding well above 50, with a small effect from the war probably due to incentives to front-load or stockpile and longer delivery times.",
+        "Services fell mainly due to the expectations component. They improved marginally in June versus May, but remain below 50.",
+        "GDP tracking is signalling 0.2% q/q SA in Q2 2026 versus -0.2% in Q1, in line with ECB projections.",
+        "IFO is marginally better, but still subdued due to the expectations component.",
+        "Credit ECB BLS is weak, last update Q2 on 28 April, mainly due to the economic outlook.",
+        "Low risk of recession, but low growth. Risk of stagflation."
+      ],
+      "inflation": [
+        "Headline inflation started to improve from the high in April and should continue the downward trend.",
+        "Core is higher at the margin, also impacted by the war, especially in services airlines.",
+        "Goods are at a low level, 0.9% y/y.",
+        "Services remain sticky, at 3.5% y/y."
+      ],
+      "rates": [
+        "We do not think the ECB will hike further.",
+        "The risk is delivery of one additional 25bp hike in September, after holding in July. This was the call from 11 June after the ECB meeting.",
+        "Pricing is +2.2bp for 23 July, +16bp for 10 September, +29bp accumulated until end-2026 and +29bp until 13 September 2027."
+      ],
+      "risks": [
+        "The Iranian war started on 28 February and we consider it to have finished on 17 June. It is essential to the scenario that it does not restart. This is our base case with high probability.",
+        "Another risk, less of a game changer but still relevant for the call, is that secondary inflation effects from the energy shock are higher than expected."
+      ],
+      "forecastTable": {
+        "title": "ECB Scenarios (Jun/26)",
+        "marketLabel": "Mkt Price: +68bps in 2026",
+        "columns": [
+          { "group": "HICP", "years": ["26", "27", "28"] },
+          { "group": "Core HICP", "years": ["26", "27", "28"] },
+          { "group": "GDP", "years": ["26", "27", "28"] },
+          { "group": "Brent, $/b", "years": ["26", "27", "28"] },
+          { "group": "TTF, $/MWh", "years": ["26", "27", "28"] }
+        ],
+        "rows": [
+          { "label": "Baseline", "values": [[3.0, 2.3, 2.0], [2.5, 2.5, 2.2], [0.8, 1.2, 1.5], [97, 82, 77], [46, 38, 28]] },
+          { "label": "Milder", "values": [[2.9, 1.8, 1.8], [2.4, 2.3, 2.1], [0.8, 1.4, 1.6], [82, 70, 66], [39, 32, 24]] },
+          { "label": "Adverse", "values": [[3.3, 3.0, 2.3], [2.5, 2.7, 2.3], [0.7, 0.9, 1.5], [115, 98, 92], [57, 48, 37]] },
+          { "label": "Severe", "values": [[4.0, 5.3, 3.0], [2.5, 3.8, 2.9], [0.5, 0.4, 1.6], [157, 133, 125], [93, 77, 58]] },
+          { "label": "Lgcy Spot", "highlight": true, "values": [[2.6, 2.1, 1.8], [2.4, 2.2, 2.0], [0.9, 1.3, 1.4], [78, 75, 73], [40, 36, 32]] }
+        ]
+      }
+    }
+  ]
+}
