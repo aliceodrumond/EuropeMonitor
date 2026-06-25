@@ -66,10 +66,11 @@ read_ecb_ces_inflation_expectations_rows <- function() {
   definitions <- data.frame(
     key = c(
       "M.Z18.ALL.T.C1120.NUM_VAR.WM",
-      "M.Z18.ALL.T.C1220.NUM_VAR.WM"
+      "M.Z18.ALL.T.C1220.NUM_VAR.WM",
+      "M.Z18.ALL.T.E2020.NUM_VAR.WM"
     ),
-    series_id = c("ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y"),
-    series_name = c("12M inflation expectations", "3Y inflation expectations"),
+    series_id = c("ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y", "ecb_ces_infl_exp_5y"),
+    series_name = c("12M inflation expectations", "3Y inflation expectations", "5Y inflation expectations"),
     stringsAsFactors = FALSE
   )
 
