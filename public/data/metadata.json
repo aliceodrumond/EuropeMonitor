@@ -8,8 +8,8 @@
     "description": "ifo Institute: GE IFO June 2026"
   },
   "inflation_last_new": {
-    "date": "2012-06-01",
-    "description": "ECB Data Portal: % HoH SAAR"
+    "date": "2026-04-01",
+    "description": "ECB Consumer Expectations Survey: 5Y inflation expectations"
   },
-  "inflation_rows": 9766
+  "inflation_rows": 9811
 }
