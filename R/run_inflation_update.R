@@ -11,6 +11,7 @@ if (length(file_arg) > 0) {
 source(file.path(project_root, "R/helpers.R"), local = TRUE)
 source(file.path(project_root, "R/fetch_activity.R"), local = TRUE)
 source(file.path(project_root, "R/fetch_inflation.R"), local = TRUE)
+source(file.path(project_root, "R/build_site_data.R"), local = TRUE)
 
 ensure_project_dirs(project_root)
 
@@ -18,18 +19,25 @@ message("Building Europe inflation monitor data...")
 inflation <- build_inflation_series(project_root)
 public_data <- file.path(project_root, "public/data")
 dir.create(public_data, recursive = TRUE, showWarnings = FALSE)
-write_csv_utf8(inflation, file.path(public_data, "inflation_series.csv"))
-
+inflation_path <- file.path(public_data, "inflation_series.csv")
 metadata_path <- file.path(public_data, "metadata.json")
-metadata <- c(
-  "{",
-  sprintf('  "last_updated": "%s",', format(Sys.Date(), "%Y-%m-%d")),
-  '  "data_mode": "source_linked_mock_values",',
-  '  "generated_by": "R/run_inflation_update.R",',
-  sprintf('  "inflation_rows": %s', nrow(inflation)),
-  "}"
+previous_metadata <- read_metadata_json(metadata_path)
+inflation_last_new <- summarize_new_observations(inflation, inflation_path, previous_metadata$inflation_last_new)
+write_csv_utf8(inflation, inflation_path)
+
+metadata <- previous_metadata
+metadata$last_updated <- format(Sys.Date(), "%Y-%m-%d")
+metadata$data_mode <- "source_linked_mock_values"
+metadata$generated_by <- "R/run_inflation_update.R"
+metadata$inflation_rows <- nrow(inflation)
+metadata$inflation_last_new <- inflation_last_new
+if (is.null(metadata$activity_last_new)) {
+  metadata$activity_last_new <- list(date = "", description = "No new observations in latest update")
+}
+write_metadata_json(
+  metadata,
+  metadata_path
 )
-writeLines(metadata, metadata_path, useBytes = TRUE)
 
 message(sprintf("Inflation rows: %s", nrow(inflation)))
 message("Done.")

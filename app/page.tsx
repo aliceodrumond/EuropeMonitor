@@ -39,6 +39,13 @@ type Metadata = {
   last_updated?: string;
   data_mode?: string;
   generated_by?: string;
+  activity_last_new?: LastNewObservation;
+  inflation_last_new?: LastNewObservation;
+};
+
+type LastNewObservation = {
+  date?: string;
+  description?: string;
 };
 
 type ChartDefinition = {
@@ -468,7 +475,7 @@ export default function Home() {
         <SpeakerTable speakers={speakers} />
       ) : (
         <>
-          <TabDataBanner rows={seriesRows} tab={activeTab} />
+          <TabDataBanner metadata={metadata} rows={seriesRows} tab={activeTab} />
           {activeTab === "inflation" ? <HicpSummaryTable rows={seriesRows} /> : null}
           <section className="dashboard-grid">
             {activeCharts.map((chart) => (
@@ -491,18 +498,23 @@ export default function Home() {
 }
 
 function TabDataBanner({
+  metadata,
   rows,
   tab,
 }: {
+  metadata: Metadata;
   rows: SeriesRow[];
   tab: Exclude<TabId, "speakers">;
 }) {
-  const summary = useMemo(() => latestTabUpdate(rows, tab), [rows, tab]);
+  const summary = tab === "activity" ? metadata.activity_last_new : metadata.inflation_last_new;
+  const fallback = useMemo(() => latestTabUpdate(rows, tab), [rows, tab]);
+  const date = summary?.date ? formatFullDateLabel(summary.date) : fallback.dateLabel;
+  const description = summary?.description || fallback.description;
 
   return (
     <section className="tab-data-banner">
-      <span>Last data updated: {summary.dateLabel}</span>
-      <strong>{summary.description}</strong>
+      <span>Last data updated: {date}</span>
+      <strong>{description}</strong>
     </section>
   );
 }
