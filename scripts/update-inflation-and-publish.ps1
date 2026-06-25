@@ -178,7 +178,8 @@ function Test-InflationOutput {
     "core_services_expected",
     "wage_tracker_ea",
     "ecb_ces_infl_exp_1y",
-    "ecb_ces_infl_exp_3y"
+    "ecb_ces_infl_exp_3y",
+    "ecb_ces_infl_exp_5y"
   )) {
     Assert-SeriesRows -Rows $inflation -SeriesId $series -MinimumRows 1
   }

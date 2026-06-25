@@ -400,7 +400,7 @@ const charts: ChartDefinition[] = [
     kicker: "Expectations",
     yLeftLabel: "%",
     defaultWindow: "all",
-    seriesOrder: ["ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y"],
+    seriesOrder: ["ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y", "ecb_ces_infl_exp_5y"],
   },
 ];
 
