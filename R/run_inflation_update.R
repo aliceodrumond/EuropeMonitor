@@ -15,11 +15,29 @@ source(file.path(project_root, "R/build_site_data.R"), local = TRUE)
 
 ensure_project_dirs(project_root)
 
+build_series_with_fallback <- function(builder, fallback_path, label) {
+  tryCatch(
+    builder(),
+    error = function(error) {
+      warning(sprintf("%s update failed: %s. Continuing with last valid local data.", label, error$message))
+      if (!file.exists(fallback_path)) {
+        stop(sprintf("%s update failed and no fallback file exists at %s", label, fallback_path))
+      }
+      utils::read.csv(fallback_path, stringsAsFactors = FALSE, check.names = FALSE)
+    }
+  )
+}
+
 message("Building Europe inflation monitor data...")
-inflation <- build_inflation_series(project_root)
 public_data <- file.path(project_root, "public/data")
 dir.create(public_data, recursive = TRUE, showWarnings = FALSE)
 inflation_path <- file.path(public_data, "inflation_series.csv")
+processed_inflation_path <- file.path(project_root, "data/processed/inflation_series.csv")
+inflation <- build_series_with_fallback(
+  builder = function() build_inflation_series(project_root),
+  fallback_path = processed_inflation_path,
+  label = "Inflation"
+)
 metadata_path <- file.path(public_data, "metadata.json")
 previous_metadata <- read_metadata_json(metadata_path)
 inflation_last_new <- summarize_new_observations(inflation, inflation_path, previous_metadata$inflation_last_new)

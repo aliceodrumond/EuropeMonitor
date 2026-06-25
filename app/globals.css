@@ -373,22 +373,23 @@ h1 {
 }
 
 .hicp-summary-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .hicp-summary-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .hicp-summary-table th,
 .hicp-summary-table td {
   border-bottom: 1px solid var(--line);
-  padding: 9px 10px;
+  padding: 8px 6px;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .hicp-summary-table th {
@@ -403,7 +404,10 @@ h1 {
 .hicp-summary-table th:first-child,
 .hicp-summary-table td:first-child {
   text-align: left;
-  width: 30%;
+}
+
+.hicp-summary-table th {
+  width: 12.5%;
 }
 
 .hicp-summary-table tr:nth-child(even) td {
