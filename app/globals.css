@@ -421,28 +421,15 @@ h1 {
 }
 
 .hicp-summary-table th {
-  width: 13.5%;
-}
-
-.hicp-summary-table th:nth-child(1),
-.hicp-summary-table td:nth-child(1) {
-  width: 25%;
-}
-
-.hicp-summary-table th:nth-child(3),
-.hicp-summary-table td:nth-child(3),
-.hicp-summary-table th:nth-child(5),
-.hicp-summary-table td:nth-child(5),
-.hicp-summary-table th:nth-child(7),
-.hicp-summary-table td:nth-child(7) {
-  width: 7%;
-  padding-left: 3px;
-  padding-right: 3px;
+  width: 12.5%;
 }
 
 .hicp-summary-table th:nth-child(8),
 .hicp-summary-table td:nth-child(8) {
-  width: 10%;
+  font-size: 0.74rem;
+  padding-left: 3px;
+  padding-right: 3px;
+  white-space: normal;
 }
 
 .hicp-summary-table tr:nth-child(even) td {

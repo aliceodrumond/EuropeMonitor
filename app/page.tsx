@@ -833,11 +833,25 @@ function SeasonalityChart({
   definition: ChartDefinition;
   rows: SeriesRow[];
 }) {
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const series = useMemo(() => buildSeries(rows, definition), [definition, rows]);
   const rangeMin = series.find((item) => item.id.endsWith("_range_min"));
   const rangeMax = series.find((item) => item.id.endsWith("_range_max"));
   const visibleSeries = series.filter((item) => !item.id.endsWith("_range_min") && !item.id.endsWith("_range_max"));
+  const activeSeries = series.filter((item) => !hiddenSeries.has(item.id));
   const model = useMemo(() => buildSeasonalityModel(series), [series]);
+
+  function toggleSeries(seriesId: string) {
+    setHiddenSeries((current) => {
+      const next = new Set(current);
+      if (next.has(seriesId)) {
+        next.delete(seriesId);
+      } else {
+        next.add(seriesId);
+      }
+      return next;
+    });
+  }
 
   if (!series.length || !model) {
     return (
@@ -864,7 +878,13 @@ function SeasonalityChart({
 
       <div className="legend" aria-label="Sections">
         {visibleSeries.map((item) => (
-          <span className="legend-button static-legend" key={item.id}>
+          <button
+            className="legend-button"
+            data-hidden={hiddenSeries.has(item.id)}
+            key={item.id}
+            onClick={() => toggleSeries(item.id)}
+            type="button"
+          >
             <span
               className="legend-swatch"
               style={{
@@ -873,7 +893,7 @@ function SeasonalityChart({
               }}
             />
             {item.name}
-          </span>
+          </button>
         ))}
         <span className="legend-button static-legend">
           <span className="legend-swatch range-swatch" />
@@ -946,7 +966,9 @@ function SeasonalityChart({
           {rangeMin && rangeMax ? (
             <path className="seasonality-range" d={seasonalityRangePath(rangeMin, rangeMax, model.scaleX, model.scaleY)} />
           ) : null}
-          {visibleSeries.map((item) => (
+          {activeSeries
+            .filter((item) => !item.id.endsWith("_range_min") && !item.id.endsWith("_range_max"))
+            .map((item) => (
             <path
               className="series-path"
               d={pathForSeasonalitySeries(item, model.scaleX, model.scaleY)}
