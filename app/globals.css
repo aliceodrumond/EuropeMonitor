@@ -281,6 +281,11 @@ h1 {
   stroke-linejoin: round;
 }
 
+.seasonality-range {
+  fill: rgba(150, 150, 150, 0.22);
+  stroke: none;
+}
+
 .series-point {
   opacity: 0.42;
 }
@@ -350,6 +355,15 @@ h1 {
   opacity: 0.48;
 }
 
+.static-legend {
+  cursor: default;
+}
+
+.range-swatch {
+  background: rgba(150, 150, 150, 0.22);
+  border-color: rgba(150, 150, 150, 0.38);
+}
+
 .source-note {
   margin: 6px 0 0;
   color: var(--muted);
@@ -407,7 +421,28 @@ h1 {
 }
 
 .hicp-summary-table th {
-  width: 12.5%;
+  width: 13.5%;
+}
+
+.hicp-summary-table th:nth-child(1),
+.hicp-summary-table td:nth-child(1) {
+  width: 25%;
+}
+
+.hicp-summary-table th:nth-child(3),
+.hicp-summary-table td:nth-child(3),
+.hicp-summary-table th:nth-child(5),
+.hicp-summary-table td:nth-child(5),
+.hicp-summary-table th:nth-child(7),
+.hicp-summary-table td:nth-child(7) {
+  width: 7%;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+
+.hicp-summary-table th:nth-child(8),
+.hicp-summary-table td:nth-child(8) {
+  width: 10%;
 }
 
 .hicp-summary-table tr:nth-child(even) td {

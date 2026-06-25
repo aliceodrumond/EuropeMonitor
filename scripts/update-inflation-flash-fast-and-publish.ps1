@@ -49,7 +49,7 @@ function Assert-SeriesRows {
   if ($seriesRows.Count -lt $MinimumRows) {
     throw "Series $SeriesId has $($seriesRows.Count) rows; expected at least $MinimumRows"
   }
-  $last = $seriesRows[-1]
+  $last = @($seriesRows | Sort-Object date)[-1]
   Write-Log "Validated series ${SeriesId}: $($seriesRows.Count) rows, last=$($last.date), value=$($last.value)"
 }
 
@@ -73,6 +73,10 @@ function Test-FastInflationOutput {
     "hicp_core_rates",
     "hicp_goods_rates",
     "hicp_services_rates",
+    "hicp_headline_seasonality",
+    "hicp_core_seasonality",
+    "hicp_goods_seasonality",
+    "hicp_services_seasonality",
     "hicp_headline_core",
     "hicp_components"
   )) {
@@ -80,21 +84,29 @@ function Test-FastInflationOutput {
   }
   foreach ($series in @(
     "hicp_headline_yoy_nsa",
+    "hicp_headline_mom_nsa_median",
+    "hicp_headline_mom_nsa_2026",
     "hicp_headline_qoq_saar",
     "hicp_headline_mom_saar",
     "hicp_headline_qoq_saar_legacy",
     "hicp_headline_mom_saar_legacy",
     "hicp_core_yoy_nsa",
+    "hicp_core_mom_nsa_median",
+    "hicp_core_mom_nsa_2026",
     "hicp_core_qoq_saar",
     "hicp_core_mom_saar",
     "hicp_core_qoq_saar_legacy",
     "hicp_core_mom_saar_legacy",
     "hicp_goods_yoy_nsa",
+    "core_goods_mom_nsa_median",
+    "core_goods_mom_nsa_2026",
     "hicp_goods_qoq_saar",
     "hicp_goods_mom_saar",
     "hicp_goods_qoq_saar_legacy",
     "hicp_goods_mom_saar_legacy",
     "hicp_services_yoy_nsa",
+    "core_services_mom_nsa_median",
+    "core_services_mom_nsa_2026",
     "hicp_services_qoq_saar",
     "hicp_services_mom_saar",
     "hicp_services_qoq_saar_legacy",

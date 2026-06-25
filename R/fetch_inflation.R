@@ -14,12 +14,13 @@ build_inflation_series <- function(project_root) {
   headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp)
+  hicp_seasonality <- read_hicp_seasonality_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
   inflation <- apply_series_catalog(
-    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, ces_expectations),
+    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, hicp_seasonality, ces_expectations),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
@@ -38,18 +39,23 @@ build_inflation_flash_fast_series <- function(project_root) {
   headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp, include_ecb_sa = FALSE)
+  hicp_seasonality <- read_hicp_seasonality_rows()
 
   replacement_charts <- c(
     "hicp_headline_rates",
     "hicp_core_rates",
     "hicp_goods_rates",
     "hicp_services_rates",
+    "hicp_headline_seasonality",
+    "hicp_core_seasonality",
+    "hicp_goods_seasonality",
+    "hicp_services_seasonality",
     "hicp_headline_core",
     "hicp_components"
   )
   kept <- previous[!previous$chart_id %in% replacement_charts, , drop = FALSE]
   inflation <- apply_series_catalog(
-    rbind(kept, headline_core, components, hicp_rates),
+    rbind(kept, headline_core, components, hicp_rates, hicp_seasonality),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
@@ -111,10 +117,11 @@ read_ecb_ces_series_rows <- function(definition) {
   )
 }
 
-read_hicp_rate_chart_rows <- function(yoy_rows, include_ecb_sa = TRUE) {
-  definitions <- data.frame(
+hicp_rate_definitions <- function() {
+  data.frame(
     dataset = c("teicp000", "teicp200", "teicp290", "teicp280"),
     chart_id = c("hicp_headline_rates", "hicp_core_rates", "hicp_goods_rates", "hicp_services_rates"),
+    seasonality_chart_id = c("hicp_headline_seasonality", "hicp_core_seasonality", "hicp_goods_seasonality", "hicp_services_seasonality"),
     coicop = c("CP00", "TOT_X_NRG_FOOD", "IGD_NNRG", "SERV"),
     base_series_id = c("hicp_headline", "hicp_core", "core_goods", "core_services"),
     yoy_series_id = c("hicp_headline_yoy_nsa", "hicp_core_yoy_nsa", "hicp_goods_yoy_nsa", "hicp_services_yoy_nsa"),
@@ -139,10 +146,100 @@ read_hicp_rate_chart_rows <- function(yoy_rows, include_ecb_sa = TRUE) {
     ),
     stringsAsFactors = FALSE
   )
+}
+
+read_hicp_rate_chart_rows <- function(yoy_rows, include_ecb_sa = TRUE) {
+  definitions <- hicp_rate_definitions()
 
   do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
     build_hicp_rate_chart_rows(definitions[i, ], yoy_rows, include_ecb_sa = include_ecb_sa)
   }))
+}
+
+read_hicp_seasonality_rows <- function() {
+  definitions <- hicp_rate_definitions()
+  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    build_hicp_seasonality_rows(definitions[i, ])
+  }))
+}
+
+build_hicp_seasonality_rows <- function(definition) {
+  eurostat_input <- read_eurostat_hicp_input_rows(definition)
+  nsa <- read_eurostat_hicp_midx_index(definition$coicop, definition$base_series_id)
+  nsa <- extend_hicp_nsa_index_with_flash(nsa, eurostat_input)
+  if (nrow(nsa) < 24) return(data.frame())
+
+  nsa <- nsa[order(nsa$date), ]
+  nsa$mom_nsa <- nsa$nsa_index / c(NA, head(nsa$nsa_index, -1)) * 100 - 100
+  nsa$year <- as.integer(format(nsa$date, "%Y"))
+  nsa$month <- as.integer(format(nsa$date, "%m"))
+  nsa <- nsa[!is.na(nsa$mom_nsa), ]
+
+  seasonal_panel <- do.call(rbind, lapply(2012:2026, function(target_year) {
+    rows <- nsa[(nsa$year == target_year & nsa$month %in% 1:12) | (nsa$year == target_year - 1 & nsa$month == 12), ]
+    if (!nrow(rows)) return(data.frame())
+    rows$seasonal_year <- target_year
+    rows$seasonal_month <- ifelse(rows$year == target_year - 1 & rows$month == 12, 0, rows$month)
+    rows
+  }))
+
+  history <- seasonal_panel[seasonal_panel$seasonal_year >= 2012 & seasonal_panel$seasonal_year <= 2025, ]
+  if (!nrow(history)) return(data.frame())
+  stats <- do.call(rbind, lapply(0:12, function(month_value) {
+    values <- history$mom_nsa[history$seasonal_month == month_value]
+    if (!length(values)) return(data.frame())
+    data.frame(
+      seasonal_month = month_value,
+      min = min(values, na.rm = TRUE),
+      median = stats::median(values, na.rm = TRUE),
+      max = max(values, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  selected <- seasonal_panel[seasonal_panel$seasonal_year %in% c(2022, 2025, 2026), ]
+  selected <- selected[selected$seasonal_month %in% 0:12, ]
+  selected_rows <- do.call(rbind, lapply(c(2022, 2025, 2026), function(target_year) {
+    year_rows <- selected[selected$seasonal_year == target_year, ]
+    if (!nrow(year_rows)) return(data.frame())
+    make_hicp_seasonality_series(
+      year_rows$seasonal_month,
+      definition$seasonality_chart_id,
+      sprintf("%s_mom_nsa_%s", definition$base_series_id, target_year),
+      as.character(target_year),
+      year_rows$mom_nsa,
+      definition$eurostat_url,
+      "Eurostat HICP"
+    )
+  }))
+
+  rbind(
+    make_hicp_seasonality_series(stats$seasonal_month, definition$seasonality_chart_id, sprintf("%s_mom_nsa_range_min", definition$base_series_id), "2012-2025 min", stats$min, definition$eurostat_url, "Eurostat HICP"),
+    make_hicp_seasonality_series(stats$seasonal_month, definition$seasonality_chart_id, sprintf("%s_mom_nsa_median", definition$base_series_id), "2012-2025 median", stats$median, definition$eurostat_url, "Eurostat HICP"),
+    make_hicp_seasonality_series(stats$seasonal_month, definition$seasonality_chart_id, sprintf("%s_mom_nsa_range_max", definition$base_series_id), "2012-2025 max", stats$max, definition$eurostat_url, "Eurostat HICP"),
+    selected_rows
+  )
+}
+
+make_hicp_seasonality_series <- function(months, chart_id, series_id, series_name, values, source_url, source) {
+  dates <- ifelse(
+    as.integer(months) == 0,
+    "1999-12-01",
+    sprintf("2000-%02d-01", as.integer(months))
+  )
+  make_series_frame(
+    as.Date(dates),
+    chart_id,
+    series_id,
+    series_name,
+    "Euro Area",
+    values,
+    unit = "% m/m NSA",
+    source = source,
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = "Seasonality chart uses Dec-1, Jan, ..., Dec on the x-axis."
+  )
 }
 
 build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TRUE) {

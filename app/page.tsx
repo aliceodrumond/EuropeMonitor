@@ -54,6 +54,7 @@ type ChartDefinition = {
   title: string;
   kicker: string;
   yLeftLabel: string;
+  chartType?: "time" | "seasonality";
   yRightLabel?: string;
   fixedDomains?: Partial<Record<AxisSide, { min: number; max: number }>>;
   defaultWindow?: WindowKey;
@@ -302,6 +303,24 @@ const charts: ChartDefinition[] = [
     seriesOrder: ["hicp_core_yoy_nsa", "hicp_core_hoh_saar", "hicp_core_qoq_saar", "hicp_core_mom_saar", "hicp_core_hoh_saar_legacy", "hicp_core_qoq_saar_legacy", "hicp_core_mom_saar_legacy"],
   },
   {
+    id: "hicp_headline_seasonality",
+    tab: "inflation",
+    title: "HICP Headline Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["hicp_headline_mom_nsa_range_min", "hicp_headline_mom_nsa_range_max", "hicp_headline_mom_nsa_median", "hicp_headline_mom_nsa_2022", "hicp_headline_mom_nsa_2025", "hicp_headline_mom_nsa_2026"],
+  },
+  {
+    id: "hicp_core_seasonality",
+    tab: "inflation",
+    title: "HICP Core Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["hicp_core_mom_nsa_range_min", "hicp_core_mom_nsa_range_max", "hicp_core_mom_nsa_median", "hicp_core_mom_nsa_2022", "hicp_core_mom_nsa_2025", "hicp_core_mom_nsa_2026"],
+  },
+  {
     id: "hicp_goods_rates",
     tab: "inflation",
     title: "HICP Non-Energy Industrial Goods",
@@ -324,6 +343,24 @@ const charts: ChartDefinition[] = [
     startDate: "2018-01-01",
     seasonalToggle: true,
     seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_hoh_saar", "hicp_services_qoq_saar", "hicp_services_mom_saar", "hicp_services_hoh_saar_legacy", "hicp_services_qoq_saar_legacy", "hicp_services_mom_saar_legacy"],
+  },
+  {
+    id: "hicp_goods_seasonality",
+    tab: "inflation",
+    title: "HICP Non-Energy Industrial Goods Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["core_goods_mom_nsa_range_min", "core_goods_mom_nsa_range_max", "core_goods_mom_nsa_median", "core_goods_mom_nsa_2022", "core_goods_mom_nsa_2025", "core_goods_mom_nsa_2026"],
+  },
+  {
+    id: "hicp_services_seasonality",
+    tab: "inflation",
+    title: "HICP Services Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["core_services_mom_nsa_range_min", "core_services_mom_nsa_range_max", "core_services_mom_nsa_median", "core_services_mom_nsa_2022", "core_services_mom_nsa_2025", "core_services_mom_nsa_2026"],
   },
   {
     id: "hicp_headline_core",
@@ -377,6 +414,8 @@ const palette = [
   "#111111",
   "#8c7b57",
 ];
+
+const seasonalityLabels = ["Dec -1", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const windows: Array<{ key: WindowKey; label: string; months?: number; years?: number }> = [
   { key: "all", label: "All" },
@@ -597,6 +636,10 @@ function TimeSeriesChart({
   definition: ChartDefinition;
   rows: SeriesRow[];
 }) {
+  if (definition.chartType === "seasonality") {
+    return <SeasonalityChart definition={definition} rows={rows} />;
+  }
+
   const [windowKey, setWindowKey] = useState<WindowKey>(definition.defaultWindow ?? "all");
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
     () => new Set(defaultHiddenSeries(definition)),
@@ -775,6 +818,144 @@ function TimeSeriesChart({
             ))}
           </div>
         ) : null}
+      </div>
+      <p className="source-note">
+        Source: <SourceLinks series={series} />
+      </p>
+    </article>
+  );
+}
+
+function SeasonalityChart({
+  definition,
+  rows,
+}: {
+  definition: ChartDefinition;
+  rows: SeriesRow[];
+}) {
+  const series = useMemo(() => buildSeries(rows, definition), [definition, rows]);
+  const rangeMin = series.find((item) => item.id.endsWith("_range_min"));
+  const rangeMax = series.find((item) => item.id.endsWith("_range_max"));
+  const visibleSeries = series.filter((item) => !item.id.endsWith("_range_min") && !item.id.endsWith("_range_max"));
+  const model = useMemo(() => buildSeasonalityModel(series), [series]);
+
+  if (!series.length || !model) {
+    return (
+      <article className="chart-panel" data-wide={definition.wide}>
+        <div className="panel-head">
+          <div>
+            <p className="panel-kicker">{definition.kicker}</p>
+            <h2 className="panel-title">{definition.title}</h2>
+          </div>
+        </div>
+        <div className="empty-state">Waiting for data</div>
+      </article>
+    );
+  }
+
+  return (
+    <article className="chart-panel" data-wide={definition.wide}>
+      <div className="panel-head">
+        <div>
+          <p className="panel-kicker">{definition.kicker}</p>
+          <h2 className="panel-title">{definition.title}</h2>
+        </div>
+      </div>
+
+      <div className="legend" aria-label="Sections">
+        {visibleSeries.map((item) => (
+          <span className="legend-button static-legend" key={item.id}>
+            <span
+              className="legend-swatch"
+              style={{
+                background: item.dashArray ? "transparent" : item.color,
+                borderColor: item.color,
+              }}
+            />
+            {item.name}
+          </span>
+        ))}
+        <span className="legend-button static-legend">
+          <span className="legend-swatch range-swatch" />
+          2012-2025 range
+        </span>
+      </div>
+
+      <div className="chart-frame">
+        <svg
+          aria-label={definition.title}
+          className="chart-svg"
+          role="img"
+          viewBox={`0 0 ${model.width} ${model.height}`}
+        >
+          <rect
+            fill="transparent"
+            height={model.innerHeight}
+            width={model.innerWidth}
+            x={model.margin.left}
+            y={model.margin.top}
+          />
+          {model.yTicks.map((tick) => {
+            const y = model.scaleY(tick);
+            return (
+              <g key={`seasonal-y-${tick}`}>
+                <line
+                  className="grid-line"
+                  x1={model.margin.left}
+                  x2={model.width - model.margin.right}
+                  y1={y}
+                  y2={y}
+                />
+                <text className="tick-label" textAnchor="end" x={model.margin.left - 10} y={y + 4}>
+                  {formatNumber(tick)}
+                </text>
+              </g>
+            );
+          })}
+          {model.domain.min < 0 && model.domain.max > 0 ? (
+            <line
+              className="zero-line"
+              x1={model.margin.left}
+              x2={model.width - model.margin.right}
+              y1={model.scaleY(0)}
+              y2={model.scaleY(0)}
+            />
+          ) : null}
+          {seasonalityLabels.map((label, index) => {
+            const x = model.scaleX(index);
+            return (
+              <g key={label}>
+                <line
+                  className="grid-line"
+                  x1={x}
+                  x2={x}
+                  y1={model.margin.top}
+                  y2={model.height - model.margin.bottom}
+                />
+                <text className="tick-label" textAnchor="middle" x={x} y={model.height - model.margin.bottom + 24}>
+                  {label}
+                </text>
+              </g>
+            );
+          })}
+          <line className="axis-line" x1={model.margin.left} x2={model.margin.left} y1={model.margin.top} y2={model.height - model.margin.bottom} />
+          <line className="axis-line" x1={model.margin.left} x2={model.width - model.margin.right} y1={model.height - model.margin.bottom} y2={model.height - model.margin.bottom} />
+          <text className="axis-label" textAnchor="start" x={model.margin.left} y={24}>
+            {definition.yLeftLabel}
+          </text>
+          {rangeMin && rangeMax ? (
+            <path className="seasonality-range" d={seasonalityRangePath(rangeMin, rangeMax, model.scaleX, model.scaleY)} />
+          ) : null}
+          {visibleSeries.map((item) => (
+            <path
+              className="series-path"
+              d={pathForSeasonalitySeries(item, model.scaleX, model.scaleY)}
+              key={item.id}
+              stroke={item.color}
+              strokeDasharray={item.dashArray}
+            />
+          ))}
+        </svg>
       </div>
       <p className="source-note">
         Source: <SourceLinks series={series} />
@@ -1252,6 +1433,21 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
 }
 
 function styleForSeries(seriesId: string, fallbackColor: string) {
+  if (seriesId.endsWith("_range_min") || seriesId.endsWith("_range_max")) {
+    return { color: "#c7c7c7" };
+  }
+  if (seriesId.endsWith("_median")) {
+    return { color: "#111111", dashArray: "6 5" };
+  }
+  if (seriesId.endsWith("_2022")) {
+    return { color: "#4d77c3" };
+  }
+  if (seriesId.endsWith("_2025")) {
+    return { color: "#d68b2d" };
+  }
+  if (seriesId.endsWith("_2026")) {
+    return { color: "#178f65" };
+  }
   const metricId = seriesId.replace("_legacy", "");
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };
@@ -1290,6 +1486,79 @@ function filterSeasonalSource(
       const bBase = b.id.replace("_legacy", "");
       return baseOrder.indexOf(aBase) - baseOrder.indexOf(bBase);
     });
+}
+
+function buildSeasonalityModel(series: ChartSeries[]) {
+  const width = 920;
+  const height = 430;
+  const margin = { top: 30, right: 24, bottom: 46, left: 50 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  const values = series.flatMap((item) => item.points.map((point) => point.value));
+
+  if (!values.length) {
+    return null;
+  }
+
+  const domain = getValueDomain(values);
+  const scaleX = (index: number) =>
+    margin.left + (index / Math.max(1, seasonalityLabels.length - 1)) * innerWidth;
+  const scaleY = (value: number) =>
+    margin.top + (1 - (value - domain.min) / (domain.max - domain.min)) * innerHeight;
+
+  return {
+    domain,
+    height,
+    innerHeight,
+    innerWidth,
+    margin,
+    scaleX,
+    scaleY,
+    width,
+    yTicks: makeTicks(domain.min, domain.max, 5),
+  };
+}
+
+function seasonalityIndex(date: string) {
+  if (date.startsWith("1999-12")) {
+    return 0;
+  }
+  return new Date(`${date}T00:00:00`).getMonth() + 1;
+}
+
+function pathForSeasonalitySeries(
+  series: ChartSeries,
+  scaleX: (index: number) => number,
+  scaleY: (value: number) => number,
+) {
+  return series.points
+    .map((point, index) => {
+      const command = index === 0 ? "M" : "L";
+      return `${command}${scaleX(seasonalityIndex(point.date)).toFixed(2)},${scaleY(point.value).toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function seasonalityRangePath(
+  rangeMin: ChartSeries,
+  rangeMax: ChartSeries,
+  scaleX: (index: number) => number,
+  scaleY: (value: number) => number,
+) {
+  const minByIndex = new Map(rangeMin.points.map((point) => [seasonalityIndex(point.date), point.value]));
+  const maxPoints = rangeMax.points
+    .map((point) => ({ index: seasonalityIndex(point.date), value: point.value }))
+    .sort((a, b) => a.index - b.index);
+  const minPoints = [...minByIndex.entries()]
+    .map(([index, value]) => ({ index, value }))
+    .sort((a, b) => b.index - a.index);
+  const top = maxPoints
+    .map((point, index) => `${index === 0 ? "M" : "L"}${scaleX(point.index).toFixed(2)},${scaleY(point.value).toFixed(2)}`)
+    .join(" ");
+  const bottom = minPoints
+    .map((point) => `L${scaleX(point.index).toFixed(2)},${scaleY(point.value).toFixed(2)}`)
+    .join(" ");
+  return `${top} ${bottom} Z`;
 }
 
 function buildHicpSummaryRows(rows: SeriesRow[], source: SeasonalSource) {
