@@ -4,7 +4,7 @@
       "id": "2026-06-25",
       "date": "2026-06-25",
       "trigger": "Initial scenario tracker snapshot",
-      "coreView": "ECB still cautious, activity soft but not breaking.",
+      "coreView": "ECB still cautious with inflation risks, but no need for more forceful measures",
       "confidence": "Medium",
       "activity": [
         "PMIs: manufacturing holding well above 50, with a small effect from the war probably due to incentives to front-load or stockpile and longer delivery times.",
@@ -33,18 +33,199 @@
         "title": "ECB Scenarios (Jun/26)",
         "marketLabel": "Mkt Price: +68bps in 2026",
         "columns": [
-          { "group": "HICP", "years": ["26", "27", "28"] },
-          { "group": "Core HICP", "years": ["26", "27", "28"] },
-          { "group": "GDP", "years": ["26", "27", "28"] },
-          { "group": "Brent, $/b", "years": ["26", "27", "28"] },
-          { "group": "TTF, $/MWh", "years": ["26", "27", "28"] }
+          {
+            "group": "HICP",
+            "years": [
+              "26",
+              "27",
+              "28"
+            ]
+          },
+          {
+            "group": "Core HICP",
+            "years": [
+              "26",
+              "27",
+              "28"
+            ]
+          },
+          {
+            "group": "GDP",
+            "years": [
+              "26",
+              "27",
+              "28"
+            ]
+          },
+          {
+            "group": "Brent, $/b",
+            "years": [
+              "26",
+              "27",
+              "28"
+            ]
+          },
+          {
+            "group": "TTF, $/MWh",
+            "years": [
+              "26",
+              "27",
+              "28"
+            ]
+          }
         ],
         "rows": [
-          { "label": "Baseline", "values": [[3.0, 2.3, 2.0], [2.5, 2.5, 2.2], [0.8, 1.2, 1.5], [97, 82, 77], [46, 38, 28]] },
-          { "label": "Milder", "values": [[2.9, 1.8, 1.8], [2.4, 2.3, 2.1], [0.8, 1.4, 1.6], [82, 70, 66], [39, 32, 24]] },
-          { "label": "Adverse", "values": [[3.3, 3.0, 2.3], [2.5, 2.7, 2.3], [0.7, 0.9, 1.5], [115, 98, 92], [57, 48, 37]] },
-          { "label": "Severe", "values": [[4.0, 5.3, 3.0], [2.5, 3.8, 2.9], [0.5, 0.4, 1.6], [157, 133, 125], [93, 77, 58]] },
-          { "label": "Lgcy Spot", "highlight": true, "values": [[2.6, 2.1, 1.8], [2.4, 2.2, 2.0], [0.9, 1.3, 1.4], [78, 75, 73], [40, 36, 32]] }
+          {
+            "label": "Baseline",
+            "values": [
+              [
+                3,
+                2.3,
+                2
+              ],
+              [
+                2.5,
+                2.5,
+                2.2
+              ],
+              [
+                0.8,
+                1.2,
+                1.5
+              ],
+              [
+                97,
+                82,
+                77
+              ],
+              [
+                46,
+                38,
+                28
+              ]
+            ]
+          },
+          {
+            "label": "Milder",
+            "values": [
+              [
+                2.9,
+                1.8,
+                1.8
+              ],
+              [
+                2.4,
+                2.3,
+                2.1
+              ],
+              [
+                0.8,
+                1.4,
+                1.6
+              ],
+              [
+                82,
+                70,
+                66
+              ],
+              [
+                39,
+                32,
+                24
+              ]
+            ]
+          },
+          {
+            "label": "Adverse",
+            "values": [
+              [
+                3.3,
+                3,
+                2.3
+              ],
+              [
+                2.5,
+                2.7,
+                2.3
+              ],
+              [
+                0.7,
+                0.9,
+                1.5
+              ],
+              [
+                115,
+                98,
+                92
+              ],
+              [
+                57,
+                48,
+                37
+              ]
+            ]
+          },
+          {
+            "label": "Severe",
+            "values": [
+              [
+                4,
+                5.3,
+                3
+              ],
+              [
+                2.5,
+                3.8,
+                2.9
+              ],
+              [
+                0.5,
+                0.4,
+                1.6
+              ],
+              [
+                157,
+                133,
+                125
+              ],
+              [
+                93,
+                77,
+                58
+              ]
+            ]
+          },
+          {
+            "label": "Lgcy Spot",
+            "highlight": true,
+            "values": [
+              [
+                2.6,
+                2.1,
+                1.8
+              ],
+              [
+                2.4,
+                2.2,
+                2
+              ],
+              [
+                0.9,
+                1.3,
+                1.4
+              ],
+              [
+                78,
+                75,
+                73
+              ],
+              [
+                40,
+                36,
+                32
+              ]
+            ]
+          }
         ]
       }
     }
