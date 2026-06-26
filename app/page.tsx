@@ -1938,7 +1938,7 @@ function formatValue(value: number, unit: string) {
 }
 
 function formatSummaryValue(value?: number) {
-  return Number.isFinite(value) ? formatNumber(value as number) : "";
+  return Number.isFinite(value) ? formatFixedTwo(value as number) : "";
 }
 
 function formatChangeValue(value?: number) {
@@ -1947,7 +1947,14 @@ function formatChangeValue(value?: number) {
   }
   const numeric = value as number;
   const sign = numeric > 0 ? "+" : "";
-  return `${sign}${formatNumber(numeric)}`;
+  return `${sign}${formatFixedTwo(numeric)}`;
+}
+
+function formatFixedTwo(value: number) {
+  return value.toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
 }
 
 function heatmapStyle(value: number | undefined, values: Array<number | undefined>) {

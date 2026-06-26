@@ -254,17 +254,12 @@ make_hicp_seasonality_series <- function(months, chart_id, series_id, series_nam
 }
 
 build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TRUE) {
-  yoy <- yoy_rows[yoy_rows$series_id == definition$base_series_id, ]
+  eurostat_input <- read_eurostat_hicp_input_rows(definition)
+  yoy <- build_hicp_precise_yoy_rows(definition, yoy_rows, eurostat_input)
   if (!nrow(yoy)) {
     return(data.frame())
   }
-  yoy$chart_id <- definition$chart_id
-  yoy$series_id <- definition$yoy_series_id
-  yoy$series_name <- "% YoY NSA"
-  yoy$unit <- "%"
-  yoy$source_note <- ifelse(yoy$source_note == "", "Flash estimate is used until final HICP is available.", yoy$source_note)
 
-  eurostat_input <- read_eurostat_hicp_input_rows(definition)
   legacy <- build_hicp_legacy_x12_rows(definition, eurostat_input)
   if (!include_ecb_sa) {
     return(rbind(yoy, legacy))
@@ -321,6 +316,76 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TR
   )
 
   rbind(yoy, hoh, qoq, mom, legacy)
+}
+
+build_hicp_precise_yoy_rows <- function(definition, yoy_rows, eurostat_input) {
+  fallback <- yoy_rows[yoy_rows$series_id == definition$base_series_id, ]
+  if (!nrow(fallback)) {
+    return(data.frame())
+  }
+
+  nsa <- read_eurostat_hicp_midx_index(definition$coicop, definition$base_series_id)
+  if (!nrow(nsa) || !"nsa_index" %in% names(eurostat_input)) {
+    yoy <- fallback
+    yoy$chart_id <- definition$chart_id
+    yoy$series_id <- definition$yoy_series_id
+    yoy$series_name <- "% YoY NSA"
+    yoy$unit <- "%"
+    yoy$source_note <- ifelse(yoy$source_note == "", "Flash estimate is used until final HICP is available.", yoy$source_note)
+    return(yoy)
+  }
+
+  index <- merge(
+    nsa[, c("date", "nsa_index")],
+    eurostat_input[, c("date", "nsa_index")],
+    by = "date",
+    all = TRUE,
+    suffixes = c("_history", "_flash")
+  )
+  index <- index[order(index$date), ]
+
+  common <- index[!is.na(index$nsa_index_history) & !is.na(index$nsa_index_flash) & index$nsa_index_history != 0, ]
+  if (nrow(common)) {
+    first_scale <- common$nsa_index_flash[1] / common$nsa_index_history[1]
+    index$flash_backfill <- index$nsa_index_history * first_scale
+  } else {
+    index$flash_backfill <- NA_real_
+  }
+  index$precise_index <- ifelse(!is.na(index$nsa_index_flash), index$nsa_index_flash, index$flash_backfill)
+  index$source <- ifelse(!is.na(index$nsa_index_flash), "Eurostat HICP", "Eurostat HICP backfilled flash base")
+  index$source_note <- ifelse(
+    !is.na(index$nsa_index_flash),
+    "YoY calculated from Eurostat NSA HICP index to preserve two-decimal precision. Flash estimate is used until final HICP is available.",
+    "YoY calculated from Eurostat NSA HICP index. Missing flash-base history is backfilled from the first common index overlap to preserve two-decimal precision."
+  )
+  index$yoy <- index$precise_index / c(rep(NA_real_, 12), head(index$precise_index, -12)) * 100 - 100
+
+  valid <- !is.na(index$yoy)
+  precise <- make_series_frame(
+    index$date[valid],
+    definition$chart_id,
+    definition$yoy_series_id,
+    "% YoY NSA",
+    "Euro Area",
+    index$yoy[valid],
+    unit = "%",
+    source = index$source[valid],
+    source_url = definition$eurostat_url,
+    frequency = "monthly",
+    source_note = index$source_note[valid]
+  )
+
+  if (!nrow(precise)) {
+    yoy <- fallback
+    yoy$chart_id <- definition$chart_id
+    yoy$series_id <- definition$yoy_series_id
+    yoy$series_name <- "% YoY NSA"
+    yoy$unit <- "%"
+    yoy$source_note <- ifelse(yoy$source_note == "", "Flash estimate is used until final HICP is available.", yoy$source_note)
+    return(yoy)
+  }
+
+  precise
 }
 
 build_hicp_legacy_x12_rows <- function(definition, eurostat_input) {
