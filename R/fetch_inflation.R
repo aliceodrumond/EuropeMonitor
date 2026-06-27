@@ -390,7 +390,7 @@ build_hicp_precise_yoy_rows <- function(definition, yoy_rows, eurostat_input) {
 
 build_hicp_legacy_x12_rows <- function(definition, eurostat_input) {
   if (!requireNamespace("seasonal", quietly = TRUE)) {
-    warning("Package 'seasonal' is not available; skipping Legacy X-12 HICP seasonal adjustment")
+    warning("Package 'seasonal' is not available; skipping Legacy X-13/X-11 HICP seasonal adjustment")
     return(data.frame())
   }
 
@@ -406,13 +406,13 @@ build_hicp_legacy_x12_rows <- function(definition, eurostat_input) {
 
   local_source <- ifelse(
     local_sa$is_flash_extension,
-    "Eurostat HICP flash / Legacy X-12",
-    "Eurostat HICP / Legacy X-12"
+    "Eurostat HICP flash / Legacy X-13/X-11",
+    "Eurostat HICP / Legacy X-13/X-11"
   )
   local_note <- ifelse(
     local_sa$is_flash_extension,
-    "Legacy X-12-style X-11 seasonal adjustment from 2012 with flash-extended NSA index.",
-    "Legacy X-12-style X-11 seasonal adjustment from 2012 using Eurostat NSA HICP index."
+    "Legacy X-13ARIMA-SEATS seasonal adjustment in X-11 mode from 2012 with flash-extended NSA index.",
+    "Legacy X-13ARIMA-SEATS seasonal adjustment in X-11 mode from 2012 using Eurostat NSA HICP index."
   )
 
   mom_valid <- !is.na(local_sa$mom_saar)
