@@ -50,7 +50,7 @@ function Test-SpeakersOutput {
   }
 
   $speakers = @(Import-Csv $speakersPath)
-  if ($speakers.Count -lt 5) {
+  if ($speakers.Count -lt 20) {
     throw "ECB Speakers has only $($speakers.Count) rows; refusing to publish"
   }
   if (@($speakers | Where-Object { $_.tags -eq "fallback" }).Count -gt 0) {
