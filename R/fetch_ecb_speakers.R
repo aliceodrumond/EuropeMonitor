@@ -22,16 +22,16 @@ build_ecb_speakers <- function(project_root) {
     }
   )
 
-  speakers <- keep_priority_member_latest_speeches(speakers, previous)
+  speakers <- keep_recent_and_priority_speeches(speakers, previous, max_rows = 20)
   speakers <- apply_speaker_highlight_overrides(speakers)
   write_csv_utf8(speakers, processed_path)
   speakers
 }
 
-keep_priority_member_latest_speeches <- function(speakers, previous) {
+keep_recent_and_priority_speeches <- function(speakers, previous, max_rows = 20) {
   priority_members <- c("Lagarde", "Lane", "Schnabel", "Nagel")
   if (is.null(previous) || !nrow(previous) || any(previous$tags == "fallback", na.rm = TRUE)) {
-    return(order_speaker_rows(speakers))
+    return(head(order_speaker_rows(speakers), max_rows))
   }
 
   common_columns <- intersect(names(speakers), names(previous))
@@ -39,7 +39,7 @@ keep_priority_member_latest_speeches <- function(speakers, previous) {
     speakers[, common_columns, drop = FALSE],
     previous[, common_columns, drop = FALSE]
   )
-  combined <- combined[!duplicated(combined[, c("member", "date", "source_url")]), , drop = FALSE]
+  combined <- dedupe_speaker_rows(combined)
   combined$date_value <- as.Date(combined$date)
 
   priority_latest <- do.call(rbind, lapply(priority_members, function(member) {
@@ -49,14 +49,22 @@ keep_priority_member_latest_speeches <- function(speakers, previous) {
     rows[1, , drop = FALSE]
   }))
 
-  base_rows <- speakers[, common_columns, drop = FALSE]
+  base_rows <- head(order_speaker_rows(combined[, common_columns, drop = FALSE]), max_rows)
   if (is.null(priority_latest) || !nrow(priority_latest)) {
     return(order_speaker_rows(base_rows))
   }
 
   required <- rbind(base_rows, priority_latest[, common_columns, drop = FALSE])
-  required <- required[!duplicated(required[, c("member", "date", "source_url")]), , drop = FALSE]
-  order_speaker_rows(required)
+  required <- dedupe_speaker_rows(required)
+  head(order_speaker_rows(required), max_rows)
+}
+
+dedupe_speaker_rows <- function(speakers) {
+  if (!nrow(speakers)) return(speakers)
+  speakers$member <- normalize_ecb_member_name_ascii(speakers$member)
+  comments <- tolower(trimws(gsub("\\s+", " ", speakers$policy_comments)))
+  key <- paste(speakers$member, speakers$date, comments, sep = "|")
+  speakers[!duplicated(key), , drop = FALSE]
 }
 
 order_speaker_rows <- function(speakers) {
@@ -177,8 +185,12 @@ read_url_text <- function(url) {
 
 normalize_html <- function(value) {
   value <- gsub("<U\\+0101>", "a", value, fixed = TRUE)
+  value <- gsub("<U\\+0107>", "c", value, fixed = TRUE)
+  value <- gsub("<U\\+010D>", "c", value, fixed = TRUE)
   value <- gsub("<U\\+0146>", "n", value, fixed = TRUE)
   value <- gsub("<U\\+0161>", "s", value, fixed = TRUE)
+  value <- gsub("<U\\+017D>", "Z", value, fixed = TRUE)
+  value <- gsub("<U\\+017E>", "z", value, fixed = TRUE)
   value <- gsub("<U\\+2019>", "'", value, fixed = TRUE)
   value <- gsub("<U\\+201C>", "\"", value, fixed = TRUE)
   value <- gsub("<U\\+201D>", "\"", value, fixed = TRUE)
@@ -269,6 +281,7 @@ extract_ecb_member <- function(headline) {
 }
 
 normalize_ecb_member_name <- function(member) {
+  if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
     if (grepl("mir|mÃƒÂ­r|mÃ­r", member, ignore.case = TRUE)) return("Kazimir")
@@ -288,8 +301,9 @@ member_profile <- function(member) {
 }
 
 normalize_ecb_member_name_ascii <- function(member) {
+  if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
-  if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
+  if (grepl("Kazimir|Kaimr", member, ignore.case = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
   if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
   member
