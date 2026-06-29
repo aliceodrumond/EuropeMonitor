@@ -158,7 +158,8 @@ h1 {
 }
 
 .chart-panel,
-.speaker-panel {
+.speaker-panel,
+.scenario-panel {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -171,8 +172,69 @@ h1 {
 }
 
 .chart-panel[data-wide="true"],
-.speaker-panel {
+.speaker-panel,
+.scenario-panel {
   grid-column: 1 / -1;
+}
+
+.scenario-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.scenario-panel {
+  padding: 18px;
+}
+
+.scenario-date {
+  color: var(--red);
+  font-size: 0.82rem;
+  font-weight: 780;
+}
+
+.scenario-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.scenario-meta strong {
+  color: var(--ink);
+}
+
+.scenario-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.scenario-section {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.scenario-section h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.scenario-section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.48;
+}
+
+.scenario-section li + li {
+  margin-top: 6px;
 }
 
 .panel-head {

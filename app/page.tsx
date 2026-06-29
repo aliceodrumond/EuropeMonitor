@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type TabId = "activity" | "inflation" | "speakers";
+type TabId = "activity" | "inflation" | "scenario" | "speakers";
 type AxisSide = "left" | "right";
 type WindowKey = "all" | "10y" | "5y" | "2y" | "1y" | "6m";
 type SeasonalSource = "ecb" | "legacy";
@@ -41,6 +41,22 @@ type Metadata = {
   generated_by?: string;
   activity_last_new?: LastNewObservation;
   inflation_last_new?: LastNewObservation;
+};
+
+type ScenarioTrackerData = {
+  snapshots?: ScenarioSnapshot[];
+};
+
+type ScenarioSnapshot = {
+  id: string;
+  date: string;
+  trigger: string;
+  coreView: string;
+  confidence: string;
+  activity: string[];
+  inflation: string[];
+  rates: string[];
+  risks: string[];
 };
 
 type LastNewObservation = {
@@ -98,11 +114,24 @@ type HoverState = {
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: "speakers", label: "ECB Speakers" },
+  { id: "scenario", label: "Scenario Tracker" },
   { id: "activity", label: "Activity Monitor" },
   { id: "inflation", label: "Inflation Monitor" },
 ];
 
 const charts: ChartDefinition[] = [
+  {
+    id: "scenario_eurusd_real_rates",
+    tab: "scenario",
+    title: "EURUSD vs 2Y Real Rate Differential",
+    kicker: "Market Check",
+    yLeftLabel: "EURUSD",
+    yRightLabel: "EA-US 2Y real rates, pp (inverted)",
+    fixedDomains: { right: { min: 1.5, max: -2.5 } },
+    seriesOrder: ["eurusd", "real_2y_differential_ea_us"],
+    defaultWindow: "2y",
+    wide: true,
+  },
   {
     id: "pmi_ea_aggregate",
     tab: "activity",
@@ -431,17 +460,20 @@ export default function Home() {
   const [seriesRows, setSeriesRows] = useState<SeriesRow[]>([]);
   const [speakers, setSpeakers] = useState<SpeakerRow[]>([]);
   const [metadata, setMetadata] = useState<Metadata>({});
+  const [scenario, setScenario] = useState<ScenarioTrackerData>({});
   const [loadState, setLoadState] = useState("Loading data");
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadData() {
-      const [activityText, inflationText, speakersText, metadataResponse] =
+      const [activityText, inflationText, speakersText, scenarioMarketText, scenarioResponse, metadataResponse] =
         await Promise.all([
           fetchText("/data/activity_series.csv"),
           fetchText("/data/inflation_series.csv"),
           fetchText("/data/ecb_speakers.csv"),
+          fetchText("/data/scenario_market_series.csv"),
+          fetch("/data/scenario_tracker.json", { cache: "no-store" }),
           fetch("/data/metadata.json", { cache: "no-store" }),
         ]);
 
@@ -452,10 +484,12 @@ export default function Home() {
       const nextSeries = [
         ...parseSeriesCsv(activityText),
         ...parseSeriesCsv(inflationText),
+        ...parseSeriesCsv(scenarioMarketText),
       ];
 
       setSeriesRows(nextSeries);
       setSpeakers(parseSpeakersCsv(speakersText));
+      setScenario(scenarioResponse.ok ? await scenarioResponse.json() : {});
       setMetadata(metadataResponse.ok ? await metadataResponse.json() : {});
       setLoadState("Data loaded");
     }
@@ -512,6 +546,8 @@ export default function Home() {
 
       {activeTab === "speakers" ? (
         <SpeakerTable speakers={speakers} />
+      ) : activeTab === "scenario" ? (
+        <ScenarioTracker scenario={scenario} rows={seriesRows} />
       ) : (
         <>
           <TabDataBanner metadata={metadata} rows={seriesRows} tab={activeTab} />
@@ -1284,6 +1320,71 @@ function SpeakerTable({ speakers }: { speakers: SpeakerRow[] }) {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+function ScenarioTracker({
+  scenario,
+  rows,
+}: {
+  scenario: ScenarioTrackerData;
+  rows: SeriesRow[];
+}) {
+  const latest = [...(scenario.snapshots ?? [])].sort((a, b) => parseTime(b.date) - parseTime(a.date))[0];
+  const marketChart = charts.find((chart) => chart.id === "scenario_eurusd_real_rates");
+
+  return (
+    <section className="scenario-layout">
+      {marketChart ? (
+        <TimeSeriesChart
+          definition={marketChart}
+          rows={rows.filter((row) => row.chart_id === marketChart.id)}
+        />
+      ) : null}
+
+      <article className="scenario-panel">
+        <div className="panel-head">
+          <div>
+            <p className="panel-kicker">Scenario Tracker</p>
+            <h2 className="panel-title">
+              {latest?.coreView ?? "Waiting for scenario snapshot"}
+            </h2>
+          </div>
+          {latest ? (
+            <span className="scenario-date">{formatFullDateLabel(latest.date)}</span>
+          ) : null}
+        </div>
+        {latest ? (
+          <>
+            <div className="scenario-meta">
+              <span>{latest.trigger}</span>
+              <strong>Confidence: {latest.confidence}</strong>
+            </div>
+            <div className="scenario-columns">
+              <ScenarioList title="Activity" items={latest.activity} />
+              <ScenarioList title="Inflation" items={latest.inflation} />
+              <ScenarioList title="ECB / Rates" items={latest.rates} />
+              <ScenarioList title="Risks" items={latest.risks} />
+            </div>
+          </>
+        ) : (
+          <div className="empty-state">Waiting for scenario data</div>
+        )}
+      </article>
+    </section>
+  );
+}
+
+function ScenarioList({ items, title }: { items: string[]; title: string }) {
+  return (
+    <section className="scenario-section">
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </section>
   );
 }

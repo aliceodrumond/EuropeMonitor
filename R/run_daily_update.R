@@ -12,6 +12,7 @@ source(file.path(project_root, "R/helpers.R"), local = TRUE)
 source(file.path(project_root, "R/fetch_activity.R"), local = TRUE)
 source(file.path(project_root, "R/fetch_inflation.R"), local = TRUE)
 source(file.path(project_root, "R/fetch_ecb_speakers.R"), local = TRUE)
+source(file.path(project_root, "R/fetch_scenario_market.R"), local = TRUE)
 source(file.path(project_root, "R/build_site_data.R"), local = TRUE)
 
 ensure_project_dirs(project_root)
@@ -45,9 +46,15 @@ speakers <- build_series_with_fallback(
   fallback_path = file.path(project_root, "data/processed/ecb_speakers.csv"),
   label = "ECB Speakers"
 )
+scenario_market <- build_series_with_fallback(
+  builder = function() build_scenario_market_series(project_root),
+  fallback_path = file.path(project_root, "data/processed/scenario_market_series.csv"),
+  label = "Scenario market"
+)
 summary <- build_site_data(project_root, activity, inflation, speakers)
 
 message(sprintf("Activity rows: %s", summary$activity_rows))
 message(sprintf("Inflation rows: %s", summary$inflation_rows))
 message(sprintf("ECB speaker rows: %s", summary$speaker_rows))
+message(sprintf("Scenario market rows: %s", nrow(scenario_market)))
 message("Done.")
