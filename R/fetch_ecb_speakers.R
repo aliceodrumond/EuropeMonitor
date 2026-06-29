@@ -176,6 +176,12 @@ read_url_text <- function(url) {
 }
 
 normalize_html <- function(value) {
+  value <- gsub("<U\\+0101>", "a", value, fixed = TRUE)
+  value <- gsub("<U\\+0146>", "n", value, fixed = TRUE)
+  value <- gsub("<U\\+0161>", "s", value, fixed = TRUE)
+  value <- gsub("<U\\+2019>", "'", value, fixed = TRUE)
+  value <- gsub("<U\\+201C>", "\"", value, fixed = TRUE)
+  value <- gsub("<U\\+201D>", "\"", value, fixed = TRUE)
   value <- gsub("\r|\n|\t", " ", value)
   gsub("\\s+", " ", value)
 }
