@@ -3,11 +3,11 @@ econostream_central_bank_url <- "https://www.econostream-media.com/news/topic/ce
 build_ecb_speakers <- function(project_root) {
   processed_path <- file.path(project_root, "data/processed/ecb_speakers.csv")
   previous <- tryCatch(
-    read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE),
+    normalize_speaker_columns(read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8-BOM")),
     error = function(...) NULL
   )
   speakers <- tryCatch(
-    fetch_econostream_ecb_speakers(econostream_central_bank_url),
+    normalize_speaker_columns(fetch_econostream_ecb_speakers(econostream_central_bank_url)),
     error = function(error) {
       has_valid_previous <- !is.null(previous) && nrow(previous) > 0 &&
         !any(previous$tags == "fallback", na.rm = TRUE)
@@ -22,9 +22,20 @@ build_ecb_speakers <- function(project_root) {
     }
   )
 
+  speakers <- normalize_speaker_columns(speakers)
   speakers <- keep_recent_and_priority_speeches(speakers, previous, max_rows = 20)
   speakers <- apply_speaker_highlight_overrides(speakers)
   write_csv_utf8(speakers, processed_path)
+  speakers
+}
+
+normalize_speaker_columns <- function(speakers) {
+  if (is.null(speakers) || !is.data.frame(speakers)) {
+    return(speakers)
+  }
+  names(speakers) <- sub("^\ufeff", "", names(speakers))
+  names(speakers) <- sub("^ï\\.\\.date$", "date", names(speakers))
+  names(speakers) <- sub("^ï..date$", "date", names(speakers))
   speakers
 }
 
@@ -35,6 +46,10 @@ keep_recent_and_priority_speeches <- function(speakers, previous, max_rows = 20)
   }
 
   common_columns <- intersect(names(speakers), names(previous))
+  if (!"date" %in% common_columns) {
+    warning("Previous ECB speaker table had no usable date column; keeping fetched rows only.")
+    return(head(order_speaker_rows(speakers), max_rows))
+  }
   combined <- rbind(
     speakers[, common_columns, drop = FALSE],
     previous[, common_columns, drop = FALSE]
@@ -61,7 +76,7 @@ keep_recent_and_priority_speeches <- function(speakers, previous, max_rows = 20)
 
 dedupe_speaker_rows <- function(speakers) {
   if (!nrow(speakers)) return(speakers)
-  speakers$member <- normalize_ecb_member_name_ascii(speakers$member)
+  speakers$member <- vapply(speakers$member, normalize_ecb_member_name_ascii, character(1))
   comments <- tolower(trimws(gsub("\\s+", " ", speakers$policy_comments)))
   key <- paste(speakers$member, speakers$date, comments, sep = "|")
   speakers[!duplicated(key), , drop = FALSE]
