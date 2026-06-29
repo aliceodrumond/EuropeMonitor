@@ -375,8 +375,11 @@ extract_policy_highlight <- function(headline, summary) {
 }
 
 extract_headline_claim <- function(headline) {
-  claim <- sub("^ECB'?s\\s+[^:]+:\\s*", "", headline)
+  claim <- sub("^ECB['’]?s\\s+[^:]+:\\s*", "", headline, perl = TRUE)
   claim <- sub("^ECB.s\\s+[^:]+:\\s*", "", claim)
+  if (identical(claim, headline)) {
+    claim <- sub("^ECB\\S*\\s+\\S+\\s+", "", headline, perl = TRUE)
+  }
   if (identical(claim, headline)) "" else claim
 }
 
