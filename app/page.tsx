@@ -74,6 +74,8 @@ type ChartDefinition = {
   yRightLabel?: string;
   fixedDomains?: Partial<Record<AxisSide, { min: number; max: number }>>;
   defaultWindow?: WindowKey;
+  flexibleAxisControls?: boolean;
+  invertRightAxis?: boolean;
   startDate?: string;
   wide?: boolean;
   seriesOrder?: string[];
@@ -126,8 +128,9 @@ const charts: ChartDefinition[] = [
     title: "EURUSD vs 2Y Real Rate Differential",
     kicker: "Market Check",
     yLeftLabel: "EURUSD",
-    yRightLabel: "EA-US 2Y real rates, pp (inverted)",
-    fixedDomains: { right: { min: 1.5, max: -2.5 } },
+    yRightLabel: "EA-US 2Y real rates, pp",
+    fixedDomains: { right: { min: -2.5, max: 1.5 } },
+    flexibleAxisControls: true,
     seriesOrder: ["eurusd", "real_2y_differential_ea_us"],
     defaultWindow: "2y",
     wide: true,
@@ -681,6 +684,8 @@ function TimeSeriesChart({
     () => new Set(defaultHiddenSeries(definition)),
   );
   const [seasonalSource, setSeasonalSource] = useState<SeasonalSource>("ecb");
+  const [rightAxisMode, setRightAxisMode] = useState<"fixed" | "auto">("fixed");
+  const [rightAxisDirection, setRightAxisDirection] = useState<"normal" | "inverted">("normal");
   const [hover, setHover] = useState<HoverState | null>(null);
 
   const series = useMemo(() => buildSeries(rows, definition), [definition, rows]);
@@ -717,7 +722,11 @@ function TimeSeriesChart({
   }, [definition.startDate, displaySeries, selectedWindow]);
 
   const activeSeries = filteredSeries.filter((item) => !hiddenSeries.has(item.id));
-  const chartModel = useMemo(() => buildChartModel(activeSeries, definition), [activeSeries, definition]);
+  const effectiveDefinition = useMemo(
+    () => applyFlexibleAxisSettings(definition, rightAxisMode, rightAxisDirection),
+    [definition, rightAxisDirection, rightAxisMode],
+  );
+  const chartModel = useMemo(() => buildChartModel(activeSeries, effectiveDefinition), [activeSeries, effectiveDefinition]);
 
   function toggleSeries(seriesId: string) {
     setHiddenSeries((current) => {
@@ -768,6 +777,38 @@ function TimeSeriesChart({
                 type="button"
               >
                 SA - Legacy
+              </button>
+            </div>
+          ) : null}
+          {definition.flexibleAxisControls ? (
+            <div className="axis-controls" aria-label="Axis settings">
+              <button
+                data-active={rightAxisMode === "fixed"}
+                onClick={() => setRightAxisMode("fixed")}
+                type="button"
+              >
+                Fixed axis
+              </button>
+              <button
+                data-active={rightAxisMode === "auto"}
+                onClick={() => setRightAxisMode("auto")}
+                type="button"
+              >
+                Auto axis
+              </button>
+              <button
+                data-active={rightAxisDirection === "normal"}
+                onClick={() => setRightAxisDirection("normal")}
+                type="button"
+              >
+                Normal
+              </button>
+              <button
+                data-active={rightAxisDirection === "inverted"}
+                onClick={() => setRightAxisDirection("inverted")}
+                type="button"
+              >
+                Invert
               </button>
             </div>
           ) : null}
@@ -1020,6 +1061,37 @@ function SeasonalityChart({
       </p>
     </article>
   );
+}
+
+function applyFlexibleAxisSettings(
+  definition: ChartDefinition,
+  rightAxisMode: "fixed" | "auto",
+  rightAxisDirection: "normal" | "inverted",
+): ChartDefinition {
+  if (!definition.flexibleAxisControls) {
+    return definition;
+  }
+
+  const fixedRight = definition.fixedDomains?.right;
+  const nextFixedDomains = { ...definition.fixedDomains };
+  if (rightAxisMode === "auto") {
+    delete nextFixedDomains.right;
+  } else if (fixedRight) {
+    nextFixedDomains.right =
+      rightAxisDirection === "inverted"
+        ? { min: Math.max(fixedRight.min, fixedRight.max), max: Math.min(fixedRight.min, fixedRight.max) }
+        : { min: Math.min(fixedRight.min, fixedRight.max), max: Math.max(fixedRight.min, fixedRight.max) };
+  }
+
+  return {
+    ...definition,
+    fixedDomains: nextFixedDomains,
+    invertRightAxis: rightAxisDirection === "inverted",
+    yRightLabel:
+      rightAxisDirection === "inverted" && definition.yRightLabel
+        ? `${definition.yRightLabel} (inverted)`
+        : definition.yRightLabel?.replace(" (inverted)", ""),
+  };
 }
 
 function SourceLinks({ series }: { series: ChartSeries[] }) {
@@ -1795,7 +1867,11 @@ function buildChartModel(series: ChartSeries[], definition?: ChartDefinition) {
     .filter((item) => item.axis === "right")
     .flatMap((item) => item.points.map((point) => point.value));
   const leftDomain = definition?.fixedDomains?.left ?? getValueDomain(leftPoints.length ? leftPoints : rightPoints);
-  const rightDomain = definition?.fixedDomains?.right ?? (rightPoints.length ? getValueDomain(rightPoints) : leftDomain);
+  const rightBaseDomain = definition?.fixedDomains?.right ?? (rightPoints.length ? getValueDomain(rightPoints) : leftDomain);
+  const rightDomain =
+    definition?.invertRightAxis && rightBaseDomain.min < rightBaseDomain.max
+      ? { min: rightBaseDomain.max, max: rightBaseDomain.min }
+      : rightBaseDomain;
 
   const scaleX = (time: number) =>
     margin.left +

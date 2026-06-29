@@ -267,7 +267,8 @@ h1 {
 }
 
 .window-controls,
-.seasonal-controls {
+.seasonal-controls,
+.axis-controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -276,6 +277,7 @@ h1 {
 
 .window-controls button,
 .seasonal-controls button,
+.axis-controls button,
 .legend-button {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -288,7 +290,8 @@ h1 {
 }
 
 .window-controls button[data-active="true"],
-.seasonal-controls button[data-active="true"] {
+.seasonal-controls button[data-active="true"],
+.axis-controls button[data-active="true"] {
   border-color: var(--teal);
   background: rgba(17, 103, 95, 0.1);
   color: var(--teal);
@@ -659,7 +662,8 @@ h1 {
   .status-strip,
   .chart-controls,
   .window-controls,
-  .seasonal-controls {
+  .seasonal-controls,
+  .axis-controls {
     align-items: flex-start;
     justify-content: flex-start;
   }
