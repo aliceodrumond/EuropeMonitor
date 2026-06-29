@@ -74,7 +74,7 @@ apply_speaker_highlight_overrides <- function(speakers) {
     "We are seeing this, for example, in transportation services and in food production sectors that use plastics or energy as inputs."
   )
 
-  idx <- speakers$member == "EscrivÃ¡" &
+  idx <- speakers$member == "EscrivÃƒÂ¡" &
     speakers$date == "2026-06-23" &
     grepl("diplomatic_resolution_scenario", speakers$source_url, fixed = TRUE)
 
@@ -184,19 +184,19 @@ clean_html <- function(value) {
   replacements <- c(
     "&nbsp;" = " ",
     "&amp;" = "&",
-    "&aacute;" = "á",
-    "&eacute;" = "é",
-    "&iacute;" = "í",
-    "&oacute;" = "ó",
-    "&uacute;" = "ú",
-    "&Aacute;" = "Á",
-    "&Eacute;" = "É",
-    "&Iacute;" = "Í",
-    "&Oacute;" = "Ó",
-    "&Uacute;" = "Ú",
-    "&ccedil;" = "ç",
-    "&Scaron;" = "Š",
-    "&scaron;" = "š",
+    "&aacute;" = "Ã¡",
+    "&eacute;" = "Ã©",
+    "&iacute;" = "Ã­",
+    "&oacute;" = "Ã³",
+    "&uacute;" = "Ãº",
+    "&Aacute;" = "Ã",
+    "&Eacute;" = "Ã‰",
+    "&Iacute;" = "Ã",
+    "&Oacute;" = "Ã“",
+    "&Uacute;" = "Ãš",
+    "&ccedil;" = "Ã§",
+    "&Scaron;" = "Å ",
+    "&scaron;" = "Å¡",
     "&ndash;" = "-",
     "&rsquo;" = "'",
     "&lsquo;" = "'",
@@ -204,11 +204,11 @@ clean_html <- function(value) {
     "&rdquo;" = "\"",
     "&quot;" = "\"",
     "&#39;" = "'",
-    "â€™" = "'",
-    "â€œ" = "\"",
-    "â€" = "\"",
-    "â€“" = "-",
-    "â€”" = "-"
+    "Ã¢â‚¬â„¢" = "'",
+    "Ã¢â‚¬Å“" = "\"",
+    "Ã¢â‚¬Â" = "\"",
+    "Ã¢â‚¬â€œ" = "-",
+    "Ã¢â‚¬â€" = "-"
   )
   value <- gsub("<[^>]+>", "", value)
   for (pattern in names(replacements)) {
@@ -265,7 +265,7 @@ extract_ecb_member <- function(headline) {
 normalize_ecb_member_name <- function(member) {
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
-    if (grepl("mir|mÃ­r|mír", member, ignore.case = TRUE)) return("Kazimir")
+    if (grepl("mir|mÃƒÂ­r|mÃ­r", member, ignore.case = TRUE)) return("Kazimir")
   }
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
   if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
@@ -300,16 +300,16 @@ member_profiles <- function() {
     "Elderson" = list(position = "Executive Board", country = "Netherlands"),
     "De Guindos" = list(position = "Vice-President", country = "Spain"),
     "Kazaks" = list(position = "Governing Council", country = "Latvia"),
-    "Kazāks" = list(position = "Governing Council", country = "Latvia"),
-    "Kažimír" = list(position = "Governing Council", country = "Slovakia"),
+    "KazÄks" = list(position = "Governing Council", country = "Latvia"),
+    "KaÅ¾imÃ­r" = list(position = "Governing Council", country = "Slovakia"),
     "Nagel" = list(position = "Governing Council", country = "Germany"),
     "Sleijpen" = list(position = "Governing Council", country = "Netherlands"),
     "Stournaras" = list(position = "Governing Council", country = "Greece"),
     "Moulin" = list(position = "Treasury / ECB context", country = "France"),
     "Rehn" = list(position = "Governing Council", country = "Finland"),
     "Makhlouf" = list(position = "Governing Council", country = "Ireland"),
-    "Escrivá" = list(position = "Governing Council", country = "Spain"),
-    "Šimkus" = list(position = "Governing Council", country = "Lithuania"),
+    "EscrivÃ¡" = list(position = "Governing Council", country = "Spain"),
+    "Å imkus" = list(position = "Governing Council", country = "Lithuania"),
     "Kaasik" = list(position = "Governing Council", country = "Estonia"),
     "Kocher" = list(position = "Governing Council", country = "Austria"),
     "Dolenc" = list(position = "Governing Council", country = "Slovenia"),
@@ -375,11 +375,11 @@ extract_policy_highlight <- function(headline, summary) {
 }
 
 extract_headline_claim <- function(headline) {
-  claim <- sub("^ECB['’]?s\\s+[^:]+:\\s*", "", headline, perl = TRUE)
-  claim <- sub("^ECB.s\\s+[^:]+:\\s*", "", claim)
+  claim <- sub("^ECB\\S*\\s+[^:]+:\\s*", "", headline, perl = TRUE)
   if (identical(claim, headline)) {
     claim <- sub("^ECB\\S*\\s+\\S+\\s+", "", headline, perl = TRUE)
   }
+  claim <- sub("^Presentation Flags\\s+", "", claim, ignore.case = TRUE, perl = TRUE)
   if (identical(claim, headline)) "" else claim
 }
 
