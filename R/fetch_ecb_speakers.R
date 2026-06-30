@@ -2,10 +2,7 @@ econostream_central_bank_url <- "https://www.econostream-media.com/news/topic/ce
 
 build_ecb_speakers <- function(project_root) {
   processed_path <- file.path(project_root, "data/processed/ecb_speakers.csv")
-  previous <- tryCatch(
-    normalize_speaker_columns(read.csv(processed_path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8-BOM")),
-    error = function(...) NULL
-  )
+  previous <- read_speaker_csv(processed_path)
   speakers <- tryCatch(
     normalize_speaker_columns(fetch_econostream_ecb_speakers(econostream_central_bank_url)),
     error = function(error) {
@@ -29,14 +26,61 @@ build_ecb_speakers <- function(project_root) {
   speakers
 }
 
+read_speaker_csv <- function(path) {
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+  size <- file.info(path)$size
+  if (is.na(size) || size <= 0) {
+    return(NULL)
+  }
+  bytes <- readBin(path, "raw", size)
+  text <- rawToChar(bytes)
+  text <- iconv(text, from = "UTF-8", to = "ASCII//TRANSLIT", sub = "")
+  text <- sub("^\ufeff", "", text)
+  if (!grepl("\n$", text)) {
+    text <- paste0(text, "\n")
+  }
+  temp_path <- tempfile(fileext = ".csv")
+  writeLines(text, temp_path, useBytes = TRUE)
+  on.exit(unlink(temp_path), add = TRUE)
+  result <- tryCatch(
+    normalize_speaker_columns(read.csv(temp_path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8")),
+    error = function(...) NULL
+  )
+  if (!is.null(result) && nrow(result) > 0 && "date" %in% names(result)) {
+    return(result)
+  }
+  NULL
+}
+
 normalize_speaker_columns <- function(speakers) {
   if (is.null(speakers) || !is.data.frame(speakers)) {
     return(speakers)
   }
-  names(speakers) <- sub("^\ufeff", "", names(speakers))
-  names(speakers) <- sub("^ï\\.\\.date$", "date", names(speakers))
-  names(speakers) <- sub("^ï..date$", "date", names(speakers))
+  names(speakers) <- sub("^\\ufeff", "", names(speakers))
+  names(speakers) <- sub("^Ã¯\\.\\.date$", "date", names(speakers))
+  names(speakers) <- sub("^Ã¯..date$", "date", names(speakers))
+  if ("source_url" %in% names(speakers)) {
+    speakers$source_url <- clean_speaker_url(speakers$source_url)
+  }
+  if ("policy_comments" %in% names(speakers)) {
+    speakers$policy_comments <- clean_speaker_text(speakers$policy_comments)
+  }
   speakers
+}
+
+clean_speaker_text <- function(value) {
+  value <- gsub("<U\\+[0-9A-Fa-f]+>", "", value)
+  value <- gsub("\\s+", " ", value)
+  trimws(value)
+}
+
+clean_speaker_url <- function(value) {
+  value <- gsub("<U\\+[0-9A-Fa-f]+>", "", value)
+  value <- iconv(value, from = "", to = "ASCII//TRANSLIT", sub = "")
+  value <- gsub("[\"'`]", "", value)
+  trimws(value)
 }
 
 keep_recent_and_priority_speeches <- function(speakers, previous, max_rows = 20) {
@@ -78,7 +122,16 @@ dedupe_speaker_rows <- function(speakers) {
   if (!nrow(speakers)) return(speakers)
   speakers$member <- vapply(speakers$member, normalize_ecb_member_name_ascii, character(1))
   comments <- tolower(trimws(gsub("\\s+", " ", speakers$policy_comments)))
-  key <- paste(speakers$member, speakers$date, comments, sep = "|")
+  if ("source_url" %in% names(speakers)) {
+    url_key <- tolower(gsub("[^a-z0-9]+", "", speakers$source_url))
+    key <- ifelse(
+      nzchar(url_key),
+      paste(speakers$member, speakers$date, url_key, sep = "|"),
+      paste(speakers$member, speakers$date, comments, sep = "|")
+    )
+  } else {
+    key <- paste(speakers$member, speakers$date, comments, sep = "|")
+  }
   speakers[!duplicated(key), , drop = FALSE]
 }
 
@@ -97,11 +150,23 @@ apply_speaker_highlight_overrides <- function(speakers) {
     "We are seeing this, for example, in transportation services and in food production sectors that use plastics or energy as inputs."
   )
 
-  idx <- speakers$member == "EscrivÃƒÂ¡" &
+  idx <- speakers$member == "Escriva" &
     speakers$date == "2026-06-23" &
     grepl("diplomatic_resolution_scenario", speakers$source_url, fixed = TRUE)
 
   speakers$policy_comments[idx] <- escriva_chain_transmission
+
+  idx <- speakers$member == "Lagarde" &
+    speakers$date == "2026-06-29" &
+    grepl("june_hike_was_not_an_insurance_move", speakers$source_url, fixed = TRUE)
+
+  speakers$policy_comments[idx] <- "The June hike was not an insurance move and was robust across scenarios."
+
+  idx <- speakers$member == "Schnabel" &
+    speakers$date == "2026-06-27" &
+    grepl("further_rate_hikes_upside_inflation_risks", speakers$source_url, fixed = TRUE)
+
+  speakers$policy_comments[idx] <- "Further rate hikes were flagged, alongside upside inflation risks."
   speakers
 }
 
@@ -217,19 +282,19 @@ clean_html <- function(value) {
   replacements <- c(
     "&nbsp;" = " ",
     "&amp;" = "&",
-    "&aacute;" = "Ã¡",
-    "&eacute;" = "Ã©",
-    "&iacute;" = "Ã­",
-    "&oacute;" = "Ã³",
-    "&uacute;" = "Ãº",
-    "&Aacute;" = "Ã",
-    "&Eacute;" = "Ã‰",
-    "&Iacute;" = "Ã",
-    "&Oacute;" = "Ã“",
-    "&Uacute;" = "Ãš",
-    "&ccedil;" = "Ã§",
-    "&Scaron;" = "Å ",
-    "&scaron;" = "Å¡",
+    "&aacute;" = "ÃƒÂ¡",
+    "&eacute;" = "ÃƒÂ©",
+    "&iacute;" = "ÃƒÂ­",
+    "&oacute;" = "ÃƒÂ³",
+    "&uacute;" = "ÃƒÂº",
+    "&Aacute;" = "ÃƒÂ",
+    "&Eacute;" = "Ãƒâ€°",
+    "&Iacute;" = "ÃƒÂ",
+    "&Oacute;" = "Ãƒâ€œ",
+    "&Uacute;" = "ÃƒÅ¡",
+    "&ccedil;" = "ÃƒÂ§",
+    "&Scaron;" = "Ã…Â ",
+    "&scaron;" = "Ã…Â¡",
     "&ndash;" = "-",
     "&rsquo;" = "'",
     "&lsquo;" = "'",
@@ -237,11 +302,11 @@ clean_html <- function(value) {
     "&rdquo;" = "\"",
     "&quot;" = "\"",
     "&#39;" = "'",
-    "Ã¢â‚¬â„¢" = "'",
-    "Ã¢â‚¬Å“" = "\"",
-    "Ã¢â‚¬Â" = "\"",
-    "Ã¢â‚¬â€œ" = "-",
-    "Ã¢â‚¬â€" = "-"
+    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢" = "'",
+    "ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ" = "\"",
+    "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â" = "\"",
+    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“" = "-",
+    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â" = "-"
   )
   value <- gsub("<[^>]+>", "", value)
   for (pattern in names(replacements)) {
@@ -298,7 +363,7 @@ normalize_ecb_member_name <- function(member) {
   if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
-    if (grepl("mir|mÃƒÂ­r|mÃ­r", member, ignore.case = TRUE)) return("Kazimir")
+    if (grepl("mir|mÃƒÆ’Ã‚Â­r|mÃƒÂ­r", member, ignore.case = TRUE)) return("Kazimir")
   }
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
   if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
@@ -334,16 +399,16 @@ member_profiles <- function() {
     "Elderson" = list(position = "Executive Board", country = "Netherlands"),
     "De Guindos" = list(position = "Vice-President", country = "Spain"),
     "Kazaks" = list(position = "Governing Council", country = "Latvia"),
-    "KazÄks" = list(position = "Governing Council", country = "Latvia"),
-    "KaÅ¾imÃ­r" = list(position = "Governing Council", country = "Slovakia"),
+    "KazÃ„Âks" = list(position = "Governing Council", country = "Latvia"),
+    "KaÃ…Â¾imÃƒÂ­r" = list(position = "Governing Council", country = "Slovakia"),
     "Nagel" = list(position = "Governing Council", country = "Germany"),
     "Sleijpen" = list(position = "Governing Council", country = "Netherlands"),
     "Stournaras" = list(position = "Governing Council", country = "Greece"),
     "Moulin" = list(position = "Treasury / ECB context", country = "France"),
     "Rehn" = list(position = "Governing Council", country = "Finland"),
     "Makhlouf" = list(position = "Governing Council", country = "Ireland"),
-    "EscrivÃ¡" = list(position = "Governing Council", country = "Spain"),
-    "Å imkus" = list(position = "Governing Council", country = "Lithuania"),
+    "EscrivÃƒÂ¡" = list(position = "Governing Council", country = "Spain"),
+    "Ã…Â imkus" = list(position = "Governing Council", country = "Lithuania"),
     "Kaasik" = list(position = "Governing Council", country = "Estonia"),
     "Kocher" = list(position = "Governing Council", country = "Austria"),
     "Dolenc" = list(position = "Governing Council", country = "Slovenia"),
