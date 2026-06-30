@@ -251,8 +251,7 @@ clean_html <- function(value) {
 }
 
 strip_econostream_byline <- function(value) {
-  value <- sub("^By [^-]+ - [A-Z][A-Z ]+ \\(Econostream\\) -\\s*", "", value)
-  value <- sub("^By [^-]+ - [A-Za-z ]+ \\(Econostream\\) -\\s*", "", value)
+  value <- sub("^By [^-]+ - [A-Za-z ,]+ \\(Econostream\\) -\\s*", "", value)
   trimws(value)
 }
 
