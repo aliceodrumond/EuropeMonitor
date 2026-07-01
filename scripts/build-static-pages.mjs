@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 const buildRoot = process.env.BUILD_OUT_DIR || "dist";
 const outDir = join(buildRoot, "client");
-const cloudflareWebAnalyticsToken = process.env.CF_WEB_ANALYTICS_TOKEN || "";
+const cloudflareWebAnalyticsToken = process.env.CF_WEB_ANALYTICS_TOKEN || "8271d61c78674cc48c60c48f87f27c14";
 const analyticsSnippet = String.raw`
     <script>
       (function () {
