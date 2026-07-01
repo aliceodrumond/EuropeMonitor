@@ -55,7 +55,7 @@ build_scenario_market_series <- function(project_root) {
       source = "ECB Data Portal; FRED",
       source_url = "https://data.ecb.europa.eu/data/datasets/YC/YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y",
       frequency = "daily",
-      source_note = "Real proxy = 2Y nominal yield less latest available YoY CPI/HICP; right axis inverted."
+      source_note = "Real proxy = 2Y nominal yield less latest available YoY CPI/HICP."
     )
   )
 
