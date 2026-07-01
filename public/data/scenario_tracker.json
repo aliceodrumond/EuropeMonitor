@@ -227,16 +227,7 @@
                                                                             ]
                                                              }
                                                          ]
-                                            },
-                          "inputs":  [
-                                         {
-                                             "id":  "eurusd_real_rates_2026-07-01",
-                                             "date":  "2026-07-01",
-                                             "title":  "EURUSD vs 2Y Real Rate Differential",
-                                             "chartId":  "scenario_eurusd_real_rates",
-                                             "note":  "Market input updated on 1 Jul 2026."
-                                         }
-                                     ]
+                                            }
                       }
                   ]
 }
