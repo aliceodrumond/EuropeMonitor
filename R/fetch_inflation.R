@@ -500,8 +500,8 @@ read_ecb_hicp_sa_index_rows <- function(definition) {
     date = dates[valid],
     index = values[valid],
     source = "ECB Data Portal",
-    source_url = sprintf("https://data.ecb.europa.eu/data/datasets/HICP/HICP.%s", definition$ecb_key),
-    source_note = "Seasonally adjusted HICP index.",
+    source_url = "https://data.ecb.europa.eu/data/data-categories/macroeconomic-and-sectoral-statistics/inflation-and-consumer-prices/seasonally-adjusted-series?layerType=AL",
+    source_note = sprintf("Official seasonally adjusted HICP index, ECB series HICP.%s.", definition$ecb_key),
     stringsAsFactors = FALSE
   )
 }

@@ -204,6 +204,23 @@ function Test-InflationOutput {
   )) {
     Assert-SeriesRows -Rows $inflation -SeriesId $series -MinimumRows 1
   }
+
+  foreach ($pair in @(
+    @{ Label = "Headline"; Yoy = "hicp_headline_yoy_nsa"; EcbSa = "hicp_headline_qoq_saar" },
+    @{ Label = "Core"; Yoy = "hicp_core_yoy_nsa"; EcbSa = "hicp_core_qoq_saar" },
+    @{ Label = "Goods"; Yoy = "hicp_goods_yoy_nsa"; EcbSa = "hicp_goods_qoq_saar" },
+    @{ Label = "Services"; Yoy = "hicp_services_yoy_nsa"; EcbSa = "hicp_services_qoq_saar" }
+  )) {
+    $yoyLast = @($inflation | Where-Object { $_.series_id -eq $pair.Yoy } | Sort-Object date)[-1]
+    $saLast = @($inflation | Where-Object { $_.series_id -eq $pair.EcbSa } | Sort-Object date)[-1]
+    if ($null -ne $yoyLast -and $null -ne $saLast) {
+      if ([datetime]$saLast.date -lt [datetime]$yoyLast.date) {
+        Write-Log "WARNING: ECB SA $($pair.Label) latest month ($($saLast.date)) lags Eurostat NSA latest month ($($yoyLast.date)); SA - ECB will intentionally leave the missing month blank"
+      } else {
+        Write-Log "Validated ECB SA $($pair.Label) latest month: $($saLast.date)"
+      }
+    }
+  }
 }
 
 Write-Log "Starting Europe monitor inflation-only update"
