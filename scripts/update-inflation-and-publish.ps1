@@ -53,14 +53,8 @@ function Invoke-Logged {
   }
 }
 
-function Invoke-InflationPipeline {
-  Invoke-Logged -FilePath $Rscript -Arguments @("R\run_inflation_update.R")
-  Test-InflationOutput
-
-  Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
-  Test-InflationOutput
-
-  Invoke-Logged -FilePath $Npx -Arguments @(
+function Invoke-WranglerDeploy {
+  $DeployArgs = @(
     "wrangler",
     "pages",
     "deploy",
@@ -70,6 +64,33 @@ function Invoke-InflationPipeline {
     "--branch",
     "main"
   )
+
+  try {
+    Invoke-Logged -FilePath $Npx -Arguments $DeployArgs
+  } catch {
+    Write-Log "Wrangler deploy failed; retrying once with NODE_TLS_REJECT_UNAUTHORIZED=0 for corporate proxy/certificate issue"
+    $PreviousTls = $env:NODE_TLS_REJECT_UNAUTHORIZED
+    $env:NODE_TLS_REJECT_UNAUTHORIZED = "0"
+    try {
+      Invoke-Logged -FilePath $Npx -Arguments $DeployArgs
+    } finally {
+      if ($null -eq $PreviousTls) {
+        Remove-Item Env:\NODE_TLS_REJECT_UNAUTHORIZED -ErrorAction SilentlyContinue
+      } else {
+        $env:NODE_TLS_REJECT_UNAUTHORIZED = $PreviousTls
+      }
+    }
+  }
+}
+
+function Invoke-InflationPipeline {
+  Invoke-Logged -FilePath $Rscript -Arguments @("R\run_inflation_update.R")
+  Test-InflationOutput
+
+  Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
+  Test-InflationOutput
+
+  Invoke-WranglerDeploy
 
   & $Git add public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
   & $Git diff --cached --quiet

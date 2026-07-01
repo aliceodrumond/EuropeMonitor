@@ -43,6 +43,36 @@ function Invoke-Logged {
   }
 }
 
+function Invoke-WranglerDeploy {
+  $DeployArgs = @(
+    "wrangler",
+    "pages",
+    "deploy",
+    "pages-dist/client",
+    "--project-name",
+    "legacy-europe-monitor",
+    "--branch",
+    "main"
+  )
+
+  try {
+    Invoke-Logged -FilePath $Npx -Arguments $DeployArgs
+  } catch {
+    Write-Log "Wrangler deploy failed; retrying once with NODE_TLS_REJECT_UNAUTHORIZED=0 for corporate proxy/certificate issue"
+    $PreviousTls = $env:NODE_TLS_REJECT_UNAUTHORIZED
+    $env:NODE_TLS_REJECT_UNAUTHORIZED = "0"
+    try {
+      Invoke-Logged -FilePath $Npx -Arguments $DeployArgs
+    } finally {
+      if ($null -eq $PreviousTls) {
+        Remove-Item Env:\NODE_TLS_REJECT_UNAUTHORIZED -ErrorAction SilentlyContinue
+      } else {
+        $env:NODE_TLS_REJECT_UNAUTHORIZED = $PreviousTls
+      }
+    }
+  }
+}
+
 function Assert-SeriesRows {
   param([object[]]$Rows, [string]$SeriesId, [int]$MinimumRows = 1)
   $seriesRows = @($Rows | Where-Object { $_.series_id -eq $SeriesId })
@@ -125,16 +155,7 @@ function Invoke-FastInflationPipeline {
   Test-FastInflationOutput
   Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
   Test-FastInflationOutput
-  Invoke-Logged -FilePath $Npx -Arguments @(
-    "wrangler",
-    "pages",
-    "deploy",
-    "pages-dist/client",
-    "--project-name",
-    "legacy-europe-monitor",
-    "--branch",
-    "main"
-  )
+  Invoke-WranglerDeploy
 
   $PreviousErrorActionPreference = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
