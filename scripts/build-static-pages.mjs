@@ -3,6 +3,33 @@ import { join } from "node:path";
 
 const buildRoot = process.env.BUILD_OUT_DIR || "dist";
 const outDir = join(buildRoot, "client");
+const cloudflareWebAnalyticsToken = process.env.CF_WEB_ANALYTICS_TOKEN || "";
+const analyticsSnippet = String.raw`
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("internal") === "1") {
+          localStorage.setItem("legacyMonitorInternal", "1");
+          params.delete("internal");
+          var clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
+          window.history.replaceState({}, document.title, clean);
+        }
+        if (params.get("external") === "1") {
+          localStorage.removeItem("legacyMonitorInternal");
+          params.delete("external");
+          var reset = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
+          window.history.replaceState({}, document.title, reset);
+        }
+        if (localStorage.getItem("legacyMonitorInternal") === "1") return;
+        var token = ${JSON.stringify(cloudflareWebAnalyticsToken)};
+        if (!token) return;
+        var script = document.createElement("script");
+        script.defer = true;
+        script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        script.setAttribute("data-cf-beacon", JSON.stringify({ token: token }));
+        document.head.appendChild(script);
+      })();
+    </script>`;
 
 await rm(buildRoot, { recursive: true, force: true });
 await rm(".wrangler", { recursive: true, force: true });
@@ -123,6 +150,7 @@ const html = String.raw`<!doctype html>
       <section class="grid" id="content"></section>
       <p class="footer" id="footer"></p>
     </main>
+${analyticsSnippet}
     <script>
       const charts = [
         ["scenario_eurusd_real_rates","scenario","EURUSD vs 2Y Real Rate Differential","Market Check","EURUSD","EA-US 2Y real rates, pp",true,["eurusd","real_2y_differential_ea_us"],{right:{min:-2.5,max:1.5}},"2y",null,false,null,true],
