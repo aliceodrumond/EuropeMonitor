@@ -1,14 +1,15 @@
 {
   "last_updated": "2026-07-01",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_inflation_flash_fast_update.R",
   "source_links": 23,
   "activity_last_new": {
     "date": "2026-07-01",
     "description": "ECB Data Portal: Euro Area FCI, Euro Area GDP"
   },
   "inflation_last_new": {
-    "date": "2026-05-01",
-    "description": "ECB Consumer Expectations Survey: 12M inflation expectations, 3Y inflation expectations, 5Y inflation expectations"
-  }
+    "date": "2026-06-01",
+    "description": "Eurostat HICP: % YoY NSA, Core HICP, HICP - Non-energy industrial goods, HICP - Services, HICP inflation rate, % HoH SAAR, % MoM SAAR, % QoQ SAAR"
+  },
+  "inflation_rows": 9838
 }
