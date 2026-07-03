@@ -668,12 +668,24 @@ read_official_pmi_workbook <- function(project_root) {
         values[[flash_column]] <- NA_real_
       }
     }
+    for (investing_column in sub("_final$", "_investing", countries$column)) {
+      if (!investing_column %in% names(values)) {
+        values[[investing_column]] <- NA_real_
+      }
+    }
     values <- merge_online_flash_pmi(values, online_flash, definition$value_column, countries)
+    if (identical(definition$value_column, "services")) {
+      values <- merge_investing_final_pmi(values, fetch_investing_services_pmi_values(), countries, definition$value_column)
+    }
     frames <- lapply(seq_len(nrow(countries)), function(i) {
       spec <- countries[i, ]
       series_values <- values[[spec$column]]
       source <- rep("S&P Global PMI official history", nrow(values))
+      investing_column <- sub("_final$", "_investing", spec$column)
       flash_column <- sub("_final$", "_flash", spec$column)
+      investing_valid <- is.na(series_values) & !is.na(values[[investing_column]])
+      series_values[investing_valid] <- values[[investing_column]][investing_valid]
+      source[investing_valid] <- "Investing.com Economic Calendar"
       flash_valid <- is.na(series_values) & !is.na(values[[flash_column]])
       series_values[flash_valid] <- values[[flash_column]][flash_valid]
       source[flash_valid] <- "HCOB / SP Global Flash PMI"
@@ -730,6 +742,101 @@ merge_online_flash_pmi <- function(values, flash, value_column, countries) {
     }
   }
   values[order(values$date), ]
+}
+
+merge_investing_final_pmi <- function(values, investing, countries, value_column) {
+  if (!nrow(investing)) {
+    return(values)
+  }
+  for (i in seq_len(nrow(investing))) {
+    row <- investing[i, ]
+    country <- countries[countries$suffix == row$suffix, ]
+    if (!nrow(country) || is.na(row[[value_column]]) || is.na(row$date)) {
+      next
+    }
+    if (!row$date %in% values$date) {
+      values[nrow(values) + 1, ] <- NA
+      values$date[nrow(values)] <- row$date
+    }
+    idx <- which(values$date == row$date)[[1]]
+    final_column <- country$column[[1]]
+    investing_column <- sub("_final$", "_investing", final_column)
+    if (is.na(values[[final_column]][idx])) {
+      values[[investing_column]][idx] <- row[[value_column]]
+    }
+  }
+  values[order(values$date), ]
+}
+
+fetch_investing_services_pmi_values <- function() {
+  releases <- data.frame(
+    suffix = c("ea", "de", "fr", "es", "uk", "it"),
+    url = c(
+      "https://www.investing.com/economic-calendar/european-services-purchasing-managers-index-%28pmi%29-272",
+      "https://www.investing.com/economic-calendar/germany-services-purchasing-managers-index-%28pmi%29-140",
+      "https://www.investing.com/economic-calendar/french-services-pmi-341",
+      "https://www.investing.com/economic-calendar/spain-services-purchasing-managers-index-%28pmi%29-668",
+      "https://www.investing.com/economic-calendar/united-kingdom-services-purchasing-managers-index-%28pmi%29-274",
+      "https://www.investing.com/economic-calendar/italy-services-purchasing-managers-index-%28pmi%29-833"
+    ),
+    stringsAsFactors = FALSE
+  )
+  frames <- lapply(seq_len(nrow(releases)), function(i) {
+    parsed <- tryCatch(parse_investing_latest_release(fetch_url_text(releases$url[[i]]), releases$url[[i]]), error = function(e) NULL)
+    if (is.null(parsed) || is.na(parsed$period_date) || is.na(parsed$actual)) {
+      return(NULL)
+    }
+    data.frame(
+      date = parsed$period_date,
+      suffix = releases$suffix[[i]],
+      services = parsed$actual,
+      source_url = releases$url[[i]],
+      stringsAsFactors = FALSE
+    )
+  })
+  frames <- Filter(Negate(is.null), frames)
+  if (!length(frames)) {
+    return(empty_flash_pmi_values())
+  }
+  do.call(rbind, frames)
+}
+
+parse_investing_latest_release <- function(html, source_url) {
+  if (!nzchar(html)) {
+    return(NULL)
+  }
+  text <- html
+  text <- gsub("<script[\\s\\S]*?</script>", " ", text, perl = TRUE, ignore.case = TRUE)
+  text <- gsub("<style[\\s\\S]*?</style>", " ", text, perl = TRUE, ignore.case = TRUE)
+  text <- gsub("<[^>]+>", " ", text)
+  text <- gsub("&nbsp;", " ", text, fixed = TRUE)
+  text <- gsub("&#x2F;", "/", text, fixed = TRUE)
+  text <- gsub("&amp;", "&", text, fixed = TRUE)
+  text <- gsub("\\s+", " ", text)
+
+  match <- regmatches(
+    text,
+    regexec("Latest Release\\s*([A-Z][a-z]{2}\\s+[0-9]{2},\\s+[0-9]{4}).{0,300}?Actual\\s*([-+]?\\d+(?:\\.\\d+)?)", text, perl = TRUE)
+  )[[1]]
+  if (length(match) < 3) {
+    return(NULL)
+  }
+
+  release_date <- tryCatch(as.Date(match[[2]], format = "%b %d, %Y"), error = function(e) as.Date(NA))
+  if (is.na(release_date)) {
+    return(NULL)
+  }
+
+  release_parts <- as.POSIXlt(release_date)
+  release_parts$mday <- 1L
+  release_parts$mon <- release_parts$mon - 1L
+
+  list(
+    source_url = source_url,
+    release_date = release_date,
+    period_date = as.Date(release_parts),
+    actual = suppressWarnings(as.numeric(match[[3]]))
+  )
 }
 
 fetch_spglobal_flash_pmi_values <- function(project_root) {

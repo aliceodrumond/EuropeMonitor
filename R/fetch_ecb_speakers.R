@@ -59,8 +59,8 @@ normalize_speaker_columns <- function(speakers) {
     return(speakers)
   }
   names(speakers) <- sub("^\\ufeff", "", names(speakers))
-  names(speakers) <- sub("^Ã¯\\.\\.date$", "date", names(speakers))
-  names(speakers) <- sub("^Ã¯..date$", "date", names(speakers))
+  names(speakers) <- sub("^ÃƒÂ¯\\.\\.date$", "date", names(speakers))
+  names(speakers) <- sub("^ÃƒÂ¯..date$", "date", names(speakers))
   if ("source_url" %in% names(speakers)) {
     speakers$source_url <- clean_speaker_url(speakers$source_url)
   }
@@ -282,19 +282,19 @@ clean_html <- function(value) {
   replacements <- c(
     "&nbsp;" = " ",
     "&amp;" = "&",
-    "&aacute;" = "ÃƒÂ¡",
-    "&eacute;" = "ÃƒÂ©",
-    "&iacute;" = "ÃƒÂ­",
-    "&oacute;" = "ÃƒÂ³",
-    "&uacute;" = "ÃƒÂº",
-    "&Aacute;" = "ÃƒÂ",
-    "&Eacute;" = "Ãƒâ€°",
-    "&Iacute;" = "ÃƒÂ",
-    "&Oacute;" = "Ãƒâ€œ",
-    "&Uacute;" = "ÃƒÅ¡",
-    "&ccedil;" = "ÃƒÂ§",
-    "&Scaron;" = "Ã…Â ",
-    "&scaron;" = "Ã…Â¡",
+    "&aacute;" = "ÃƒÆ’Ã‚Â¡",
+    "&eacute;" = "ÃƒÆ’Ã‚Â©",
+    "&iacute;" = "ÃƒÆ’Ã‚Â­",
+    "&oacute;" = "ÃƒÆ’Ã‚Â³",
+    "&uacute;" = "ÃƒÆ’Ã‚Âº",
+    "&Aacute;" = "ÃƒÆ’Ã‚Â",
+    "&Eacute;" = "ÃƒÆ’Ã¢â‚¬Â°",
+    "&Iacute;" = "ÃƒÆ’Ã‚Â",
+    "&Oacute;" = "ÃƒÆ’Ã¢â‚¬Å“",
+    "&Uacute;" = "ÃƒÆ’Ã…Â¡",
+    "&ccedil;" = "ÃƒÆ’Ã‚Â§",
+    "&Scaron;" = "Ãƒâ€¦Ã‚Â ",
+    "&scaron;" = "Ãƒâ€¦Ã‚Â¡",
     "&ndash;" = "-",
     "&rsquo;" = "'",
     "&lsquo;" = "'",
@@ -302,11 +302,11 @@ clean_html <- function(value) {
     "&rdquo;" = "\"",
     "&quot;" = "\"",
     "&#39;" = "'",
-    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢" = "'",
-    "ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ" = "\"",
-    "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â" = "\"",
-    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“" = "-",
-    "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â" = "-"
+    "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢" = "'",
+    "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“" = "\"",
+    "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â" = "\"",
+    "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ" = "-",
+    "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â" = "-"
   )
   value <- gsub("<[^>]+>", "", value)
   for (pattern in names(replacements)) {
@@ -364,7 +364,8 @@ normalize_ecb_member_name <- function(member) {
   if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
-    if (grepl("mir|mÃƒÆ’Ã‚Â­r|mÃƒÂ­r", member, ignore.case = TRUE)) return("Kazimir")
+    if (grepl("mir|mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­r|mÃƒÆ’Ã‚Â­r", member, ignore.case = TRUE)) return("Kazimir")
+    return("Kazaks")
   }
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
   if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
@@ -381,9 +382,11 @@ member_profile <- function(member) {
 }
 
 normalize_ecb_member_name_ascii <- function(member) {
+  member <- iconv(member, from = "", to = "ASCII//TRANSLIT", sub = "")
   if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kazimir|Kaimr", member, ignore.case = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
+  if (grepl("Kaz", member, fixed = TRUE)) return("Kazaks")
   if (grepl("Escriv", member, fixed = TRUE)) return("Escriva")
   if (grepl("igman", member, ignore.case = TRUE)) return("Zigman")
   member
@@ -400,16 +403,16 @@ member_profiles <- function() {
     "Elderson" = list(position = "Executive Board", country = "Netherlands"),
     "De Guindos" = list(position = "Vice-President", country = "Spain"),
     "Kazaks" = list(position = "Governing Council", country = "Latvia"),
-    "KazÃ„Âks" = list(position = "Governing Council", country = "Latvia"),
-    "KaÃ…Â¾imÃƒÂ­r" = list(position = "Governing Council", country = "Slovakia"),
+    "KazÃƒâ€žÃ‚Âks" = list(position = "Governing Council", country = "Latvia"),
+    "KaÃƒâ€¦Ã‚Â¾imÃƒÆ’Ã‚Â­r" = list(position = "Governing Council", country = "Slovakia"),
     "Nagel" = list(position = "Governing Council", country = "Germany"),
     "Sleijpen" = list(position = "Governing Council", country = "Netherlands"),
     "Stournaras" = list(position = "Governing Council", country = "Greece"),
     "Moulin" = list(position = "Treasury / ECB context", country = "France"),
     "Rehn" = list(position = "Governing Council", country = "Finland"),
     "Makhlouf" = list(position = "Governing Council", country = "Ireland"),
-    "EscrivÃƒÂ¡" = list(position = "Governing Council", country = "Spain"),
-    "Ã…Â imkus" = list(position = "Governing Council", country = "Lithuania"),
+    "EscrivÃƒÆ’Ã‚Â¡" = list(position = "Governing Council", country = "Spain"),
+    "Ãƒâ€¦Ã‚Â imkus" = list(position = "Governing Council", country = "Lithuania"),
     "Kaasik" = list(position = "Governing Council", country = "Estonia"),
     "Kocher" = list(position = "Governing Council", country = "Austria"),
     "Dolenc" = list(position = "Governing Council", country = "Slovenia"),
@@ -669,3 +672,4 @@ fallback_ecb_speakers <- function() {
     stringsAsFactors = FALSE
   )
 }
+

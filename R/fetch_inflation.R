@@ -15,16 +15,453 @@ build_inflation_series <- function(project_root) {
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp)
   hicp_seasonality <- read_hicp_seasonality_rows()
+  swiss_cpi <- read_swiss_cpi_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
   inflation <- apply_series_catalog(
-    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, hicp_seasonality, ces_expectations),
+    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, hicp_seasonality, swiss_cpi, ces_expectations),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
+}
+
+swiss_cpi_definitions <- function() {
+  data.frame(
+    chart_id = c("swiss_cpi_headline_rates", "swiss_cpi_core_rates", "swiss_cpi_goods_rates", "swiss_cpi_services_rates", "swiss_cpi_energy_fuels_rates"),
+    seasonality_chart_id = c("swiss_cpi_headline_seasonality", "swiss_cpi_core_seasonality", "swiss_cpi_goods_seasonality", "swiss_cpi_services_seasonality", "swiss_cpi_energy_fuels_seasonality"),
+    base_series_id = c("swiss_cpi_headline", "swiss_cpi_core", "swiss_cpi_goods", "swiss_cpi_services", "swiss_cpi_energy_fuels"),
+    value_col = c("headline", "core", "goods", "services", "energy_fuels"),
+    yoy_series_id = c("swiss_cpi_headline_yoy_nsa", "swiss_cpi_core_yoy_nsa", "swiss_cpi_goods_yoy_nsa", "swiss_cpi_services_yoy_nsa", "swiss_cpi_energy_fuels_yoy_nsa"),
+    hoh_series_id = c("swiss_cpi_headline_hoh_saar", "swiss_cpi_core_hoh_saar", "swiss_cpi_goods_hoh_saar", "swiss_cpi_services_hoh_saar", "swiss_cpi_energy_fuels_hoh_saar"),
+    qoq_series_id = c("swiss_cpi_headline_qoq_saar", "swiss_cpi_core_qoq_saar", "swiss_cpi_goods_qoq_saar", "swiss_cpi_services_qoq_saar", "swiss_cpi_energy_fuels_qoq_saar"),
+    mom_series_id = c("swiss_cpi_headline_mom_saar", "swiss_cpi_core_mom_saar", "swiss_cpi_goods_mom_saar", "swiss_cpi_services_mom_saar", "swiss_cpi_energy_fuels_mom_saar"),
+    title = c("Switzerland CPI Headline", "Switzerland CPI Core", "Switzerland CPI Goods", "Switzerland CPI Services", "Switzerland CPI Energy & Fuels"),
+    stringsAsFactors = FALSE
+  )
+}
+
+read_swiss_cpi_rows <- function() {
+  definitions <- swiss_cpi_definitions()
+  workbook <- read_swiss_cpi_workbook()
+  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    rbind(
+      build_swiss_cpi_rate_rows(definitions[i, ], workbook),
+      build_swiss_cpi_seasonality_rows(definitions[i, ], workbook)
+    )
+  }))
+}
+
+read_url_text <- function(url, timeout_seconds = 60) {
+  curl <- Sys.which("curl.exe")
+  if (nzchar(curl)) {
+    output <- tryCatch(
+      system2(
+        curl,
+        c("-L", "-f", "-s", "-S", "--ssl-no-revoke", "-m", as.character(timeout_seconds), url),
+        stdout = TRUE,
+        stderr = FALSE
+      ),
+      error = function(e) character()
+    )
+    if (length(output)) {
+      return(paste(output, collapse = "\n"))
+    }
+  }
+
+  tmp <- tempfile("fso_http_text_", tmpdir = tempdir(), fileext = ".html")
+  on.exit(unlink(tmp), add = TRUE)
+  ok <- tryCatch({
+    utils::download.file(url, tmp, mode = "wb", quiet = TRUE, method = "libcurl")
+    TRUE
+  }, error = function(e) FALSE)
+  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) {
+    return("")
+  }
+  paste(readLines(tmp, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}
+
+download_binary_file <- function(url, destination, timeout_seconds = 60) {
+  curl <- Sys.which("curl.exe")
+  if (nzchar(curl)) {
+    ok <- tryCatch({
+      command <- sprintf(
+        '%s -L -f -s -S --ssl-no-revoke -m %s -o %s %s',
+        shQuote(curl, type = "cmd"),
+        as.character(timeout_seconds),
+        shQuote(normalizePath(destination, winslash = "\\", mustWork = FALSE), type = "cmd"),
+        shQuote(url, type = "cmd")
+      )
+      status <- system(command)
+      identical(status, 0L)
+    }, error = function(e) FALSE)
+    if (ok && file.exists(destination) && file.info(destination)$size > 0) {
+      return(TRUE)
+    }
+  }
+
+  tryCatch(
+    utils::download.file(url, destination, mode = "wb", quiet = TRUE, method = "libcurl"),
+    error = function(e) NULL
+  )
+  file.exists(destination) && file.info(destination)$size > 0
+}
+
+read_swiss_cpi_release_cache <- function(project_root) {
+  cache_path <- file.path(project_root, "data/processed/fso_swiss_cpi_release_cache.json")
+  if (!file.exists(cache_path) || !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(list())
+  }
+  tryCatch(jsonlite::fromJSON(cache_path, simplifyVector = FALSE), error = function(e) list())
+}
+
+write_swiss_cpi_release_cache <- function(project_root, cache) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    return(invisible(NULL))
+  }
+  cache_path <- file.path(project_root, "data/processed/fso_swiss_cpi_release_cache.json")
+  jsonlite::write_json(cache, cache_path, auto_unbox = TRUE, pretty = TRUE)
+  invisible(cache_path)
+}
+
+extract_first_match <- function(text, pattern) {
+  match <- regexec(pattern, text, perl = TRUE)
+  captures <- regmatches(text, match)[[1]]
+  if (length(captures) < 2) {
+    return(NA_character_)
+  }
+  captures[[2]]
+}
+
+extract_all_matches <- function(text, pattern) {
+  matches <- gregexpr(pattern, text, perl = TRUE)
+  values <- regmatches(text, matches)[[1]]
+  unique(values[nzchar(values)])
+}
+
+parse_swiss_cpi_release_page <- function(html, page_url) {
+  title_month <- extract_first_match(
+    html,
+    "<title>\\s*Swiss Consumer Price Index in ([A-Za-z]+\\s+[0-9]{4})\\s*-"
+  )
+  publication_raw <- extract_first_match(
+    html,
+    '<Attribute name="publicationdate">([0-9]{8})</Attribute>'
+  )
+  if (is.na(publication_raw)) {
+    publication_raw <- gsub(
+      "-",
+      "",
+      substr(extract_first_match(html, 'article:published_time" content="([0-9-]{10})T'), 1, 10)
+    )
+  }
+  asset_urls <- extract_all_matches(
+    html,
+    "https://dam-api\\.bfs\\.admin\\.ch/hub/api/dam/assets/[0-9]+/master"
+  )
+  if (is.na(title_month) || !length(asset_urls)) {
+    return(NULL)
+  }
+
+  release_month <- tryCatch(as.Date(paste0("01 ", title_month), format = "%d %B %Y"), error = function(e) as.Date(NA))
+  publication_date <- tryCatch(as.Date(publication_raw, format = "%Y%m%d"), error = function(e) as.Date(NA))
+  if (is.na(release_month) || is.na(publication_date)) {
+    return(NULL)
+  }
+
+  list(
+    page_url = page_url,
+    title_month = title_month,
+    release_month = release_month,
+    publication_date = publication_date,
+    asset_urls = asset_urls
+  )
+}
+
+candidate_swiss_cpi_release_ids <- function(cache, publication_year) {
+  cached_year <- suppressWarnings(as.integer(cache$publication_year %||% NA))
+  cached_id <- suppressWarnings(as.integer(cache$gnpdetail_id %||% NA))
+  if (!is.na(cached_year) && !is.na(cached_id) && cached_year == publication_year) {
+    nearby <- cached_id + c(1L, 0L, 2L, -1L, 3L, -2L, 4L)
+    return(nearby[nearby > 0L])
+  }
+
+  if (!is.na(cached_id) && !is.na(cached_year) && cached_year == (publication_year - 1L)) {
+    return(1L:12L)
+  }
+
+  unique(c(58L:52L, 12L:1L))
+}
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0 || is.na(x[1])) y else x
+}
+
+discover_swiss_cpi_release <- function(project_root) {
+  today <- Sys.Date()
+  publication_year <- as.integer(format(today, "%Y"))
+  cache <- read_swiss_cpi_release_cache(project_root)
+  candidates <- candidate_swiss_cpi_release_ids(cache, publication_year)
+  for (candidate_id in candidates) {
+    page_url <- sprintf(
+      "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index/detailresultate.gnpdetail.%d-%04d.html",
+      publication_year,
+      candidate_id
+    )
+    html <- read_url_text(page_url, timeout_seconds = 25)
+    if (!nzchar(html) || !grepl("Swiss Consumer Price Index in ", html, fixed = TRUE)) {
+      next
+    }
+
+    parsed <- parse_swiss_cpi_release_page(html, page_url)
+    if (is.null(parsed)) {
+      next
+    }
+    if (parsed$publication_date > today) {
+      next
+    }
+    parsed$gnpdetail_id <- candidate_id
+    parsed$publication_year <- publication_year
+    return(parsed)
+  }
+  NULL
+}
+
+download_swiss_cpi_workbook_candidate <- function(url, destination) {
+  if (file.exists(destination)) {
+    unlink(destination)
+  }
+  if (!download_binary_file(url, destination, timeout_seconds = 60)) {
+    return(FALSE)
+  }
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    return(FALSE)
+  }
+
+  sheets <- tryCatch(readxl::excel_sheets(destination), error = function(e) character())
+  required_sheets <- c("INDEX_m", "VAR_m-1", "VAR_m-12")
+  all(required_sheets %in% sheets)
+}
+
+read_swiss_cpi_workbook <- function() {
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    warning("Package 'readxl' is not available; skipping Swiss CPI data")
+    return(list(index = data.frame(), mom_nsa = data.frame(), yoy_nsa = data.frame()))
+  }
+
+  project_root <- get_project_root()
+  release <- discover_swiss_cpi_release(project_root)
+  if (is.null(release)) {
+    # Manual fallback if BFS changes the release-page structure:
+    # start from https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html
+    # and open the CPI item that appears under "What's new", then follow the attributed
+    # "Tables" documents until you reach the LIK25B25 Excel workbook for the latest month.
+    warning("Swiss CPI release page discovery failed")
+    return(list(index = data.frame(), mom_nsa = data.frame(), yoy_nsa = data.frame()))
+  }
+
+  raw_dir <- file.path(project_root, "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, "fso_swiss_cpi_lik25b25.xlsx")
+  selected_url <- NA_character_
+  for (asset_url in release$asset_urls) {
+    if (download_swiss_cpi_workbook_candidate(asset_url, tmp)) {
+      selected_url <- asset_url
+      break
+    }
+  }
+
+  if (is.na(selected_url) || !file.exists(tmp) || file.info(tmp)$size == 0) {
+    # Manual fallback if workbook asset matching fails:
+    # start from https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html
+    # and use the latest CPI release shown under "What's new" to locate the Excel manually.
+    warning(sprintf("Swiss CPI workbook discovery failed for release page %s", release$page_url))
+    return(list(index = data.frame(), mom_nsa = data.frame(), yoy_nsa = data.frame()))
+  }
+
+  asset_id <- extract_first_match(selected_url, "assets/([0-9]+)/master")
+  write_swiss_cpi_release_cache(project_root, list(
+    publication_year = release$publication_year,
+    gnpdetail_id = release$gnpdetail_id,
+    release_page_url = release$page_url,
+    release_month = format(release$release_month, "%Y-%m-%d"),
+    publication_date = format(release$publication_date, "%Y-%m-%d"),
+    workbook_asset_url = selected_url,
+    workbook_asset_id = asset_id
+  ))
+  message(sprintf(
+    "Swiss CPI workbook discovered automatically: release=%s, asset=%s",
+    release$page_url,
+    selected_url
+  ))
+
+  list(
+    index = read_swiss_cpi_sheet(tmp, "INDEX_m"),
+    mom_nsa = read_swiss_cpi_sheet(tmp, "VAR_m-1"),
+    yoy_nsa = read_swiss_cpi_sheet(tmp, "VAR_m-12")
+  )
+}
+
+read_swiss_cpi_sheet <- function(path, sheet) {
+  raw <- suppressWarnings(readxl::read_excel(path, sheet = sheet, col_names = FALSE, .name_repair = "minimal"))
+  if (!nrow(raw) || ncol(raw) < 16) return(data.frame())
+
+  date_serials <- suppressWarnings(as.numeric(as.character(unlist(raw[4, ]))))
+  date_cols <- which(!is.na(date_serials) & date_serials > 30000)
+  dates <- as.Date(date_serials[date_cols], origin = "1899-12-30")
+
+  extract_row <- function(row_code = NULL, row_match = NULL) {
+    if (!is.null(row_code)) {
+      row_index <- which(as.character(unlist(raw[, 1])) == row_code)[1]
+    } else {
+      row_index <- grep(row_match, as.character(unlist(raw[, 12])), fixed = TRUE)[1]
+    }
+    if (is.na(row_index)) return(rep(NA_real_, length(date_cols)))
+    suppressWarnings(as.numeric(as.character(unlist(raw[row_index, date_cols]))))
+  }
+
+  data.frame(
+    date = dates,
+    headline = extract_row(row_code = "100_100"),
+    core = extract_row(row_match = "Core inflation 1"),
+    goods = extract_row(row_code = "110_101"),
+    services = extract_row(row_code = "110_102"),
+    energy_fuels = extract_row(row_code = "1170_102"),
+    stringsAsFactors = FALSE
+  )
+}
+
+build_swiss_cpi_rate_rows <- function(definition, workbook) {
+  index <- workbook$index
+  yoy_nsa <- workbook$yoy_nsa
+  if (!nrow(index) || !nrow(yoy_nsa)) return(data.frame())
+
+  value_col <- definition$value_col
+  source_url <- "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html"
+  source_note <- "FSO CPI detailed results since 1982, CPI December 2025=100. Core is FSO Core inflation 1."
+
+  yoy_values <- yoy_nsa[[value_col]]
+  yoy_valid <- !is.na(yoy_values)
+  yoy <- make_series_frame(
+    yoy_nsa$date[yoy_valid],
+    definition$chart_id,
+    definition$yoy_series_id,
+    "% YoY NSA",
+    "Switzerland",
+    yoy_values[yoy_valid],
+    unit = "%",
+    source = "Federal Statistical Office",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = source_note
+  )
+
+  sa <- run_hicp_x12_adjustment(index$date, index[[value_col]])
+  if (!nrow(sa)) return(yoy)
+  sa <- sa[order(sa$date), ]
+  sa$mom_saar <- (sa$index / c(NA, head(sa$index, -1)))^12 * 100 - 100
+  sa$qoq_saar <- (sa$index / c(rep(NA, 3), head(sa$index, -3)))^4 * 100 - 100
+  sa$hoh_saar <- (sa$index / c(rep(NA, 6), head(sa$index, -6)))^2 * 100 - 100
+
+  make_sa <- function(series_id, series_name, values) {
+    valid <- !is.na(values)
+    make_series_frame(
+      sa$date[valid],
+      definition$chart_id,
+      series_id,
+      series_name,
+      "Switzerland",
+      values[valid],
+      unit = "%",
+      source = "Federal Statistical Office / Legacy X-13",
+      source_url = source_url,
+      frequency = "monthly",
+      source_note = "Annualized rates calculated from a seasonally adjusted CPI index derived from FSO NSA CPI using X-13ARIMA-SEATS."
+    )
+  }
+
+  rbind(
+    yoy,
+    make_sa(definition$hoh_series_id, "% HoH SAAR", sa$hoh_saar),
+    make_sa(definition$qoq_series_id, "% QoQ SAAR", sa$qoq_saar),
+    make_sa(definition$mom_series_id, "% MoM SAAR", sa$mom_saar)
+  )
+}
+
+build_swiss_cpi_seasonality_rows <- function(definition, workbook) {
+  mom_nsa <- workbook$mom_nsa
+  if (!nrow(mom_nsa)) return(data.frame())
+  value_col <- definition$value_col
+  values <- mom_nsa[[value_col]]
+  panel <- data.frame(
+    date = mom_nsa$date,
+    mom_nsa = values,
+    year = as.integer(format(mom_nsa$date, "%Y")),
+    month = as.integer(format(mom_nsa$date, "%m")),
+    stringsAsFactors = FALSE
+  )
+  panel <- panel[!is.na(panel$mom_nsa), ]
+
+  seasonal_panel <- do.call(rbind, lapply(2012:2026, function(target_year) {
+    rows <- panel[(panel$year == target_year & panel$month %in% 1:12) | (panel$year == target_year - 1 & panel$month == 12), ]
+    if (!nrow(rows)) return(data.frame())
+    rows$seasonal_year <- target_year
+    rows$seasonal_month <- ifelse(rows$year == target_year - 1 & rows$month == 12, 0, rows$month)
+    rows
+  }))
+  history <- seasonal_panel[seasonal_panel$seasonal_year >= 2012 & seasonal_panel$seasonal_year <= 2025, ]
+  if (!nrow(history)) return(data.frame())
+
+  stats <- do.call(rbind, lapply(0:12, function(month_value) {
+    month_values <- history$mom_nsa[history$seasonal_month == month_value]
+    if (!length(month_values)) return(data.frame())
+    data.frame(
+      seasonal_month = month_value,
+      min = min(month_values, na.rm = TRUE),
+      median = stats::median(month_values, na.rm = TRUE),
+      max = max(month_values, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  source_url <- "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html"
+  make_swiss_seasonality_series <- function(months, series_id, series_name, values) {
+    dates <- ifelse(as.integer(months) == 0, "1999-12-01", sprintf("2000-%02d-01", as.integer(months)))
+    make_series_frame(
+      as.Date(dates),
+      definition$seasonality_chart_id,
+      series_id,
+      series_name,
+      "Switzerland",
+      values,
+      unit = "% m/m NSA",
+      source = "Federal Statistical Office",
+      source_url = source_url,
+      frequency = "monthly",
+      source_note = "Seasonality chart uses Dec-1, Jan, ..., Dec on the x-axis. FSO CPI detailed results since 1982."
+    )
+  }
+
+  selected <- seasonal_panel[seasonal_panel$seasonal_year %in% c(2022, 2025, 2026), ]
+  selected_rows <- do.call(rbind, lapply(c(2022, 2025, 2026), function(target_year) {
+    year_rows <- selected[selected$seasonal_year == target_year, ]
+    if (!nrow(year_rows)) return(data.frame())
+    make_swiss_seasonality_series(
+      year_rows$seasonal_month,
+      sprintf("%s_mom_nsa_%s", definition$base_series_id, target_year),
+      as.character(target_year),
+      year_rows$mom_nsa
+    )
+  }))
+
+  rbind(
+    make_swiss_seasonality_series(stats$seasonal_month, sprintf("%s_mom_nsa_range_min", definition$base_series_id), "2012-2025 min", stats$min),
+    make_swiss_seasonality_series(stats$seasonal_month, sprintf("%s_mom_nsa_median", definition$base_series_id), "2012-2025 median", stats$median),
+    make_swiss_seasonality_series(stats$seasonal_month, sprintf("%s_mom_nsa_range_max", definition$base_series_id), "2012-2025 max", stats$max),
+    selected_rows
+  )
 }
 
 build_inflation_flash_fast_series <- function(project_root) {

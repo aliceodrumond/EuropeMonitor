@@ -1,15 +1,14 @@
 {
-  "last_updated": "2026-07-01",
+  "last_updated": "2026-07-03",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
-  "source_links": 23,
+  "generated_by": "R/run_daily_update.R",
+  "source_links": 21,
   "activity_last_new": {
-    "date": "2026-07-01",
-    "description": "ECB Data Portal: Euro Area FCI, Euro Area GDP"
+    "date": "2026-06-01",
+    "description": "SP Global PMI: Europe, France, Germany, Italy, Services, Spain, UK"
   },
   "inflation_last_new": {
-    "date": "2026-06-01",
-    "description": "ECB Data Portal: % HoH SAAR, % MoM SAAR, % QoQ SAAR"
-  },
-  "inflation_rows": 9851
+    "date": "2026-05-01",
+    "description": "Federal Statistical Office: % YoY NSA, % HoH SAAR, % MoM SAAR, % QoQ SAAR"
+  }
 }

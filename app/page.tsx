@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type TabId = "activity" | "inflation" | "scenario" | "speakers";
+type TabId = "activity" | "inflation" | "other-inflation" | "scenario" | "speakers";
 type AxisSide = "left" | "right";
 type WindowKey = "all" | "10y" | "5y" | "2y" | "1y" | "6m";
 type SeasonalSource = "ecb" | "legacy";
@@ -119,6 +119,7 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "scenario", label: "Scenario Tracker" },
   { id: "activity", label: "Activity Monitor" },
   { id: "inflation", label: "Inflation Monitor" },
+  { id: "other-inflation", label: "Other - Inflation Monitor" },
 ];
 
 const charts: ChartDefinition[] = [
@@ -433,6 +434,106 @@ const charts: ChartDefinition[] = [
     yLeftLabel: "%",
     defaultWindow: "all",
     seriesOrder: ["ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y", "ecb_ces_infl_exp_5y"],
+  },
+  {
+    id: "swiss_cpi_headline_rates",
+    tab: "other-inflation",
+    title: "Switzerland CPI Headline",
+    kicker: "Inflation",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -2, max: 8 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["swiss_cpi_headline_yoy_nsa", "swiss_cpi_headline_hoh_saar", "swiss_cpi_headline_qoq_saar", "swiss_cpi_headline_mom_saar"],
+  },
+  {
+    id: "swiss_cpi_core_rates",
+    tab: "other-inflation",
+    title: "Switzerland CPI Core",
+    kicker: "Inflation",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -2, max: 6 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["swiss_cpi_core_yoy_nsa", "swiss_cpi_core_hoh_saar", "swiss_cpi_core_qoq_saar", "swiss_cpi_core_mom_saar"],
+  },
+  {
+    id: "swiss_cpi_headline_seasonality",
+    tab: "other-inflation",
+    title: "Switzerland CPI Headline Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["swiss_cpi_headline_mom_nsa_range_min", "swiss_cpi_headline_mom_nsa_range_max", "swiss_cpi_headline_mom_nsa_median", "swiss_cpi_headline_mom_nsa_2022", "swiss_cpi_headline_mom_nsa_2025", "swiss_cpi_headline_mom_nsa_2026"],
+  },
+  {
+    id: "swiss_cpi_core_seasonality",
+    tab: "other-inflation",
+    title: "Switzerland CPI Core Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["swiss_cpi_core_mom_nsa_range_min", "swiss_cpi_core_mom_nsa_range_max", "swiss_cpi_core_mom_nsa_median", "swiss_cpi_core_mom_nsa_2022", "swiss_cpi_core_mom_nsa_2025", "swiss_cpi_core_mom_nsa_2026"],
+  },
+  {
+    id: "swiss_cpi_goods_rates",
+    tab: "other-inflation",
+    title: "Switzerland CPI Goods",
+    kicker: "Inflation",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -4, max: 8 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["swiss_cpi_goods_yoy_nsa", "swiss_cpi_goods_hoh_saar", "swiss_cpi_goods_qoq_saar", "swiss_cpi_goods_mom_saar"],
+  },
+  {
+    id: "swiss_cpi_services_rates",
+    tab: "other-inflation",
+    title: "Switzerland CPI Services",
+    kicker: "Inflation",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -2, max: 6 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["swiss_cpi_services_yoy_nsa", "swiss_cpi_services_hoh_saar", "swiss_cpi_services_qoq_saar", "swiss_cpi_services_mom_saar"],
+  },
+  {
+    id: "swiss_cpi_goods_seasonality",
+    tab: "other-inflation",
+    title: "Switzerland CPI Goods Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["swiss_cpi_goods_mom_nsa_range_min", "swiss_cpi_goods_mom_nsa_range_max", "swiss_cpi_goods_mom_nsa_median", "swiss_cpi_goods_mom_nsa_2022", "swiss_cpi_goods_mom_nsa_2025", "swiss_cpi_goods_mom_nsa_2026"],
+  },
+  {
+    id: "swiss_cpi_services_seasonality",
+    tab: "other-inflation",
+    title: "Switzerland CPI Services Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["swiss_cpi_services_mom_nsa_range_min", "swiss_cpi_services_mom_nsa_range_max", "swiss_cpi_services_mom_nsa_median", "swiss_cpi_services_mom_nsa_2022", "swiss_cpi_services_mom_nsa_2025", "swiss_cpi_services_mom_nsa_2026"],
+  },
+  {
+    id: "swiss_cpi_energy_fuels_rates",
+    tab: "other-inflation",
+    title: "Switzerland CPI Energy & Fuels",
+    kicker: "Inflation",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -25, max: 35 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["swiss_cpi_energy_fuels_yoy_nsa", "swiss_cpi_energy_fuels_hoh_saar", "swiss_cpi_energy_fuels_qoq_saar", "swiss_cpi_energy_fuels_mom_saar"],
+  },
+  {
+    id: "swiss_cpi_energy_fuels_seasonality",
+    tab: "other-inflation",
+    title: "Switzerland CPI Energy & Fuels Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["swiss_cpi_energy_fuels_mom_nsa_range_min", "swiss_cpi_energy_fuels_mom_nsa_range_max", "swiss_cpi_energy_fuels_mom_nsa_median", "swiss_cpi_energy_fuels_mom_nsa_2022", "swiss_cpi_energy_fuels_mom_nsa_2025", "swiss_cpi_energy_fuels_mom_nsa_2026"],
   },
 ];
 

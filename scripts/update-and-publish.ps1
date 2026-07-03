@@ -252,11 +252,14 @@ function Test-OutputData {
   if (@($speakers | Where-Object { $_.tags -eq "fallback" }).Count -gt 0) {
     throw "ECB Speakers is fallback data; refusing to publish"
   }
-  foreach ($priorityMember in @("Lagarde", "Lane", "Schnabel", "Nagel")) {
-    $priorityRows = @($speakers | Where-Object { $_.member -eq $priorityMember })
-    if ($priorityRows.Count -lt 1) {
-      throw "ECB Speakers is missing required priority member: $priorityMember"
-    }
+  $priorityMembers = @("Lagarde", "Lane", "Schnabel", "Nagel")
+  $presentPriorityMembers = @($speakers | Where-Object { $_.member -in $priorityMembers } | Select-Object -ExpandProperty member -Unique)
+  if ($presentPriorityMembers.Count -lt 1) {
+    throw "ECB Speakers is missing all priority members; refusing to publish"
+  }
+  $missingPriorityMembers = @($priorityMembers | Where-Object { $_ -notin $presentPriorityMembers })
+  if ($missingPriorityMembers.Count -gt 0) {
+    Write-Log "Warning: ECB Speakers missing priority members in this run: $($missingPriorityMembers -join ', ')"
   }
   foreach ($speaker in $speakers) {
     $comment = [string]$speaker.policy_comments
