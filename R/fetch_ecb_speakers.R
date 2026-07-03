@@ -162,6 +162,19 @@ apply_speaker_highlight_overrides <- function(speakers) {
 
   speakers$policy_comments[idx] <- "The June hike was not an insurance move and was robust across scenarios."
 
+  idx <- speakers$member == "Lagarde" &
+    speakers$date == "2026-07-03" &
+    grepl("general_sense_of_the_direction_we_will_take", speakers$source_url, fixed = TRUE)
+
+  speakers$policy_comments[idx] <- paste(
+    "She did not know whether more tightening was coming, but had a general sense of the direction policy would take.",
+    "She was confident the June hike was the right choice, with a large majority already prepared to tighten in April.",
+    "Underlying inflation continued to accelerate and second-round effects were being watched closely.",
+    sep = " | "
+  )
+  speakers$bias[idx] <- "mildly hawkish"
+  speakers$tags[idx] <- "rates,inflation,growth"
+
   idx <- speakers$member == "Schnabel" &
     speakers$date == "2026-06-27" &
     grepl("further_rate_hikes_upside_inflation_risks", speakers$source_url, fixed = TRUE)
