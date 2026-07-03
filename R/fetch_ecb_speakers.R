@@ -167,6 +167,19 @@ apply_speaker_highlight_overrides <- function(speakers) {
     grepl("further_rate_hikes_upside_inflation_risks", speakers$source_url, fixed = TRUE)
 
   speakers$policy_comments[idx] <- "Further rate hikes were flagged, alongside upside inflation risks."
+
+  idx <- speakers$member == "Moulin" &
+    speakers$date == "2026-07-03" &
+    grepl("balance_of_risk_is_in_the_right_place", speakers$source_url, fixed = TRUE)
+
+  speakers$policy_comments[idx] <- paste(
+    "We are in a good position and the balance of risks is in the right place.",
+    "We were not entering into a new cycle of hikes.",
+    "We made no commitment for the next meetings.",
+    sep = " | "
+  )
+  speakers$bias[idx] <- "mildly dovish"
+  speakers$tags[idx] <- "rates,inflation,energy"
   speakers
 }
 
