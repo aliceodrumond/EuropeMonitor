@@ -5,7 +5,7 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const inputPath = path.join(root, "data", "processed", "activity_series.csv");
-const outputPath = path.join(root, "reports", "sentix_pmi_ols_model.xlsx");
+const outputPath = path.resolve(root, process.env.SENTIX_PMI_OUTPUT ?? path.join("reports", "sentix_pmi_ols_model.xlsx"));
 const chartImagePath = path.join(root, "reports", "sentix_pmi_ols_chart.png");
 const pmiOverrides = new Map([
   ["2026-06-01", 50.0],
@@ -129,7 +129,7 @@ async function writeChartImage(chartRows, scenarioRows) {
   const fittedPoints = chartRows
     .filter((row) => row.date >= "2026-01-01")
     .map((row) => ({ x: x(row.date), y: y(row.fitted) }));
-  const julUp = [{ x: x("2026-07-01"), y: y(scenarioRows[0].pmiEstimate) }];
+  const julActual = [{ x: x("2026-07-01"), y: y(scenarioRows[0].pmiEstimate) }];
   const julJun = [{ x: x("2026-07-01"), y: y(scenarioRows[1].pmiEstimate) }];
   const ticks = [47, 48, 49, 50, 51, 52, 53];
   const xLabels = allDates.map((date, idx) => {
@@ -145,18 +145,18 @@ async function writeChartImage(chartRows, scenarioRows) {
   }).join("");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <rect width="100%" height="100%" fill="#ffffff"/>
-    <text x="${margin.left}" y="34" font-size="27" font-weight="700" fill="#0f172a">PMI Composite: actual, fitted OOS e cenarios de julho</text>
+    <text x="${margin.left}" y="34" font-size="27" font-weight="700" fill="#0f172a">PMI Composite: actual, fitted 2026 e cenarios de julho</text>
     ${yGrid}
     <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="#94a3b8"/>
     <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="#94a3b8"/>
     <path d="${linePath(actualPoints)}" fill="none" stroke="#1f77b4" stroke-width="4"/>
     <path d="${linePath(fittedPoints)}" fill="none" stroke="#2ca02c" stroke-width="4" stroke-dasharray="10 8"/>
-    ${circlePoints(julUp, "#d62728")}
+    ${circlePoints(julActual, "#d62728")}
     ${circlePoints(julJun, "#ff7f0e")}
     ${xLabels}
     <rect x="${margin.left}" y="${height - 26}" width="18" height="5" fill="#1f77b4"/><text x="${margin.left + 26}" y="${height - 20}" font-size="17" fill="#0f172a">PMI Composite</text>
-    <rect x="${margin.left + 190}" y="${height - 26}" width="18" height="5" fill="#2ca02c"/><text x="${margin.left + 216}" y="${height - 20}" font-size="17" fill="#0f172a">Fitted OOS</text>
-    <circle cx="${margin.left + 360}" cy="${height - 24}" r="7" fill="#d62728"/><text x="${margin.left + 374}" y="${height - 20}" font-size="17" fill="#0f172a">Jul Sentix -7.5: ${scenarioRows[0].pmiEstimate.toFixed(1)}</text>
+    <rect x="${margin.left + 190}" y="${height - 26}" width="18" height="5" fill="#2ca02c"/><text x="${margin.left + 216}" y="${height - 20}" font-size="17" fill="#0f172a">Fitted 2026</text>
+    <circle cx="${margin.left + 360}" cy="${height - 24}" r="7" fill="#d62728"/><text x="${margin.left + 374}" y="${height - 20}" font-size="17" fill="#0f172a">Jul Sentix -3.1: ${scenarioRows[0].pmiEstimate.toFixed(1)}</text>
     <circle cx="${margin.left + 600}" cy="${height - 24}" r="7" fill="#ff7f0e"/><text x="${margin.left + 614}" y="${height - 20}" font-size="17" fill="#0f172a">Jul Sentix -13.4: ${scenarioRows[1].pmiEstimate.toFixed(1)}</text>
   </svg>`;
   await sharp(Buffer.from(svg)).png().toFile(chartImagePath);
@@ -185,30 +185,28 @@ const data = [...pmi.entries()]
   }))
   .sort((a, b) => a.date.localeCompare(b.date));
 
-const train = data.filter((row) => row.date >= "2013-01-01" && row.date <= "2025-12-01");
-const outOfSample = data.filter((row) => row.date >= "2026-01-01" && row.date <= "2026-06-01");
+const train = data.filter((row) => row.date >= "2013-01-01" && row.date <= "2026-06-01");
+const fit2026 = data.filter((row) => row.date >= "2026-01-01" && row.date <= "2026-06-01");
 const model = ols(train);
 
 for (const row of data) {
   row.fitted = model.alpha + model.beta * row.sentix;
   row.residual = row.pmi - row.fitted;
-  row.sample = row.date >= "2013-01-01" && row.date <= "2025-12-01"
+  row.sample = row.date >= "2013-01-01" && row.date <= "2026-06-01"
     ? "Estimation"
-    : row.date >= "2026-01-01" && row.date <= "2026-06-01"
-      ? "Out-of-sample"
-      : "";
+    : "";
 }
 
-const oosRows = outOfSample.map((row) => ({
+const fit2026Rows = fit2026.map((row) => ({
   ...row,
   fitted: model.alpha + model.beta * row.sentix,
   residual: row.pmi - (model.alpha + model.beta * row.sentix),
 }));
-const oosRmse = Math.sqrt(mean(oosRows.map((row) => row.residual ** 2)));
-const oosMae = mean(oosRows.map((row) => Math.abs(row.residual)));
+const fit2026Rmse = Math.sqrt(mean(fit2026Rows.map((row) => row.residual ** 2)));
+const fit2026Mae = mean(fit2026Rows.map((row) => Math.abs(row.residual)));
 
 const scenarios = [
-  { date: "2026-07-01", scenario: "Sentix julho = -7.5", sentix: -7.5 },
+  { date: "2026-07-01", scenario: "Sentix julho = -3.1", sentix: -3.1 },
   { date: "2026-07-01", scenario: "Sentix junho = -13.4", sentix: -13.4 },
 ].map((row) => ({ ...row, pmiEstimate: model.alpha + model.beta * row.sentix }));
 
@@ -225,8 +223,8 @@ const summary = workbook.addWorksheet("Summary");
 summary.addRow(["Modelo OLS: PMI Composite Europa = constante + beta * Sentix"]);
 summary.addRow(["Fonte", "data/processed/activity_series.csv, chart_id=sentix_pmi"]);
 summary.addRow(["Override", "2026-06 PMI Composite atualizado de 49.5 flash para 50.0 final"]);
-summary.addRow(["Amostra de estimacao", "2013-01 a 2025-12"]);
-summary.addRow(["Fora da amostra", "2026-01 a 2026-06"]);
+summary.addRow(["Amostra de estimacao", "2013-01 a 2026-06"]);
+summary.addRow(["Projecao", "2026-07 com Sentix realizado de julho"]);
 summary.addRow([]);
 summary.addRow(["Parametro", "Valor"]);
 summary.addRow(["Constante", model.alpha]);
@@ -234,8 +232,8 @@ summary.addRow(["Beta Sentix", model.beta]);
 summary.addRow(["R2 in-sample", model.r2]);
 summary.addRow(["RMSE in-sample", model.rmse]);
 summary.addRow(["N", model.n]);
-summary.addRow(["RMSE out-of-sample 1S26", oosRmse]);
-summary.addRow(["MAE out-of-sample 1S26", oosMae]);
+summary.addRow(["RMSE 2026 in-sample", fit2026Rmse]);
+summary.addRow(["MAE 2026 in-sample", fit2026Mae]);
 summary.addRow([]);
 summary.addRow(["Cenario", "Sentix", "PMI Composite estimado"]);
 for (const row of scenarios) summary.addRow([row.scenario, row.sentix, row.pmiEstimate]);
@@ -291,8 +289,8 @@ fitSheet.getColumn(1).numFmt = "mmm-yy";
 for (const col of [2, 3, 4, 5]) fitSheet.getColumn(col).numFmt = "0.0";
 fitSheet.autoFilter = "A1:F1";
 
-const oosSheet = workbook.addWorksheet("Out-of-sample 1S26");
-setColumns(oosSheet, [
+const fit2026Sheet = workbook.addWorksheet("2026 fit");
+setColumns(fit2026Sheet, [
   ["Date", "date", 14],
   ["PMI Composite", "pmi", 16],
   ["Sentix", "sentix", 12],
@@ -301,8 +299,8 @@ setColumns(oosSheet, [
   ["Abs Error", "absError", 14],
   ["Note", "note", 46],
 ]);
-for (const row of oosRows) {
-  oosSheet.addRow({
+for (const row of fit2026Rows) {
+  fit2026Sheet.addRow({
     date: excelDate(row.date),
     pmi: row.pmi,
     sentix: row.sentix,
@@ -312,12 +310,12 @@ for (const row of oosRows) {
     note: row.note,
   });
 }
-oosSheet.addRow([]);
-oosSheet.addRow(["RMSE", oosRmse]);
-oosSheet.addRow(["MAE", oosMae]);
-oosSheet.getColumn(1).numFmt = "mmm-yy";
-for (const col of [2, 3, 4, 5, 6]) oosSheet.getColumn(col).numFmt = "0.0";
-oosSheet.getColumn(2).numFmt = "0.000";
+fit2026Sheet.addRow([]);
+fit2026Sheet.addRow(["RMSE", fit2026Rmse]);
+fit2026Sheet.addRow(["MAE", fit2026Mae]);
+fit2026Sheet.getColumn(1).numFmt = "mmm-yy";
+for (const col of [2, 3, 4, 5, 6]) fit2026Sheet.getColumn(col).numFmt = "0.0";
+fit2026Sheet.getColumn(2).numFmt = "0.000";
 
 const scenariosSheet = workbook.addWorksheet("Jul-26 scenarios");
 setColumns(scenariosSheet, [
@@ -342,8 +340,8 @@ const chartDataSheet = workbook.addWorksheet("Chart data");
 setColumns(chartDataSheet, [
   ["Date", "date", 14],
   ["PMI Composite", "pmi", 16],
-  ["Fitted OOS", "fittedOos", 14],
-  ["Jul Sentix -7.5", "julSentixUp", 16],
+  ["Fitted 2026", "fitted2026", 14],
+  ["Jul Sentix -3.1", "julSentixUp", 16],
   ["Jul Sentix -13.4", "julSentixJun", 18],
   ["Note", "note", 46],
 ]);
@@ -352,7 +350,7 @@ for (const row of data.filter((item) => item.date >= "2025-01-01" && item.date <
   chartDataSheet.addRow({
     date: excelDate(row.date),
     pmi: row.pmi,
-    fittedOos: isOos ? row.fitted : null,
+    fitted2026: isOos ? row.fitted : null,
     julSentixUp: null,
     julSentixJun: null,
     note: row.note,
@@ -361,7 +359,7 @@ for (const row of data.filter((item) => item.date >= "2025-01-01" && item.date <
 chartDataSheet.addRow({
   date: excelDate("2026-07-01"),
   pmi: null,
-  fittedOos: null,
+  fitted2026: null,
   julSentixUp: scenarios[0].pmiEstimate,
   julSentixJun: scenarios[1].pmiEstimate,
 });
@@ -371,7 +369,7 @@ for (const col of [2, 3, 4, 5]) chartDataSheet.getColumn(col).numFmt = "0.0";
 const chartSheet = workbook.addWorksheet("Chart");
 chartSheet.getColumn(1).width = 18;
 chartSheet.getRow(1).height = 24;
-chartSheet.getCell("A1").value = "PMI Composite: actual, fitted fora da amostra e cenarios de julho";
+chartSheet.getCell("A1").value = "PMI Composite: actual, fitted 2026 e cenarios de julho";
 chartSheet.getCell("A1").font = { bold: true, size: 14 };
 const chartImageId = workbook.addImage({
   filename: chartImagePath,
@@ -381,7 +379,7 @@ chartSheet.addImage(chartImageId, {
   tl: { col: 0, row: 2 },
   ext: { width: 980, height: 543 },
 });
-chartSheet.getCell("A32").value = "Julho 2026: Sentix -7.5 => PMI 50.1; Sentix -13.4 => PMI 48.9.";
+chartSheet.getCell("A32").value = `Julho 2026: Sentix -3.1 => PMI ${scenarios[0].pmiEstimate.toFixed(1)}; Sentix -13.4 => PMI ${scenarios[1].pmiEstimate.toFixed(1)}.`;
 chartSheet.getCell("A32").font = { bold: true };
 
 const rawSheet = workbook.addWorksheet("Data");
@@ -407,6 +405,6 @@ console.log(JSON.stringify({
   beta: model.beta,
   r2: model.r2,
   rmseInSample: model.rmse,
-  rmseOutOfSample: oosRmse,
+  rmse2026: fit2026Rmse,
   scenarios,
 }, null, 2));
