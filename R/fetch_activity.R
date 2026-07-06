@@ -1027,6 +1027,16 @@ fetch_latest_sentix_from_investing <- function() {
     return(data.frame())
   }
 
+  json_pattern <- '"actual":([-+]?[0-9]+(?:\\.[0-9]+)?)[^\\{\\}]*"event_id":268[^\\{\\}]*"occurrence_time":"([0-9]{4})-([0-9]{2})-[0-9]{2}T'
+  json_match <- regmatches(html, regexec(json_pattern, html, perl = TRUE))[[1]]
+  if (length(json_match) >= 4) {
+    return(data.frame(
+      date = as.Date(sprintf("%s-%s-01", json_match[[3]], json_match[[4]])),
+      sentix_ea = as.numeric(json_match[[2]]),
+      stringsAsFactors = FALSE
+    ))
+  }
+
   pattern <- "([A-Z][a-z]{2})\\s+([0-9]{2}),\\s+([0-9]{4})\\s+\\(([A-Z][a-z]{2})\\)[^0-9+-]*[0-9]{1,2}:[0-9]{2}\\s*([-+]?[0-9]+(?:\\.[0-9]+)?)"
   match <- regexec(pattern, html, perl = TRUE)
   parts <- regmatches(html, match)[[1]]
