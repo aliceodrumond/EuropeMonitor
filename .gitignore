@@ -28,6 +28,7 @@ yarn-error.log*
 .pnpm-debug.log*
 dev-server.log
 logs/
+data/raw/investing_sentix_debug.html
 
 # local npm cache used by Codex installs
 /.npm-cache/
