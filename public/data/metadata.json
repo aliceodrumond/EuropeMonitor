@@ -1,11 +1,11 @@
 {
-  "last_updated": "2026-07-07",
+  "last_updated": "2026-07-08",
   "data_mode": "source_linked_mock_values",
   "generated_by": "R/run_daily_update.R",
   "source_links": 21,
   "activity_last_new": {
     "date": "2026-06-01",
-    "description": "ZEW Financial Market Survey: Germany ZEW"
+    "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
     "date": "2026-05-01",
