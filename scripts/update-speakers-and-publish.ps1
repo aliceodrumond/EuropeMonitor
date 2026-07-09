@@ -104,7 +104,7 @@ function Invoke-SpeakersPipeline {
   $PreviousErrorActionPreference = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
   try {
-    & $Git add public/data/ecb_speakers.csv data/processed/ecb_speakers.csv R/fetch_ecb_speakers.R R/run_speakers_update.R scripts/update-speakers-and-publish.ps1 2>&1 | ForEach-Object { Write-Log $_ }
+    & $Git add public/data/ecb_speakers.csv public/data/metadata.json data/processed/ecb_speakers.csv R/fetch_ecb_speakers.R R/run_speakers_update.R scripts/update-speakers-and-publish.ps1 2>&1 | ForEach-Object { Write-Log $_ }
     & $Git diff --cached --quiet
     $HasChanges = $LASTEXITCODE -ne 0
   } finally {
