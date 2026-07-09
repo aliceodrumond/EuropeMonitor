@@ -22,7 +22,7 @@ build_ecb_speakers <- function(project_root) {
   speakers <- normalize_speaker_columns(speakers)
   speakers <- keep_recent_and_priority_speeches(speakers, previous, max_rows = 20)
   speakers <- apply_speaker_highlight_overrides(speakers)
-  speakers <- apply_current_view_tone_calibration(speakers)
+  speakers <- apply_current_view_tone_calibration(speakers, previous)
   write_csv_utf8(speakers, processed_path)
   speakers
 }
@@ -68,6 +68,10 @@ normalize_speaker_columns <- function(speakers) {
   if ("policy_comments" %in% names(speakers)) {
     speakers$policy_comments <- clean_speaker_text(speakers$policy_comments)
   }
+  if (!"tone_calibration" %in% names(speakers)) {
+    speakers$tone_calibration <- ""
+  }
+  speakers$tone_calibration[is.na(speakers$tone_calibration)] <- ""
   speakers
 }
 
@@ -197,8 +201,10 @@ apply_speaker_highlight_overrides <- function(speakers) {
   speakers
 }
 
-apply_current_view_tone_calibration <- function(speakers) {
+apply_current_view_tone_calibration <- function(speakers, previous = NULL) {
   if (is.null(speakers) || !nrow(speakers)) return(speakers)
+
+  speakers <- mark_current_view_calibration_rows(speakers, previous)
 
   for (i in seq_len(nrow(speakers))) {
     comment <- speakers$policy_comments[[i]]
@@ -208,10 +214,10 @@ apply_current_view_tone_calibration <- function(speakers) {
     }
 
     text <- paste(comment, speakers$tags[[i]], speakers$source_url[[i]])
-    score <- calibrated_policy_score(
+    score <- speaker_policy_score(
       speakers$member[[i]],
       text,
-      policy_score(text)
+      use_current_view_prior = identical(speakers$tone_calibration[[i]], current_view_calibration_marker())
     )
     speakers$bias[[i]] <- score_to_bias(score)
   }
@@ -221,6 +227,56 @@ apply_current_view_tone_calibration <- function(speakers) {
   speakers <- speakers[order(-as.numeric(as.Date(speakers$date)), speakers$member), ]
   rownames(speakers) <- NULL
   speakers
+}
+
+mark_current_view_calibration_rows <- function(speakers, previous = NULL) {
+  marker <- current_view_calibration_marker()
+  if (!"tone_calibration" %in% names(speakers)) {
+    speakers$tone_calibration <- ""
+  }
+  speakers$tone_calibration[is.na(speakers$tone_calibration)] <- ""
+
+  has_previous <- !is.null(previous) && nrow(previous) > 0 &&
+    !any(previous$tags == "fallback", na.rm = TRUE)
+  if (!has_previous) {
+    return(speakers)
+  }
+
+  previous <- normalize_speaker_columns(previous)
+  previous_keys <- speaker_row_keys(previous)
+  current_keys <- speaker_row_keys(speakers)
+  newly_seen <- !(current_keys %in% previous_keys)
+  already_consumed <- unique(previous$member[previous$tone_calibration == marker])
+
+  for (member in setdiff(unique(speakers$member), already_consumed)) {
+    if (current_ecb_member_tone_prior(member) == 0) {
+      next
+    }
+    idx <- which(speakers$member == member & newly_seen)
+    if (!length(idx)) {
+      next
+    }
+    dates <- as.Date(speakers$date[idx])
+    idx <- idx[order(as.numeric(dates), idx)]
+    speakers$tone_calibration[idx[[1]]] <- marker
+  }
+
+  speakers
+}
+
+speaker_row_keys <- function(speakers) {
+  if (is.null(speakers) || !nrow(speakers)) return(character(0))
+  member <- vapply(speakers$member, normalize_ecb_member_name_ascii, character(1))
+  comments <- tolower(trimws(gsub("\\s+", " ", speakers$policy_comments)))
+  if ("source_url" %in% names(speakers)) {
+    url_key <- tolower(gsub("[^a-z0-9]+", "", speakers$source_url))
+    return(ifelse(
+      nzchar(url_key),
+      paste(member, speakers$date, url_key, sep = "|"),
+      paste(member, speakers$date, comments, sep = "|")
+    ))
+  }
+  paste(member, speakers$date, comments, sep = "|")
 }
 
 fetch_econostream_ecb_speakers <- function(url) {
@@ -268,7 +324,7 @@ parse_econostream_item <- function(item) {
   member <- normalize_ecb_member_name_ascii(member)
   profile <- member_profile(member)
   text <- paste(headline, summary)
-  score <- calibrated_policy_score(member, text, policy_score(text))
+  score <- speaker_policy_score(member, text, use_current_view_prior = FALSE)
 
   data.frame(
     date = format(as.Date(values[[5]], format = "%d %B %Y"), "%Y-%m-%d"),
@@ -282,6 +338,7 @@ parse_econostream_item <- function(item) {
     tags = infer_policy_tags(text),
     source = "Econostream Central Bank",
     source_url = absolute_econostream_url(values[[2]]),
+    tone_calibration = "",
     is_member_speech = is_ecb_member_headline(headline, member),
     stance_score = score,
     stringsAsFactors = FALSE
@@ -656,6 +713,10 @@ policy_score <- function(text) {
   hawkish_score - dovish_score
 }
 
+current_view_calibration_marker <- function() {
+  "current_view_2026-07-09"
+}
+
 current_ecb_member_tone_prior <- function(member) {
   # Calibrated from the 9 Jul 2026 Deutsche Bank Governing Council table
   # provided by the user. Positive = more hawkish, negative = more dovish.
@@ -730,7 +791,8 @@ current_view_phrase_score <- function(text) {
     sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))
 }
 
-calibrated_policy_score <- function(member, text, base_score) {
+speaker_policy_score <- function(member, text, use_current_view_prior = FALSE) {
+  base_score <- policy_score(text) + current_view_phrase_score(text)
   text_lower <- tolower(text)
   non_policy_only <- grepl("digital euro|cyber|payments|ai can boost", text_lower) &&
     !grepl("inflation|rate|monetary policy|transmission|oil|wage|second-round", text_lower)
@@ -738,10 +800,13 @@ calibrated_policy_score <- function(member, text, base_score) {
     return(base_score)
   }
 
-  calibration <- current_ecb_member_tone_prior(member) + current_view_phrase_score(text)
-  calibration <- max(min(calibration, 2), -2)
-  if (abs(base_score) >= 3) {
-    calibration <- sign(calibration) * min(abs(calibration), 1)
+  calibration <- 0
+  if (isTRUE(use_current_view_prior)) {
+    calibration <- current_ecb_member_tone_prior(member)
+    calibration <- max(min(calibration, 2), -2)
+    if (abs(base_score) >= 3) {
+      calibration <- sign(calibration) * min(abs(calibration), 1)
+    }
   }
   base_score + calibration
 }
@@ -772,15 +837,23 @@ bias_to_stance_bucket <- function(bias) {
 
 compare_member_stance <- function(rows) {
   result <- rep("First recent item", nrow(rows))
+  marker <- current_view_calibration_marker()
+  if (!"tone_calibration" %in% names(rows)) {
+    rows$tone_calibration <- ""
+  }
 
   for (member in unique(rows$member)) {
     idx <- which(rows$member == member)
-    if (length(idx) < 2) {
-      next
-    }
-    for (pos in seq_len(length(idx) - 1)) {
+    for (pos in seq_along(idx)) {
+      if (!identical(rows$tone_calibration[idx[[pos]]], marker) && pos == length(idx)) {
+        next
+      }
       current <- bias_to_stance_bucket(rows$bias[idx[[pos]]])
-      previous <- bias_to_stance_bucket(rows$bias[idx[[pos + 1]]])
+      previous <- if (identical(rows$tone_calibration[idx[[pos]]], marker)) {
+        current_ecb_member_tone_prior(member)
+      } else {
+        bias_to_stance_bucket(rows$bias[idx[[pos + 1]]])
+      }
       delta <- current - previous
       result[idx[[pos]]] <- if (delta > 0) {
         "More hawkish than prior"
@@ -821,6 +894,7 @@ fallback_ecb_speakers <- function() {
     tags = "fallback",
     source = "Fallback",
     source_url = econostream_central_bank_url,
+    tone_calibration = "",
     stringsAsFactors = FALSE
   )
 }
