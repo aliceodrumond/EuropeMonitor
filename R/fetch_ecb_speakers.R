@@ -22,6 +22,7 @@ build_ecb_speakers <- function(project_root) {
   speakers <- normalize_speaker_columns(speakers)
   speakers <- keep_recent_and_priority_speeches(speakers, previous, max_rows = 20)
   speakers <- apply_speaker_highlight_overrides(speakers)
+  speakers <- apply_current_view_tone_calibration(speakers)
   write_csv_utf8(speakers, processed_path)
   speakers
 }
@@ -196,6 +197,32 @@ apply_speaker_highlight_overrides <- function(speakers) {
   speakers
 }
 
+apply_current_view_tone_calibration <- function(speakers) {
+  if (is.null(speakers) || !nrow(speakers)) return(speakers)
+
+  for (i in seq_len(nrow(speakers))) {
+    comment <- speakers$policy_comments[[i]]
+    if (identical(comment, "No comments relevant for monetary policy")) {
+      speakers$bias[[i]] <- "neutral"
+      next
+    }
+
+    text <- paste(comment, speakers$tags[[i]], speakers$source_url[[i]])
+    score <- calibrated_policy_score(
+      speakers$member[[i]],
+      text,
+      policy_score(text)
+    )
+    speakers$bias[[i]] <- score_to_bias(score)
+  }
+
+  speakers <- speakers[order(speakers$member, as.Date(speakers$date), decreasing = TRUE), ]
+  speakers$stance_change <- compare_member_stance(speakers)
+  speakers <- speakers[order(-as.numeric(as.Date(speakers$date)), speakers$member), ]
+  rownames(speakers) <- NULL
+  speakers
+}
+
 fetch_econostream_ecb_speakers <- function(url) {
   html <- normalize_html(read_url_text(url))
   pattern <- "<h2[^>]*>\\s*<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>\\s*</h2>\\s*<p>(.*?)</p>\\s*<span[^>]*class=\"date\"[^>]*>([0-9]{1,2} [A-Za-z]+ [0-9]{4})"
@@ -241,7 +268,7 @@ parse_econostream_item <- function(item) {
   member <- normalize_ecb_member_name_ascii(member)
   profile <- member_profile(member)
   text <- paste(headline, summary)
-  score <- policy_score(text)
+  score <- calibrated_policy_score(member, text, policy_score(text))
 
   data.frame(
     date = format(as.Date(values[[5]], format = "%d %B %Y"), "%Y-%m-%d"),
@@ -596,8 +623,16 @@ shorten_text <- function(value, max_chars) {
 
 policy_score <- function(text) {
   text <- tolower(text)
-  hawkish <- c("rate hike", "hike", "inflation pressures", "restrictive", "wages", "high inflation")
-  dovish <- c("hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait", "pause", "no roadmap", "refraining from signaling", "unchanged")
+  hawkish <- c(
+    "rate hike", "hike", "inflation pressures", "restrictive", "wages", "high inflation",
+    "more hikes", "not finished", "upside inflation", "second-round effects are emerging",
+    "still have work to do", "not completely contained"
+  )
+  dovish <- c(
+    "hold", "holding rates", "no commitment", "gradual", "no forward guidance", "wait",
+    "pause", "no roadmap", "refraining from signaling", "unchanged", "no new cycle",
+    "not rush", "no urgency", "stay where we are", "no signs of critical second-round"
+  )
 
   hawkish_score <- sum(vapply(hawkish, grepl, logical(1), x = text, fixed = TRUE))
   dovish_score <- sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))
@@ -619,6 +654,96 @@ policy_score <- function(text) {
   }
   hawkish_score <- hawkish_score + 2 * sum(vapply(c("further rate", "not finished", "upside", "deterioration in the inflation outlook"), grepl, logical(1), x = text, fixed = TRUE))
   hawkish_score - dovish_score
+}
+
+current_ecb_member_tone_prior <- function(member) {
+  # Calibrated from the 9 Jul 2026 Deutsche Bank Governing Council table
+  # provided by the user. Positive = more hawkish, negative = more dovish.
+  priors <- c(
+    Schnabel = 2,
+    Simkus = 2,
+    Nagel = 1,
+    Panetta = 1,
+    Wunsch = 1,
+    Makhlouf = 1,
+    Kaasik = 1,
+    Kocher = 1,
+    Vujcic = 1,
+    Lane = 1,
+    Escriva = 1,
+    Kazimir = 1,
+    Lagarde = 0,
+    Moulin = -1,
+    Demarco = -1,
+    Kazaks = -1,
+    Rehn = -1,
+    Sleijpen = -1,
+    Pereira = -1,
+    Stournaras = -2
+  )
+  normalized <- normalize_ecb_member_name_ascii(member)
+  if (!normalized %in% names(priors)) {
+    return(0)
+  }
+  value <- priors[[normalized]]
+  if (is.na(value)) 0 else value
+}
+
+current_view_phrase_score <- function(text) {
+  text <- tolower(text)
+  hawkish <- c(
+    "more hikes are needed",
+    "one more rate hike",
+    "keeping options open",
+    "options open",
+    "still have work to do",
+    "june hike is too small",
+    "inflation threat is lower, but not completely contained",
+    "second-round effects are emerging",
+    "energy disruptions to last",
+    "services prices are key",
+    "new projections",
+    "inflation to remain higher for longer",
+    "upside risks",
+    "not foreclosing",
+    "raise interest rates further"
+  )
+  dovish <- c(
+    "good to stay where we are",
+    "stay where we are",
+    "no new cycle",
+    "not rush",
+    "no urgency",
+    "under no pressure",
+    "no pressure to act urgently",
+    "no pressure to act",
+    "no need to respond forcefully",
+    "no critical second-round",
+    "don't want to surprise markets",
+    "doesn't want to surprise markets",
+    "not speculate on future ecb rates",
+    "balance of risks is in the right place",
+    "no commitment",
+    "hold"
+  )
+  sum(vapply(hawkish, grepl, logical(1), x = text, fixed = TRUE)) -
+    sum(vapply(dovish, grepl, logical(1), x = text, fixed = TRUE))
+}
+
+calibrated_policy_score <- function(member, text, base_score) {
+  text_lower <- tolower(text)
+  non_policy_only <- grepl("digital euro|cyber|payments|ai can boost", text_lower) &&
+    !grepl("inflation|rate|monetary policy|transmission|oil|wage|second-round", text_lower)
+  if (non_policy_only) {
+    return(base_score)
+  }
+
+  calibration <- current_ecb_member_tone_prior(member) + current_view_phrase_score(text)
+  calibration <- max(min(calibration, 2), -2)
+  if (abs(base_score) >= 3) {
+    calibration <- sign(calibration) * min(abs(calibration), 1)
+  }
+  base_score + calibration
 }
 
 score_to_bias <- function(score) {
