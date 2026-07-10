@@ -435,6 +435,11 @@ h1 {
   font-size: 0.74rem;
   line-height: 1.45;
   text-align: left;
+  display: -webkit-box;
+  max-height: calc(0.74rem * 1.45 * 3);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .source-note a {

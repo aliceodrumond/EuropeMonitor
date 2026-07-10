@@ -85,7 +85,7 @@ const html = String.raw`<!doctype html>
       .sentix-pmi-left-tick { fill:#204f86; }
       .sentix-pmi-right-tick { fill:#c47a20; }
       .line { fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
-      .source { margin:6px 0 0; color:var(--muted); font-size:.74rem; line-height:1.45; }
+      .source { margin:6px 0 0; color:var(--muted); font-size:.74rem; line-height:1.45; display:-webkit-box; max-height:calc(.74rem * 1.45 * 3); overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
       .source a { color:var(--brand); font-weight:650; text-decoration:none; }
       .source a:hover { text-decoration:underline; }
       .plot { position:relative; }
