@@ -1,8 +1,8 @@
 {
   "last_updated": "2026-07-10",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
-  "source_links": 21,
+  "generated_by": "R/run_daily_update.R",
+  "source_links": 25,
   "activity_last_new": {
     "date": "2026-07-04",
     "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
@@ -10,7 +10,5 @@
   "inflation_last_new": {
     "date": "2026-05-01",
     "description": "Eurostat HICP / PCA model: HICP headline PC estimate"
-  },
-  "speaker_rows": 20,
-  "inflation_rows": 16815
+  }
 }
