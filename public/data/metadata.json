@@ -9,8 +9,8 @@
   },
   "inflation_last_new": {
     "date": "2026-05-01",
-    "description": "Eurostat HICP / ECB staff methodology: % MoM SAAR, % QoQ SAAR, % YoY NSA"
+    "description": "Eurostat HICP / PCA model: HICP headline PC estimate"
   },
   "speaker_rows": 20,
-  "inflation_rows": 16516
+  "inflation_rows": 16831
 }

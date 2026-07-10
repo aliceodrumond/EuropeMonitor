@@ -894,14 +894,14 @@ build_hicp_legacy_x12_rows <- function(definition, eurostat_input) {
   rbind(hoh, qoq, mom)
 }
 
-run_hicp_x12_adjustment <- function(dates, values) {
+run_hicp_x12_adjustment <- function(dates, values, start_date = "2012-01-01") {
   valid <- !is.na(dates) & !is.na(values) & values > 0
   dates <- as.Date(dates[valid])
   values <- as.numeric(values[valid])
   order_index <- order(dates)
   dates <- dates[order_index]
   values <- values[order_index]
-  segment <- dates >= as.Date("2012-01-01")
+  segment <- dates >= as.Date(start_date)
   dates <- dates[segment]
   values <- values[segment]
 
@@ -1306,7 +1306,7 @@ read_ecb_pcci_rows <- function() {
   values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
   valid <- !is.na(dates) & !is.na(values)
 
-  make_series_frame(
+  official <- make_series_frame(
     dates[valid],
     "ecb_pcci_3m_saar",
     "ecb_pcci_3m_saar",
@@ -1318,6 +1318,95 @@ read_ecb_pcci_rows <- function() {
     source_url = "https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.PCCI00.3.3MM",
     frequency = "monthly",
     source_note = "Persistent and Common Component of Inflation, three-month moving average annualized."
+  )
+  rbind(official, build_hicp_pcci_pc_estimate_rows(official))
+}
+
+build_hicp_pcci_pc_estimate_rows <- function(pcci_rows) {
+  if (!nrow(pcci_rows) || !requireNamespace("seasonal", quietly = TRUE)) {
+    return(data.frame())
+  }
+
+  component_codes <- sprintf("CP%02d", 1:12)
+  component_panel <- read_hicp_pcci_pc_component_panel(component_codes)
+  if (!nrow(component_panel)) return(data.frame())
+
+  component_rates <- do.call(rbind, lapply(split(component_panel, component_panel$coicop), function(component) {
+    component <- component[order(component$date), ]
+    adjusted <- tryCatch(
+      run_hicp_x12_adjustment(component$date, component$nsa_index, start_date = "1997-01-01"),
+      error = function(error) data.frame()
+    )
+    if (!nrow(adjusted)) return(data.frame())
+    adjusted <- adjusted[order(adjusted$date), ]
+    adjusted$qoq_saar <- (adjusted$index / c(rep(NA_real_, 3), head(adjusted$index, -3)))^4 * 100 - 100
+    valid <- !is.na(adjusted$qoq_saar)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      date = adjusted$date[valid],
+      coicop = component$coicop[1],
+      qoq_saar = adjusted$qoq_saar[valid],
+      stringsAsFactors = FALSE
+    )
+  }))
+  if (!nrow(component_rates)) return(data.frame())
+
+  wide <- data.frame(date = sort(unique(component_rates$date)), stringsAsFactors = FALSE)
+  for (code in component_codes) {
+    item <- component_rates[component_rates$coicop == code, c("date", "qoq_saar"), drop = FALSE]
+    if (!nrow(item)) next
+    names(item)[2] <- code
+    wide <- merge(wide, item, by = "date", all.x = TRUE)
+  }
+  component_cols <- intersect(component_codes, names(wide))
+  if (length(component_cols) < 4) return(data.frame())
+  wide <- wide[stats::complete.cases(wide[, component_cols, drop = FALSE]), , drop = FALSE]
+  if (nrow(wide) < 36) return(data.frame())
+
+  pcci <- pcci_rows[pcci_rows$series_id == "ecb_pcci_3m_saar", c("date", "value"), drop = FALSE]
+  pcci$date <- as.Date(pcci$date)
+  pcci$value <- suppressWarnings(as.numeric(pcci$value))
+  fit_panel <- merge(wide, pcci, by = "date")
+  fit_panel <- fit_panel[fit_panel$date <= as.Date("2025-12-01"), , drop = FALSE]
+  fit_panel <- fit_panel[stats::complete.cases(fit_panel[, c(component_cols, "value"), drop = FALSE]), , drop = FALSE]
+  if (nrow(fit_panel) < 36) return(data.frame())
+
+  variable_sd <- vapply(fit_panel[, component_cols, drop = FALSE], stats::sd, numeric(1), na.rm = TRUE)
+  component_cols <- component_cols[is.finite(variable_sd) & variable_sd > 0]
+  if (length(component_cols) < 4) return(data.frame())
+
+  pc_model <- stats::prcomp(fit_panel[, component_cols, drop = FALSE], center = TRUE, scale. = TRUE)
+  scaled_all <- scale(
+    as.matrix(wide[, component_cols, drop = FALSE]),
+    center = pc_model$center,
+    scale = pc_model$scale
+  )
+  pc_score <- as.numeric(scaled_all %*% pc_model$rotation[, 1])
+  pc_panel <- data.frame(date = wide$date, pc1 = pc_score, stringsAsFactors = FALSE)
+  fit_scores <- merge(pc_panel, fit_panel[, c("date", "value"), drop = FALSE], by = "date")
+  regression <- stats::lm(value ~ pc1, data = fit_scores)
+  fitted_values <- as.numeric(stats::predict(regression, newdata = pc_panel))
+  r_squared <- tryCatch(summary(regression)$r.squared, error = function(error) NA_real_)
+  pc_share <- if (length(pc_model$sdev)) pc_model$sdev[1]^2 / sum(pc_model$sdev^2) else NA_real_
+
+  note <- sprintf(
+    "Estimated from the first principal component of 12 HICP headline COICOP division 3M SAAR rates, rescaled by linear fit to ECB PCCI through Dec-2025. In-sample R2 %.2f; PC1 share %.0f%%.",
+    r_squared,
+    100 * pc_share
+  )
+
+  make_series_frame(
+    pc_panel$date,
+    "ecb_pcci_3m_saar",
+    "hicp_headline_pc_pcci_3m_saar",
+    "HICP headline PC estimate",
+    "Euro Area",
+    fitted_values,
+    unit = "%",
+    source = "Eurostat HICP / PCA model",
+    source_url = "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en",
+    frequency = "monthly",
+    source_note = note
   )
 }
 
@@ -1504,6 +1593,42 @@ build_services_ex_volatiles_index <- function() {
     )
   }))
   rows[order(rows$date), ]
+}
+
+read_hicp_pcci_pc_component_panel <- function(component_codes) {
+  legacy <- read_eurostat_hicp_midx_panel(component_codes, "hicp_pcci_pc_components")
+  current <- read_eurostat_hicp_fpd_panel(component_codes, "hicp_pcci_pc_components_v2")
+  if (!nrow(legacy)) return(current)
+  if (!nrow(current)) return(legacy)
+
+  rows <- do.call(rbind, lapply(component_codes, function(code) {
+    legacy_code <- legacy[legacy$coicop == code, , drop = FALSE]
+    current_code <- current[current$coicop == code, , drop = FALSE]
+    if (!nrow(legacy_code)) return(current_code)
+    if (!nrow(current_code)) return(legacy_code)
+
+    common <- merge(
+      legacy_code[, c("date", "nsa_index"), drop = FALSE],
+      current_code[, c("date", "nsa_index"), drop = FALSE],
+      by = "date",
+      suffixes = c("_legacy", "_current")
+    )
+    common <- common[!is.na(common$nsa_index_legacy) & !is.na(common$nsa_index_current) & common$nsa_index_current != 0, ]
+    scale_factor <- if (nrow(common)) {
+      tail(common$nsa_index_legacy / common$nsa_index_current, 1)
+    } else {
+      1
+    }
+
+    latest_legacy_date <- max(legacy_code$date, na.rm = TRUE)
+    extension <- current_code[current_code$date > latest_legacy_date, , drop = FALSE]
+    if (nrow(extension)) {
+      extension$nsa_index <- extension$nsa_index * scale_factor
+    }
+    rbind(legacy_code, extension)
+  }))
+  if (!nrow(rows)) return(data.frame())
+  rows[order(rows$coicop, rows$date), ]
 }
 
 read_eurostat_hicp_fpd_panel <- function(coicop_codes, cache_key) {
