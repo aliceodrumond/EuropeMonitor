@@ -1437,14 +1437,10 @@ build_hicp_pcci_ecb_style_rows <- function(pcci_rows) {
 
   estimates <- lapply(4:max_factors, function(r) {
     factor_scores <- pc_model$x[, seq_len(r), drop = FALSE]
-    low_scores <- apply(factor_scores, 2, pcci_low_pass_filter, min_period = 36)
-    if (is.null(dim(low_scores))) low_scores <- matrix(low_scores, ncol = 1)
-    common <- low_scores %*% t(pc_model$rotation[, seq_len(r), drop = FALSE])
+    common <- factor_scores %*% t(pc_model$rotation[, seq_len(r), drop = FALSE])
     as.numeric(common %*% weights)
   })
   estimate <- rowMeans(do.call(cbind, estimates), na.rm = TRUE)
-  estimate <- stats::filter(estimate, rep(1 / 3, 3), sides = 1)
-  estimate <- as.numeric(estimate)
   model_panel <- data.frame(date = all_dates, estimate = estimate, stringsAsFactors = FALSE)
   model_panel <- model_panel[!is.na(model_panel$estimate) & is.finite(model_panel$estimate), ]
 
@@ -1462,7 +1458,7 @@ build_hicp_pcci_ecb_style_rows <- function(pcci_rows) {
   first_date <- min(model_panel$date, na.rm = TRUE)
   last_date <- max(model_panel$date, na.rm = TRUE)
   note <- sprintf(
-    "ECB-style replication from %s 4-digit country-item HICP series for 12 countries: annualised monthly rates, outlier removal, month-effect seasonal adjustment, low-frequency common factor component keeping cycles of at least three years, averaged over 4-16 static factor specifications and scaled to ECB PCCI through Dec-2025. Fit R2 %.2f; sample %s to %s.",
+    "ECB-style replication from %s 4-digit country-item HICP series for 12 countries: annualised monthly rates, outlier removal, month-effect seasonal adjustment, common factor component averaged over 4-16 static factor specifications and scaled to ECB PCCI through Dec-2025. No additional low-pass or moving-average smoothing is applied. Fit R2 %.2f; sample %s to %s.",
     length(series_cols),
     r_squared,
     format(first_date, "%b-%Y"),
@@ -1595,20 +1591,6 @@ pcci_month_effect_adjustment <- function(x, dates) {
   adjustment <- seasonal[as.character(months)]
   adjusted <- x - as.numeric(adjustment)
   adjusted - mean(adjusted, na.rm = TRUE) + overall
-}
-
-pcci_low_pass_filter <- function(x, min_period = 36) {
-  n <- length(x)
-  if (n < min_period) return(x)
-  transformed <- stats::fft(x)
-  keep <- rep(FALSE, n)
-  keep[1] <- TRUE
-  for (i in 2:n) {
-    frequency <- min(i - 1, n - i + 1)
-    keep[i] <- frequency > 0 && (n / frequency) >= min_period
-  }
-  transformed[!keep] <- 0
-  Re(stats::fft(transformed, inverse = TRUE) / n)
 }
 
 pcci_series_weights <- function(series_cols) {
