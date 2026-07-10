@@ -215,6 +215,7 @@ function Test-InflationOutput {
     "hicp_wage_intensive_mom_nsa_2026",
     "ecb_pcci_3m_saar",
     "hicp_headline_pc_pcci_3m_saar",
+    "hicp_headline_pc_pcci_3m_saar_ma3",
     "hicp_headline",
     "hicp_core",
     "core_services",

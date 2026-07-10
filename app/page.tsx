@@ -464,7 +464,7 @@ const charts: ChartDefinition[] = [
     defaultWindow: "10y",
     fixedDomains: { left: { min: -1, max: 8 } },
     startDate: "2018-01-01",
-    seriesOrder: ["ecb_pcci_3m_saar", "hicp_headline_pc_pcci_3m_saar"],
+    seriesOrder: ["ecb_pcci_3m_saar", "hicp_headline_pc_pcci_3m_saar", "hicp_headline_pc_pcci_3m_saar_ma3"],
   },
   {
     id: "hicp_headline_core",
@@ -1818,6 +1818,9 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
   const metricId = seriesId.replace("_legacy", "");
   if (metricId === "hicp_headline_pc_pcci_3m_saar") {
     return { color: "#11675f", dashArray: "2 4" };
+  }
+  if (metricId === "hicp_headline_pc_pcci_3m_saar_ma3") {
+    return { color: "#b9dfd4" };
   }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };

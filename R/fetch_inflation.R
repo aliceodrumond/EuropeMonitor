@@ -1326,19 +1326,47 @@ build_hicp_pcci_pc_estimate_rows <- function(pcci_rows) {
   cached <- read_hicp_pcci_estimate_cache()
   force_rebuild <- identical(Sys.getenv("FORCE_PCCI_REBUILD"), "1")
   if (!force_rebuild && nrow(cached) && !pcci_estimate_cache_is_stale(cached)) {
-    return(cached)
+    return(add_hicp_pcci_estimate_ma3_rows(cached))
   }
 
   ecb_style <- build_hicp_pcci_ecb_style_rows(pcci_rows)
   if (nrow(ecb_style)) {
     write_hicp_pcci_estimate_cache(ecb_style)
-    return(ecb_style)
+    return(add_hicp_pcci_estimate_ma3_rows(ecb_style))
   }
-  if (nrow(cached)) return(cached)
+  if (nrow(cached)) return(add_hicp_pcci_estimate_ma3_rows(cached))
 
   simple <- build_hicp_pcci_simple_pc_rows(pcci_rows)
   if (nrow(simple)) write_hicp_pcci_estimate_cache(simple)
-  simple
+  add_hicp_pcci_estimate_ma3_rows(simple)
+}
+
+add_hicp_pcci_estimate_ma3_rows <- function(rows) {
+  if (!nrow(rows)) return(rows)
+  estimate <- rows[rows$series_id == "hicp_headline_pc_pcci_3m_saar", , drop = FALSE]
+  if (!nrow(estimate)) return(rows)
+  estimate$date_value <- as.Date(estimate$date)
+  estimate$value <- suppressWarnings(as.numeric(estimate$value))
+  estimate <- estimate[order(estimate$date_value), ]
+  ma3 <- as.numeric(stats::filter(estimate$value, rep(1 / 3, 3), sides = 1))
+  valid <- !is.na(estimate$date_value) & !is.na(ma3) & is.finite(ma3)
+  if (!any(valid)) return(rows)
+
+  ma_rows <- make_series_frame(
+    estimate$date_value[valid],
+    "ecb_pcci_3m_saar",
+    "hicp_headline_pc_pcci_3m_saar_ma3",
+    "HICP ECB-style PCCI replication 3M MA",
+    "Euro Area",
+    ma3[valid],
+    unit = "%",
+    source = "Eurostat HICP / ECB-style PCCI replication",
+    source_url = "https://www.ecb.europa.eu/pub/pdf/scpsps/ecb.sps38~ce391a0cb5.en.pdf",
+    frequency = "monthly",
+    source_note = "Three-month trailing moving average of the HICP ECB-style PCCI replication; visual aid only."
+  )
+  estimate$date_value <- NULL
+  rbind(rows, ma_rows)
 }
 
 read_hicp_pcci_estimate_cache <- function() {
