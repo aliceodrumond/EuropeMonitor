@@ -1323,6 +1323,168 @@ read_ecb_pcci_rows <- function() {
 }
 
 build_hicp_pcci_pc_estimate_rows <- function(pcci_rows) {
+  cached <- read_hicp_pcci_estimate_cache()
+  force_rebuild <- identical(Sys.getenv("FORCE_PCCI_REBUILD"), "1")
+  if (!force_rebuild && nrow(cached) && !pcci_estimate_cache_is_stale(cached)) {
+    return(cached)
+  }
+
+  ecb_style <- build_hicp_pcci_ecb_style_rows(pcci_rows)
+  if (nrow(ecb_style)) {
+    write_hicp_pcci_estimate_cache(ecb_style)
+    return(ecb_style)
+  }
+  if (nrow(cached)) return(cached)
+
+  simple <- build_hicp_pcci_simple_pc_rows(pcci_rows)
+  if (nrow(simple)) write_hicp_pcci_estimate_cache(simple)
+  simple
+}
+
+read_hicp_pcci_estimate_cache <- function() {
+  cache_path <- file.path(getwd(), "data/processed/hicp_pcci_estimate_cache.csv")
+  if (!file.exists(cache_path)) return(data.frame())
+  rows <- tryCatch(
+    utils::read.csv(cache_path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8-BOM"),
+    error = function(error) data.frame()
+  )
+  if (!nrow(rows)) return(data.frame())
+  rows$date <- format(as.Date(rows$date), "%Y-%m-%d")
+  rows$value <- suppressWarnings(as.numeric(rows$value))
+  cache_month <- if ("cache_generated_month" %in% names(rows)) {
+    tail(rows$cache_generated_month[!is.na(rows$cache_generated_month) & nzchar(rows$cache_generated_month)], 1)
+  } else {
+    ""
+  }
+  rows$cache_generated_month <- NULL
+  attr(rows, "cache_generated_month") <- cache_month
+  rows
+}
+
+write_hicp_pcci_estimate_cache <- function(rows) {
+  if (!nrow(rows)) return(invisible(NULL))
+  rows$cache_generated_month <- format(Sys.Date(), "%Y-%m")
+  cache_path <- file.path(getwd(), "data/processed/hicp_pcci_estimate_cache.csv")
+  dir.create(dirname(cache_path), recursive = TRUE, showWarnings = FALSE)
+  write_csv_utf8(rows, cache_path)
+  invisible(rows)
+}
+
+pcci_estimate_cache_is_stale <- function(rows) {
+  if (!nrow(rows)) return(TRUE)
+  latest_cache_month <- attr(rows, "cache_generated_month")
+  if (is.null(latest_cache_month) || !nzchar(latest_cache_month)) return(TRUE)
+  !identical(latest_cache_month, format(Sys.Date(), "%Y-%m"))
+}
+
+build_hicp_pcci_ecb_style_rows <- function(pcci_rows) {
+  panel <- read_hicp_pcci_country_item_panel()
+  if (!nrow(panel)) return(data.frame())
+
+  panel <- panel[panel$date >= as.Date("2001-04-01") & panel$nsa_index > 0, ]
+  panel$key <- paste(panel$geo, panel$coicop, sep = "_")
+  rates <- do.call(rbind, lapply(split(panel, panel$key), function(item) {
+    item <- item[order(item$date), ]
+    if (nrow(item) < 180) return(data.frame())
+    value <- 1200 * c(NA_real_, diff(log(item$nsa_index)))
+    data.frame(
+      date = item$date,
+      key = item$key[1],
+      geo = item$geo[1],
+      coicop = item$coicop[1],
+      value = value,
+      stringsAsFactors = FALSE
+    )
+  }))
+  rates <- rates[!is.na(rates$value) & is.finite(rates$value), ]
+  if (!nrow(rates)) return(data.frame())
+
+  rates$value <- ave(rates$value, rates$key, FUN = pcci_winsorise_series)
+  rates <- do.call(rbind, lapply(split(rates, rates$key), function(item) {
+    item$value <- pcci_month_effect_adjustment(item$value, item$date)
+    item
+  }))
+
+  all_dates <- sort(unique(rates$date))
+  complete_keys <- names(which(tapply(rates$date, rates$key, function(x) length(unique(x)) == length(all_dates))))
+  rates <- rates[rates$key %in% complete_keys, ]
+  series_cols <- sort(unique(rates$key))
+  if (length(series_cols) < 50) return(data.frame())
+  matrix_values <- matrix(
+    NA_real_,
+    nrow = length(all_dates),
+    ncol = length(series_cols),
+    dimnames = list(as.character(all_dates), series_cols)
+  )
+  matrix_values[cbind(match(as.character(rates$date), rownames(matrix_values)), match(rates$key, series_cols))] <- rates$value
+  complete <- colSums(!is.na(matrix_values) & is.finite(matrix_values)) == nrow(matrix_values)
+  series_cols <- series_cols[complete]
+  matrix_values <- matrix_values[, complete, drop = FALSE]
+  if (length(series_cols) < 50) return(data.frame())
+
+  variable_sd <- apply(matrix_values, 2, stats::sd, na.rm = TRUE)
+  keep <- is.finite(variable_sd) & variable_sd > 0
+  if (sum(keep) < 50) return(data.frame())
+  series_cols <- series_cols[keep]
+  matrix_values <- matrix_values[, keep, drop = FALSE]
+
+  weights <- pcci_series_weights(series_cols)
+  weights <- weights / sum(weights, na.rm = TRUE)
+  centered <- scale(matrix_values, center = TRUE, scale = TRUE)
+  pc_model <- stats::prcomp(centered, center = FALSE, scale. = FALSE, rank. = min(16, ncol(centered), nrow(centered) - 1))
+  max_factors <- min(16, ncol(pc_model$rotation))
+  if (max_factors < 4) return(data.frame())
+
+  estimates <- lapply(4:max_factors, function(r) {
+    factor_scores <- pc_model$x[, seq_len(r), drop = FALSE]
+    low_scores <- apply(factor_scores, 2, pcci_low_pass_filter, min_period = 36)
+    if (is.null(dim(low_scores))) low_scores <- matrix(low_scores, ncol = 1)
+    common <- low_scores %*% t(pc_model$rotation[, seq_len(r), drop = FALSE])
+    as.numeric(common %*% weights)
+  })
+  estimate <- rowMeans(do.call(cbind, estimates), na.rm = TRUE)
+  estimate <- stats::filter(estimate, rep(1 / 3, 3), sides = 1)
+  estimate <- as.numeric(estimate)
+  model_panel <- data.frame(date = all_dates, estimate = estimate, stringsAsFactors = FALSE)
+  model_panel <- model_panel[!is.na(model_panel$estimate) & is.finite(model_panel$estimate), ]
+
+  pcci <- pcci_rows[pcci_rows$series_id == "ecb_pcci_3m_saar", c("date", "value"), drop = FALSE]
+  pcci$date <- as.Date(pcci$date)
+  pcci$value <- suppressWarnings(as.numeric(pcci$value))
+  fit_panel <- merge(model_panel, pcci, by = "date")
+  fit_panel <- fit_panel[fit_panel$date <= as.Date("2025-12-01"), , drop = FALSE]
+  fit_panel <- fit_panel[stats::complete.cases(fit_panel), , drop = FALSE]
+  if (nrow(fit_panel) < 36) return(data.frame())
+
+  regression <- stats::lm(value ~ estimate, data = fit_panel)
+  fitted_values <- as.numeric(stats::predict(regression, newdata = model_panel))
+  r_squared <- tryCatch(summary(regression)$r.squared, error = function(error) NA_real_)
+  first_date <- min(model_panel$date, na.rm = TRUE)
+  last_date <- max(model_panel$date, na.rm = TRUE)
+  note <- sprintf(
+    "ECB-style replication from %s 4-digit country-item HICP series for 12 countries: annualised monthly rates, outlier removal, month-effect seasonal adjustment, low-frequency common factor component keeping cycles of at least three years, averaged over 4-16 static factor specifications and scaled to ECB PCCI through Dec-2025. Fit R2 %.2f; sample %s to %s.",
+    length(series_cols),
+    r_squared,
+    format(first_date, "%b-%Y"),
+    format(last_date, "%b-%Y")
+  )
+
+  make_series_frame(
+    model_panel$date,
+    "ecb_pcci_3m_saar",
+    "hicp_headline_pc_pcci_3m_saar",
+    "HICP ECB-style PCCI replication",
+    "Euro Area",
+    fitted_values,
+    unit = "%",
+    source = "Eurostat HICP / ECB-style PCCI replication",
+    source_url = "https://www.ecb.europa.eu/pub/pdf/scpsps/ecb.sps38~ce391a0cb5.en.pdf",
+    frequency = "monthly",
+    source_note = note
+  )
+}
+
+build_hicp_pcci_simple_pc_rows <- function(pcci_rows) {
   if (!nrow(pcci_rows) || !requireNamespace("seasonal", quietly = TRUE)) {
     return(data.frame())
   }
@@ -1408,6 +1570,68 @@ build_hicp_pcci_pc_estimate_rows <- function(pcci_rows) {
     frequency = "monthly",
     source_note = note
   )
+}
+
+pcci_ecb_countries <- function() {
+  c("BE", "DE", "IE", "EL", "ES", "FR", "IT", "LU", "NL", "AT", "PT", "FI")
+}
+
+pcci_country_weights <- function() {
+  weights <- c(BE = 3.7, DE = 28.0, IE = 1.5, EL = 2.1, ES = 11.5, FR = 19.4, IT = 17.3, LU = 0.3, NL = 5.1, AT = 3.4, PT = 2.2, FI = 1.9)
+  weights / sum(weights)
+}
+
+pcci_winsorise_series <- function(x) {
+  median_value <- stats::median(x, na.rm = TRUE)
+  scale_value <- stats::mad(x, center = median_value, constant = 1.4826, na.rm = TRUE)
+  if (!is.finite(scale_value) || scale_value <= 0) return(x)
+  pmin(pmax(x, median_value - 6 * scale_value), median_value + 6 * scale_value)
+}
+
+pcci_month_effect_adjustment <- function(x, dates) {
+  months <- as.integer(format(as.Date(dates), "%m"))
+  overall <- mean(x, na.rm = TRUE)
+  seasonal <- tapply(x - overall, months, mean, na.rm = TRUE)
+  adjustment <- seasonal[as.character(months)]
+  adjusted <- x - as.numeric(adjustment)
+  adjusted - mean(adjusted, na.rm = TRUE) + overall
+}
+
+pcci_low_pass_filter <- function(x, min_period = 36) {
+  n <- length(x)
+  if (n < min_period) return(x)
+  transformed <- stats::fft(x)
+  keep <- rep(FALSE, n)
+  keep[1] <- TRUE
+  for (i in 2:n) {
+    frequency <- min(i - 1, n - i + 1)
+    keep[i] <- frequency > 0 && (n / frequency) >= min_period
+  }
+  transformed[!keep] <- 0
+  Re(stats::fft(transformed, inverse = TRUE) / n)
+}
+
+pcci_series_weights <- function(series_cols) {
+  country_weights <- pcci_country_weights()
+  item_weights <- read_hicp_pcci_country_item_weight_panel()
+  latest_weights <- data.frame()
+  if (nrow(item_weights)) {
+    latest_weights <- do.call(rbind, lapply(split(item_weights, paste(item_weights$geo, item_weights$coicop, sep = "_")), function(item) {
+      item <- item[order(item$year), ]
+      tail(item, 1)
+    }))
+  }
+  weight_map <- setNames(numeric(0), character(0))
+  if (nrow(latest_weights)) {
+    weight_map <- setNames(latest_weights$weight, paste(latest_weights$geo, latest_weights$coicop, sep = "_"))
+  }
+  weights <- vapply(series_cols, function(key) {
+    parts <- strsplit(key, "_", fixed = TRUE)[[1]]
+    geo <- parts[1]
+    item_weight <- if (key %in% names(weight_map)) weight_map[[key]] else 1
+    country_weights[[geo]] * item_weight
+  }, numeric(1))
+  if (!sum(weights, na.rm = TRUE)) rep(1 / length(series_cols), length(series_cols)) else weights
 }
 
 make_hicp_aggregate_yoy_rows <- function(index, chart_id, series_id, series_name, source_url, source_note) {
@@ -1629,6 +1853,131 @@ read_hicp_pcci_pc_component_panel <- function(component_codes) {
   }))
   if (!nrow(rows)) return(data.frame())
   rows[order(rows$coicop, rows$date), ]
+}
+
+read_hicp_pcci_country_item_panel <- function() {
+  countries <- pcci_ecb_countries()
+  rows <- do.call(rbind, lapply(countries, function(geo) {
+    legacy <- read_eurostat_hicp_midx_country_panel(geo)
+    current <- read_eurostat_hicp_fpd_country_panel(geo)
+    if (!nrow(legacy)) return(current)
+    if (!nrow(current)) return(legacy)
+    codes <- intersect(unique(legacy$coicop), unique(current$coicop))
+    combined <- do.call(rbind, lapply(codes, function(code) {
+      legacy_code <- legacy[legacy$coicop == code, , drop = FALSE]
+      current_code <- current[current$coicop == code, , drop = FALSE]
+      common <- merge(
+        legacy_code[, c("date", "nsa_index"), drop = FALSE],
+        current_code[, c("date", "nsa_index"), drop = FALSE],
+        by = "date",
+        suffixes = c("_legacy", "_current")
+      )
+      common <- common[!is.na(common$nsa_index_legacy) & !is.na(common$nsa_index_current) & common$nsa_index_current != 0, ]
+      scale_factor <- if (nrow(common)) tail(common$nsa_index_legacy / common$nsa_index_current, 1) else 1
+      latest_legacy_date <- max(legacy_code$date, na.rm = TRUE)
+      extension <- current_code[current_code$date > latest_legacy_date, , drop = FALSE]
+      if (nrow(extension)) extension$nsa_index <- extension$nsa_index * scale_factor
+      rbind(legacy_code, extension)
+    }))
+    if (!nrow(combined)) return(data.frame())
+    combined
+  }))
+  if (!nrow(rows)) return(data.frame())
+  rows[order(rows$geo, rows$coicop, rows$date), ]
+}
+
+read_eurostat_hicp_midx_country_panel <- function(geo) {
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx?lang=en&unit=I15&geo=%s",
+    utils::URLencode(geo, reserved = TRUE)
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_midx_pcci_country_%s.json", geo))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  code_index <- unlist(json$dimension$coicop$category$index)
+  codes <- names(code_index)[grepl("^CP[0-9]{4}$", names(code_index))]
+  read_eurostat_hicp_country_panel_from_json(json, codes, geo, "coicop", list(freq = "M", unit = "I15", geo = geo))
+}
+
+read_eurostat_hicp_fpd_country_panel <- function(geo) {
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_fpd?lang=en&unit=I25&release=FIN&geo=%s",
+    utils::URLencode(geo, reserved = TRUE)
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_fpd_pcci_country_%s.json", geo))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  code_index <- unlist(json$dimension$coicop18$category$index)
+  codes <- names(code_index)[grepl("^CP[0-9]{4}$", names(code_index))]
+  read_eurostat_hicp_country_panel_from_json(json, codes, geo, "coicop18", list(freq = "M", unit = "I25", release = "FIN", geo = geo))
+}
+
+read_eurostat_hicp_country_panel_from_json <- function(json, codes, geo, coicop_dimension, fixed_dimensions) {
+  rows <- lapply(codes, function(code) {
+    fixed_dimensions[[coicop_dimension]] <- code
+    values <- read_eurostat_json_values(json, fixed_dimensions, "time")
+    if (!nrow(values)) return(data.frame())
+    dates <- as.Date(sprintf("%s-01", values$period))
+    valid <- !is.na(dates) & !is.na(values$value)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      geo = geo,
+      coicop = code,
+      date = dates[valid],
+      nsa_index = values$value[valid],
+      stringsAsFactors = FALSE
+    )
+  })
+  panel <- do.call(rbind, rows)
+  if (!nrow(panel)) return(data.frame())
+  panel[order(panel$geo, panel$coicop, panel$date), ]
+}
+
+read_hicp_pcci_country_item_weight_panel <- function() {
+  rows <- do.call(rbind, lapply(pcci_ecb_countries(), read_eurostat_hicp_country_item_weight_panel))
+  if (!nrow(rows)) return(data.frame())
+  rows[order(rows$geo, rows$coicop, rows$year), ]
+}
+
+read_eurostat_hicp_country_item_weight_panel <- function(geo) {
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw?lang=en&geo=%s",
+    utils::URLencode(geo, reserved = TRUE)
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_inw_pcci_country_%s.json", geo))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  coicop_dimension <- if (!is.null(json$dimension$coicop18)) "coicop18" else "coicop"
+  code_index <- unlist(json$dimension[[coicop_dimension]]$category$index)
+  codes <- names(code_index)[grepl("^CP[0-9]{4}$", names(code_index))]
+  rows <- lapply(codes, function(code) {
+    fixed <- list(freq = "A", geo = geo)
+    fixed[[coicop_dimension]] <- code
+    if ("statinfo" %in% unlist(json$id)) fixed$statinfo <- "IW"
+    values <- read_eurostat_json_values(json, fixed, "time")
+    if (!nrow(values)) return(data.frame())
+    valid <- !is.na(values$value)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      geo = geo,
+      coicop = code,
+      year = as.integer(values$period[valid]),
+      weight = values$value[valid],
+      stringsAsFactors = FALSE
+    )
+  })
+  weights <- do.call(rbind, rows)
+  if (!nrow(weights)) return(data.frame())
+  weights[order(weights$geo, weights$coicop, weights$year), ]
 }
 
 read_eurostat_hicp_fpd_panel <- function(coicop_codes, cache_key) {
