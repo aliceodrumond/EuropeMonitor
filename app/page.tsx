@@ -378,17 +378,6 @@ const charts: ChartDefinition[] = [
     seriesOrder: ["hicp_services_yoy_nsa", "hicp_services_hoh_saar", "hicp_services_qoq_saar", "hicp_services_mom_saar", "hicp_services_hoh_saar_legacy", "hicp_services_qoq_saar_legacy", "hicp_services_mom_saar_legacy"],
   },
   {
-    id: "hicp_energy_wage_sensitive",
-    tab: "inflation",
-    title: "HICPX Energy and Wage Sensitive",
-    kicker: "ECB methodology",
-    yLeftLabel: "% y/y",
-    defaultWindow: "10y",
-    fixedDomains: { left: { min: -1, max: 10 } },
-    startDate: "2018-01-01",
-    seriesOrder: ["hicp_energy_sensitive_yoy_nsa", "hicp_wage_sensitive_yoy_nsa"],
-  },
-  {
     id: "hicp_goods_seasonality",
     tab: "inflation",
     title: "HICP Non-Energy Industrial Goods Seasonality",
@@ -425,6 +414,17 @@ const charts: ChartDefinition[] = [
     yLeftLabel: "% m/m NSA",
     chartType: "seasonality",
     seriesOrder: ["hicp_services_ex_volatiles_mom_nsa_range_min", "hicp_services_ex_volatiles_mom_nsa_range_max", "hicp_services_ex_volatiles_mom_nsa_median", "hicp_services_ex_volatiles_mom_nsa_2022", "hicp_services_ex_volatiles_mom_nsa_2025", "hicp_services_ex_volatiles_mom_nsa_2026"],
+  },
+  {
+    id: "hicp_energy_wage_sensitive",
+    tab: "inflation",
+    title: "HICPX Energy and Wage Sensitive",
+    kicker: "ECB methodology",
+    yLeftLabel: "% y/y",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -1, max: 10 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["hicp_energy_sensitive_yoy_nsa", "hicp_wage_sensitive_yoy_nsa"],
   },
   {
     id: "ecb_pcci_3m_saar",
@@ -1787,6 +1787,9 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
     return { color: "#178f65" };
   }
   const metricId = seriesId.replace("_legacy", "");
+  if (metricId === "hicp_energy_sensitive_yoy_nsa") {
+    return { color: "#11675f" };
+  }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };
   }
