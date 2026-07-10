@@ -15,13 +15,28 @@ build_inflation_series <- function(project_root) {
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp)
   hicp_seasonality <- read_hicp_seasonality_rows()
+  hicp_sensitive <- read_hicp_energy_wage_sensitive_rows()
+  services_ex_volatiles <- read_hicp_services_ex_volatiles_rows()
+  pcci <- read_ecb_pcci_rows()
   swiss_cpi <- read_swiss_cpi_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
   inflation <- apply_series_catalog(
-    rbind(expected_chart, wage_tracker, headline_core, components, hicp_rates, hicp_seasonality, swiss_cpi, ces_expectations),
+    rbind(
+      expected_chart,
+      wage_tracker,
+      headline_core,
+      components,
+      hicp_rates,
+      hicp_seasonality,
+      hicp_sensitive,
+      services_ex_volatiles,
+      pcci,
+      swiss_cpi,
+      ces_expectations
+    ),
     catalog
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
@@ -980,6 +995,9 @@ read_eurostat_hicp_midx_index <- function(coicop_code, base_series_id) {
   json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
 
   times <- names(sort(unlist(json$dimension$time$category$index)))
+  if (!length(times)) {
+    return(data.frame())
+  }
   dates <- as.Date(sprintf("%s-01", times))
   values <- rep(NA_real_, length(times))
   value_map <- unlist(json$value)
@@ -988,6 +1006,9 @@ read_eurostat_hicp_midx_index <- function(coicop_code, base_series_id) {
     values[positions] <- as.numeric(value_map)
   }
   valid <- !is.na(dates) & !is.na(values)
+  if (!any(valid)) {
+    return(data.frame())
+  }
   data.frame(
     date = dates[valid],
     nsa_index = values[valid],
@@ -1187,6 +1208,464 @@ read_eurostat_teicp_rows <- function(definition) {
     source_url = definition$source_url,
     frequency = "monthly"
   )
+}
+
+read_hicp_energy_wage_sensitive_rows <- function() {
+  source_url <- "https://www.ecb.europa.eu/press/economic-bulletin/focus/2024/html/ecb.ebbox202403_06~bf8222a3ae.en.html"
+  note <- paste(
+    "Constructed from ECB Economic Bulletin 2024/3 ECOICOP 5-digit baskets.",
+    "Eurostat HICP item weights are available through 2025 under the pre-2026 ECOICOP classification."
+  )
+
+  energy <- build_weighted_hicp_aggregate_index(energy_sensitive_hicpx_codes(), "energy_sensitive_hicpx")
+  wage <- build_weighted_hicp_aggregate_index(wage_sensitive_hicpx_codes(), "wage_sensitive_hicpx")
+
+  rbind(
+    make_hicp_aggregate_yoy_rows(
+      energy,
+      "hicp_energy_wage_sensitive",
+      "hicp_energy_sensitive_yoy_nsa",
+      "Energy-sensitive HICPX",
+      source_url,
+      note
+    ),
+    make_hicp_aggregate_yoy_rows(
+      wage,
+      "hicp_energy_wage_sensitive",
+      "hicp_wage_sensitive_yoy_nsa",
+      "Wage-sensitive HICPX",
+      source_url,
+      note
+    )
+  )
+}
+
+read_hicp_services_ex_volatiles_rows <- function() {
+  source_url <- "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en"
+  note <- paste(
+    "Services ex-volatiles = HICP services less air passenger transport, package holidays and accommodation services.",
+    "Seasonal adjustment uses the local X-13ARIMA-SEATS/X-11 method used for the other HICP legacy series."
+  )
+  index <- build_services_ex_volatiles_index()
+  if (!nrow(index)) return(data.frame())
+
+  rates <- make_hicp_constructed_rate_rows(
+    index,
+    "hicp_services_ex_volatiles_rates",
+    "hicp_services_ex_volatiles",
+    "Services ex-volatiles",
+    source_url,
+    note
+  )
+  seasonality <- make_hicp_constructed_seasonality_rows(
+    index,
+    "hicp_services_ex_volatiles_seasonality",
+    "hicp_services_ex_volatiles",
+    source_url,
+    "Eurostat HICP / Legacy X-13/X-11"
+  )
+  rbind(rates, seasonality)
+}
+
+read_ecb_pcci_rows <- function() {
+  url <- "https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.PCCI00.3.3MM?startPeriod=2017-01&format=csvdata"
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, "ecb_pcci_3m_saar.csv")
+  download_binary_url(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) {
+    return(data.frame())
+  }
+  dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
+  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+  valid <- !is.na(dates) & !is.na(values)
+
+  make_series_frame(
+    dates[valid],
+    "ecb_pcci_3m_saar",
+    "ecb_pcci_3m_saar",
+    "PCCI 3M SAAR",
+    "Euro Area",
+    values[valid],
+    unit = "%",
+    source = "ECB Data Portal",
+    source_url = "https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.PCCI00.3.3MM",
+    frequency = "monthly",
+    source_note = "Persistent and Common Component of Inflation, three-month moving average annualized."
+  )
+}
+
+make_hicp_aggregate_yoy_rows <- function(index, chart_id, series_id, series_name, source_url, source_note) {
+  if (!nrow(index)) return(data.frame())
+  index <- index[order(index$date), ]
+  index$yoy <- index$nsa_index / c(rep(NA_real_, 12), head(index$nsa_index, -12)) * 100 - 100
+  valid <- !is.na(index$yoy)
+  make_series_frame(
+    index$date[valid],
+    chart_id,
+    series_id,
+    series_name,
+    "Euro Area",
+    index$yoy[valid],
+    unit = "%",
+    source = "Eurostat HICP / ECB staff methodology",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = source_note
+  )
+}
+
+make_hicp_constructed_rate_rows <- function(index, chart_id, base_series_id, title, source_url, source_note) {
+  index <- index[order(index$date), ]
+  index$yoy <- index$nsa_index / c(rep(NA_real_, 12), head(index$nsa_index, -12)) * 100 - 100
+
+  yoy_valid <- !is.na(index$yoy)
+  yoy <- make_series_frame(
+    index$date[yoy_valid],
+    chart_id,
+    sprintf("%s_yoy_nsa", base_series_id),
+    "% YoY NSA",
+    "Euro Area",
+    index$yoy[yoy_valid],
+    unit = "%",
+    source = "Eurostat HICP",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = source_note
+  )
+
+  sa <- run_hicp_x12_adjustment(index$date, index$nsa_index)
+  if (!nrow(sa)) return(yoy)
+  sa <- sa[order(sa$date), ]
+  sa$mom_saar <- (sa$index / c(NA_real_, head(sa$index, -1)))^12 * 100 - 100
+  sa$qoq_saar <- (sa$index / c(rep(NA_real_, 3), head(sa$index, -3)))^4 * 100 - 100
+
+  qoq_valid <- !is.na(sa$qoq_saar)
+  mom_valid <- !is.na(sa$mom_saar)
+  qoq <- make_series_frame(
+    sa$date[qoq_valid],
+    chart_id,
+    sprintf("%s_qoq_saar", base_series_id),
+    "% QoQ SAAR",
+    "Euro Area",
+    sa$qoq_saar[qoq_valid],
+    unit = "%",
+    source = "Eurostat HICP / Legacy X-13/X-11",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = source_note
+  )
+  mom <- make_series_frame(
+    sa$date[mom_valid],
+    chart_id,
+    sprintf("%s_mom_saar", base_series_id),
+    "% MoM SAAR",
+    "Euro Area",
+    sa$mom_saar[mom_valid],
+    unit = "%",
+    source = "Eurostat HICP / Legacy X-13/X-11",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = source_note
+  )
+
+  rbind(yoy, qoq, mom)
+}
+
+make_hicp_constructed_seasonality_rows <- function(index, chart_id, base_series_id, source_url, source) {
+  if (nrow(index) < 24) return(data.frame())
+  index <- index[order(index$date), ]
+  index$mom_nsa <- index$nsa_index / c(NA_real_, head(index$nsa_index, -1)) * 100 - 100
+  index$year <- as.integer(format(index$date, "%Y"))
+  index$month <- as.integer(format(index$date, "%m"))
+  index <- index[!is.na(index$mom_nsa), ]
+
+  seasonal_panel <- do.call(rbind, lapply(2012:2026, function(target_year) {
+    rows <- index[(index$year == target_year & index$month %in% 1:12) | (index$year == target_year - 1 & index$month == 12), ]
+    if (!nrow(rows)) return(data.frame())
+    rows$seasonal_year <- target_year
+    rows$seasonal_month <- ifelse(rows$year == target_year - 1 & rows$month == 12, 0, rows$month)
+    rows
+  }))
+  if (!nrow(seasonal_panel)) return(data.frame())
+
+  history <- seasonal_panel[seasonal_panel$seasonal_year >= 2012 & seasonal_panel$seasonal_year <= 2025, ]
+  if (!nrow(history)) return(data.frame())
+  stats <- do.call(rbind, lapply(0:12, function(month_value) {
+    values <- history$mom_nsa[history$seasonal_month == month_value]
+    if (!length(values)) return(data.frame())
+    data.frame(
+      seasonal_month = month_value,
+      min = min(values, na.rm = TRUE),
+      median = stats::median(values, na.rm = TRUE),
+      max = max(values, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  selected <- seasonal_panel[seasonal_panel$seasonal_year %in% c(2022, 2025, 2026), ]
+  selected <- selected[selected$seasonal_month %in% 0:12, ]
+  selected_rows <- do.call(rbind, lapply(c(2022, 2025, 2026), function(target_year) {
+    year_rows <- selected[selected$seasonal_year == target_year, ]
+    if (!nrow(year_rows)) return(data.frame())
+    make_hicp_seasonality_series(
+      year_rows$seasonal_month,
+      chart_id,
+      sprintf("%s_mom_nsa_%s", base_series_id, target_year),
+      as.character(target_year),
+      year_rows$mom_nsa,
+      source_url,
+      source
+    )
+  }))
+
+  rbind(
+    make_hicp_seasonality_series(stats$seasonal_month, chart_id, sprintf("%s_mom_nsa_range_min", base_series_id), "2012-2025 min", stats$min, source_url, source),
+    make_hicp_seasonality_series(stats$seasonal_month, chart_id, sprintf("%s_mom_nsa_median", base_series_id), "2012-2025 median", stats$median, source_url, source),
+    make_hicp_seasonality_series(stats$seasonal_month, chart_id, sprintf("%s_mom_nsa_range_max", base_series_id), "2012-2025 max", stats$max, source_url, source),
+    selected_rows
+  )
+}
+
+build_weighted_hicp_aggregate_index <- function(codes, series_id) {
+  index <- read_eurostat_hicp_midx_panel(codes, series_id)
+  weights <- read_eurostat_hicp_weight_panel(codes, series_id)
+  if (!nrow(index) || !nrow(weights)) return(data.frame())
+  index$year <- as.integer(format(index$date, "%Y"))
+  panel <- merge(index[, c("coicop", "date", "year", "nsa_index")], weights, by = c("coicop", "year"))
+  if (!nrow(panel)) return(data.frame())
+  panel <- panel[!is.na(panel$nsa_index) & !is.na(panel$weight) & panel$weight > 0, ]
+  dates <- sort(unique(panel$date))
+  aggregate_rows <- do.call(rbind, lapply(dates, function(target_date) {
+    rows <- panel[panel$date == target_date, ]
+    if (!nrow(rows)) return(data.frame())
+    data.frame(
+      date = target_date,
+      nsa_index = stats::weighted.mean(rows$nsa_index, rows$weight, na.rm = TRUE),
+      series_id = series_id,
+      stringsAsFactors = FALSE
+    )
+  }))
+  aggregate_rows[order(aggregate_rows$date), ]
+}
+
+build_services_ex_volatiles_index <- function() {
+  component_codes <- c("SERV", "CP0733", "CP096", "CP112")
+  index <- read_eurostat_hicp_midx_panel(component_codes, "hicp_services_ex_volatiles")
+  weights <- read_eurostat_hicp_weight_panel(component_codes, "hicp_services_ex_volatiles")
+  if (!nrow(index) || !nrow(weights)) return(data.frame())
+  index$year <- as.integer(format(index$date, "%Y"))
+  panel <- merge(index[, c("coicop", "date", "year", "nsa_index")], weights, by = c("coicop", "year"))
+  if (!nrow(panel)) return(data.frame())
+
+  dates <- sort(unique(panel$date))
+  rows <- do.call(rbind, lapply(dates, function(target_date) {
+    month_rows <- panel[panel$date == target_date, ]
+    service <- month_rows[month_rows$coicop == "SERV", ]
+    volatile <- month_rows[month_rows$coicop %in% c("CP0733", "CP096", "CP112"), ]
+    if (!nrow(service) || nrow(volatile) < 3) return(data.frame())
+    residual_weight <- service$weight[1] - sum(volatile$weight, na.rm = TRUE)
+    if (is.na(residual_weight) || residual_weight <= 0) return(data.frame())
+    residual_index <- (
+      service$weight[1] * service$nsa_index[1] -
+        sum(volatile$weight * volatile$nsa_index, na.rm = TRUE)
+    ) / residual_weight
+    data.frame(
+      date = target_date,
+      nsa_index = residual_index,
+      series_id = "hicp_services_ex_volatiles",
+      stringsAsFactors = FALSE
+    )
+  }))
+  rows[order(rows$date), ]
+}
+
+read_eurostat_hicp_midx_panel <- function(coicop_codes, cache_key) {
+  query_codes <- paste(sprintf("coicop=%s", utils::URLencode(coicop_codes, reserved = TRUE)), collapse = "&")
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx?lang=en&geo=EA20&unit=I15&%s",
+    query_codes
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  safe_key <- gsub("[^A-Za-z0-9_]+", "_", cache_key)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_midx_panel_%s.json", safe_key))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  rows <- lapply(coicop_codes, function(code) {
+    values <- read_eurostat_json_values(
+      json,
+      list(freq = "M", coicop = code, unit = "I15", geo = "EA20"),
+      "time"
+    )
+    if (!nrow(values)) return(data.frame())
+    dates <- as.Date(sprintf("%s-01", values$period))
+    valid <- !is.na(dates) & !is.na(values$value)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      coicop = code,
+      date = dates[valid],
+      nsa_index = values$value[valid],
+      is_flash_extension = FALSE,
+      series_id = cache_key,
+      stringsAsFactors = FALSE
+    )
+  })
+  panel <- do.call(rbind, rows)
+  if (!nrow(panel)) return(data.frame())
+  panel[order(panel$coicop, panel$date), ]
+}
+
+read_eurostat_hicp_weight_panel <- function(coicop_codes, cache_key) {
+  query_codes <- paste(sprintf("coicop=%s", utils::URLencode(coicop_codes, reserved = TRUE)), collapse = "&")
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw?lang=en&geo=EA20&%s",
+    query_codes
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  safe_key <- gsub("[^A-Za-z0-9_]+", "_", cache_key)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_inw_panel_%s.json", safe_key))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  rows <- lapply(coicop_codes, function(code) {
+    values <- read_eurostat_json_values(
+      json,
+      list(freq = "A", coicop = code, geo = "EA20"),
+      "time"
+    )
+    if (!nrow(values)) return(data.frame())
+    valid <- !is.na(values$value)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      coicop = code,
+      year = as.integer(values$period[valid]),
+      weight = values$value[valid],
+      stringsAsFactors = FALSE
+    )
+  })
+  panel <- do.call(rbind, rows)
+  if (!nrow(panel)) return(data.frame())
+  panel[order(panel$coicop, panel$year), ]
+}
+
+download_eurostat_json <- function(url, path) {
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 90 -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(path, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
+  invisible(path)
+}
+
+read_eurostat_hicp_weight_rows <- function(coicop_code) {
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw?lang=en&geo=EA20&coicop=%s",
+    utils::URLencode(coicop_code, reserved = TRUE)
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  safe_code <- gsub("[^A-Za-z0-9_]+", "_", coicop_code)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_inw_%s.json", safe_code))
+  command <- sprintf(
+    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
+    shQuote(url, type = "sh"),
+    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  )
+  system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  values <- read_eurostat_json_values(json, list(freq = "A", coicop = coicop_code, geo = "EA20"), "time")
+  if (!nrow(values)) return(data.frame())
+  data.frame(
+    year = as.integer(values$period),
+    weight = values$value,
+    stringsAsFactors = FALSE
+  )
+}
+
+read_eurostat_json_values <- function(json, fixed_dimensions, time_dimension = "time") {
+  ids <- unlist(json$id)
+  sizes <- as.integer(unlist(json$size))
+  if (!length(ids) || !length(sizes) || length(ids) != length(sizes) || !time_dimension %in% ids) {
+    return(data.frame())
+  }
+
+  categories <- lapply(ids, function(id) json$dimension[[id]]$category$index)
+  names(categories) <- ids
+  positions <- rep(0L, length(ids))
+  names(positions) <- ids
+  for (dimension_name in names(fixed_dimensions)) {
+    if (!dimension_name %in% ids) next
+    category_index <- unlist(categories[[dimension_name]])
+    target_code <- fixed_dimensions[[dimension_name]]
+    if (!target_code %in% names(category_index)) {
+      return(data.frame())
+    }
+    positions[[dimension_name]] <- as.integer(category_index[[target_code]])
+  }
+
+  time_index <- unlist(categories[[time_dimension]])
+  if (!length(time_index)) return(data.frame())
+  ordered_times <- names(sort(time_index))
+  value_map <- unlist(json$value)
+  if (!length(value_map)) {
+    return(data.frame(period = ordered_times, value = NA_real_, stringsAsFactors = FALSE))
+  }
+
+  multipliers <- vapply(seq_along(sizes), function(i) {
+    if (i == length(sizes)) 1 else prod(sizes[(i + 1):length(sizes)])
+  }, numeric(1))
+  names(multipliers) <- ids
+  time_pos <- match(time_dimension, ids)
+  values <- rep(NA_real_, length(ordered_times))
+  for (i in seq_along(ordered_times)) {
+    current_positions <- positions
+    current_positions[[time_dimension]] <- as.integer(time_index[[ordered_times[[i]]]])
+    flat_index <- sum(current_positions * multipliers)
+    key <- as.character(flat_index)
+    if (key %in% names(value_map)) {
+      values[[i]] <- as.numeric(value_map[[key]])
+    }
+  }
+  data.frame(period = ordered_times, value = values, stringsAsFactors = FALSE)
+}
+
+energy_sensitive_hicpx_codes <- function() {
+  paste0("CP", c(
+    "03141", "03142", "04310", "04410", "05122", "05401", "05402", "05403",
+    "05521", "05522", "05611", "05612", "07211", "07224", "07241", "07242",
+    "07243", "07311", "07312", "07321", "07322", "07331", "07332", "07341",
+    "07342", "07350", "07361", "07362", "07369", "08101", "08109", "09331",
+    "09332", "09341", "09342", "09411", "09412", "09423", "09425", "09429",
+    "09541", "09601", "09602", "11111", "11112", "11120", "11201", "11202",
+    "11203", "12111", "12112", "12113", "12132", "12703"
+  ))
+}
+
+wage_sensitive_hicpx_codes <- function() {
+  paste0("CP", c(
+    "03141", "03220", "04321", "04322", "04323", "04324", "04325", "04329",
+    "04420", "04430", "04441", "04442", "05123", "05130", "05204", "05330",
+    "05404", "05523", "05621", "05622", "05623", "05629", "06133", "06211",
+    "06212", "06220", "06231", "06232", "06239", "06300", "07230", "08101",
+    "08109", "09150", "09230", "09323", "09411", "09412", "10101", "10102",
+    "10200", "10300", "10400", "10500", "12111", "12112", "12113", "12122",
+    "12313", "12323", "12401", "12402", "12403", "12404", "12701", "12703",
+    "12704"
+  ))
 }
 
 read_ec_services_prices_rows <- function(project_root) {
