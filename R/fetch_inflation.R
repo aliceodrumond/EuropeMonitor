@@ -1214,7 +1214,7 @@ read_hicp_energy_wage_sensitive_rows <- function() {
   source_url <- "https://www.ecb.europa.eu/press/economic-bulletin/focus/2024/html/ecb.ebbox202403_06~bf8222a3ae.en.html"
   note <- paste(
     "Constructed from ECB Economic Bulletin 2024/3 ECOICOP 5-digit baskets.",
-    "Eurostat HICP item weights are available through 2025 under the pre-2026 ECOICOP classification."
+    "Extended with Eurostat ECOICOP ver.2 HICP item weights and first-released indices from 2026."
   )
 
   energy <- build_weighted_hicp_aggregate_index(energy_sensitive_hicpx_codes(), "energy_sensitive_hicpx")
@@ -1241,9 +1241,10 @@ read_hicp_energy_wage_sensitive_rows <- function() {
 }
 
 read_hicp_services_ex_volatiles_rows <- function() {
-  source_url <- "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en"
+  source_url <- "https://ec.europa.eu/eurostat/databrowser/product/view/prc_hicp_fpd?category=prc.prc_hicp.prc_hicp_ecoicop2"
   note <- paste(
     "Services ex-volatiles = HICP services less air passenger transport, package holidays and accommodation services.",
+    "ECOICOP ver.2 uses CP098 for package holidays from 2026.",
     "Seasonal adjustment uses the local X-13ARIMA-SEATS/X-11 method used for the other HICP legacy series."
   )
   index <- build_services_ex_volatiles_index()
@@ -1433,7 +1434,7 @@ make_hicp_constructed_seasonality_rows <- function(index, chart_id, base_series_
 }
 
 build_weighted_hicp_aggregate_index <- function(codes, series_id) {
-  index <- read_eurostat_hicp_midx_panel(codes, series_id)
+  index <- read_eurostat_hicp_fpd_panel(codes, series_id)
   weights <- read_eurostat_hicp_weight_panel(codes, series_id)
   if (!nrow(index) || !nrow(weights)) return(data.frame())
   index$year <- as.integer(format(index$date, "%Y"))
@@ -1455,8 +1456,8 @@ build_weighted_hicp_aggregate_index <- function(codes, series_id) {
 }
 
 build_services_ex_volatiles_index <- function() {
-  component_codes <- c("SERV", "CP0733", "CP096", "CP112")
-  index <- read_eurostat_hicp_midx_panel(component_codes, "hicp_services_ex_volatiles")
+  component_codes <- c("SERV", "CP0733", "CP098", "CP112")
+  index <- read_eurostat_hicp_fpd_panel(component_codes, "hicp_services_ex_volatiles")
   weights <- read_eurostat_hicp_weight_panel(component_codes, "hicp_services_ex_volatiles")
   if (!nrow(index) || !nrow(weights)) return(data.frame())
   index$year <- as.integer(format(index$date, "%Y"))
@@ -1467,7 +1468,7 @@ build_services_ex_volatiles_index <- function() {
   rows <- do.call(rbind, lapply(dates, function(target_date) {
     month_rows <- panel[panel$date == target_date, ]
     service <- month_rows[month_rows$coicop == "SERV", ]
-    volatile <- month_rows[month_rows$coicop %in% c("CP0733", "CP096", "CP112"), ]
+    volatile <- month_rows[month_rows$coicop %in% c("CP0733", "CP098", "CP112"), ]
     if (!nrow(service) || nrow(volatile) < 3) return(data.frame())
     residual_weight <- service$weight[1] - sum(volatile$weight, na.rm = TRUE)
     if (is.na(residual_weight) || residual_weight <= 0) return(data.frame())
@@ -1483,6 +1484,44 @@ build_services_ex_volatiles_index <- function() {
     )
   }))
   rows[order(rows$date), ]
+}
+
+read_eurostat_hicp_fpd_panel <- function(coicop_codes, cache_key) {
+  query_codes <- paste(sprintf("coicop18=%s", utils::URLencode(coicop_codes, reserved = TRUE)), collapse = "&")
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_fpd?lang=en&geo=EA20&unit=I25&release=FIN&%s",
+    query_codes
+  )
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  safe_key <- gsub("[^A-Za-z0-9_]+", "_", cache_key)
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_fpd_panel_%s.json", safe_key))
+  download_eurostat_json(url, tmp)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+
+  json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  rows <- lapply(coicop_codes, function(code) {
+    values <- read_eurostat_json_values(
+      json,
+      list(freq = "M", unit = "I25", coicop18 = code, release = "FIN", geo = "EA20"),
+      "time"
+    )
+    if (!nrow(values)) return(data.frame())
+    dates <- as.Date(sprintf("%s-01", values$period))
+    valid <- !is.na(dates) & !is.na(values$value)
+    if (!any(valid)) return(data.frame())
+    data.frame(
+      coicop = code,
+      date = dates[valid],
+      nsa_index = values$value[valid],
+      is_flash_extension = FALSE,
+      series_id = cache_key,
+      stringsAsFactors = FALSE
+    )
+  })
+  panel <- do.call(rbind, rows)
+  if (!nrow(panel)) return(data.frame())
+  panel[order(panel$coicop, panel$date), ]
 }
 
 read_eurostat_hicp_midx_panel <- function(coicop_codes, cache_key) {
@@ -1524,15 +1563,15 @@ read_eurostat_hicp_midx_panel <- function(coicop_codes, cache_key) {
 }
 
 read_eurostat_hicp_weight_panel <- function(coicop_codes, cache_key) {
-  query_codes <- paste(sprintf("coicop=%s", utils::URLencode(coicop_codes, reserved = TRUE)), collapse = "&")
+  query_codes <- paste(sprintf("coicop18=%s", utils::URLencode(coicop_codes, reserved = TRUE)), collapse = "&")
   url <- sprintf(
-    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw?lang=en&geo=EA20&%s",
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_iw?lang=en&geo=EA20&statinfo=IW&%s",
     query_codes
   )
   raw_dir <- file.path(getwd(), "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   safe_key <- gsub("[^A-Za-z0-9_]+", "_", cache_key)
-  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_inw_panel_%s.json", safe_key))
+  tmp <- file.path(raw_dir, sprintf("eurostat_prc_hicp_iw_panel_%s.json", safe_key))
   download_eurostat_json(url, tmp)
   if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
 
@@ -1540,7 +1579,7 @@ read_eurostat_hicp_weight_panel <- function(coicop_codes, cache_key) {
   rows <- lapply(coicop_codes, function(code) {
     values <- read_eurostat_json_values(
       json,
-      list(freq = "A", coicop = code, geo = "EA20"),
+      list(freq = "A", coicop18 = code, statinfo = "IW", geo = "EA20"),
       "time"
     )
     if (!nrow(values)) return(data.frame())

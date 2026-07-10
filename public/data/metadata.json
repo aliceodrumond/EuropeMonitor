@@ -8,9 +8,9 @@
     "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
-    "date": "2025-12-01",
-    "description": "ECB Data Portal: PCCI 3M SAAR, % YoY NSA, Energy-sensitive HICPX, Wage-sensitive HICPX, % MoM SAAR, % QoQ SAAR"
+    "date": "2026-05-01",
+    "description": "Eurostat HICP: % YoY NSA, Energy-sensitive HICPX, Wage-sensitive HICPX, % MoM SAAR, % QoQ SAAR"
   },
   "speaker_rows": 20,
-  "inflation_rows": 15894
+  "inflation_rows": 15926
 }
