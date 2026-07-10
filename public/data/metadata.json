@@ -9,8 +9,8 @@
   },
   "inflation_last_new": {
     "date": "2026-05-01",
-    "description": "Eurostat HICP: % YoY NSA, Energy-sensitive HICPX, Wage-sensitive HICPX, % MoM SAAR, % QoQ SAAR"
+    "description": "Eurostat HICP / ECB staff methodology: % MoM SAAR, % QoQ SAAR, % YoY NSA"
   },
   "speaker_rows": 20,
-  "inflation_rows": 15926
+  "inflation_rows": 16516
 }

@@ -1212,30 +1212,50 @@ read_eurostat_teicp_rows <- function(definition) {
 
 read_hicp_energy_wage_sensitive_rows <- function() {
   source_url <- "https://www.ecb.europa.eu/press/economic-bulletin/focus/2024/html/ecb.ebbox202403_06~bf8222a3ae.en.html"
-  note <- paste(
-    "Constructed from ECB Economic Bulletin 2024/3 ECOICOP 5-digit baskets.",
-    "Extended with Eurostat ECOICOP ver.2 HICP item weights and first-released indices from 2026."
+  energy_note <- paste(
+    "Constructed from ECB Economic Bulletin 2024/3 ECOICOP 5-digit energy-sensitive basket.",
+    "Extended with Eurostat ECOICOP ver.2 HICP item weights and first-released indices from 2026.",
+    "Seasonal adjustment uses the local X-13ARIMA-SEATS/X-11 method used for the other HICP legacy series."
+  )
+  wage_note <- paste(
+    "Constructed from ECB Economic Bulletin 2024/3 ECOICOP 5-digit wage-sensitive basket.",
+    "Extended with Eurostat ECOICOP ver.2 HICP item weights and first-released indices from 2026.",
+    "Seasonal adjustment uses the local X-13ARIMA-SEATS/X-11 method used for the other HICP legacy series."
   )
 
   energy <- build_weighted_hicp_aggregate_index(energy_sensitive_hicpx_codes(), "energy_sensitive_hicpx")
   wage <- build_weighted_hicp_aggregate_index(wage_sensitive_hicpx_codes(), "wage_sensitive_hicpx")
 
   rbind(
-    make_hicp_aggregate_yoy_rows(
+    make_hicp_constructed_rate_rows(
       energy,
-      "hicp_energy_wage_sensitive",
-      "hicp_energy_sensitive_yoy_nsa",
-      "Energy-sensitive HICPX",
+      "hicp_energy_intensive_rates",
+      "hicp_energy_intensive",
+      "Energy-intensive HICPX",
       source_url,
-      note
+      energy_note
     ),
-    make_hicp_aggregate_yoy_rows(
-      wage,
-      "hicp_energy_wage_sensitive",
-      "hicp_wage_sensitive_yoy_nsa",
-      "Wage-sensitive HICPX",
+    make_hicp_constructed_seasonality_rows(
+      energy,
+      "hicp_energy_intensive_seasonality",
+      "hicp_energy_intensive",
       source_url,
-      note
+      "Eurostat HICP / ECB staff methodology"
+    ),
+    make_hicp_constructed_rate_rows(
+      wage,
+      "hicp_wage_intensive_rates",
+      "hicp_wage_intensive",
+      "Wage-intensive HICPX",
+      source_url,
+      wage_note
+    ),
+    make_hicp_constructed_seasonality_rows(
+      wage,
+      "hicp_wage_intensive_seasonality",
+      "hicp_wage_intensive",
+      source_url,
+      "Eurostat HICP / ECB staff methodology"
     )
   )
 }

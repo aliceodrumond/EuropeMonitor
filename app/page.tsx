@@ -416,15 +416,44 @@ const charts: ChartDefinition[] = [
     seriesOrder: ["hicp_services_ex_volatiles_mom_nsa_range_min", "hicp_services_ex_volatiles_mom_nsa_range_max", "hicp_services_ex_volatiles_mom_nsa_median", "hicp_services_ex_volatiles_mom_nsa_2022", "hicp_services_ex_volatiles_mom_nsa_2025", "hicp_services_ex_volatiles_mom_nsa_2026"],
   },
   {
-    id: "hicp_energy_wage_sensitive",
+    id: "hicp_energy_intensive_rates",
     tab: "inflation",
-    title: "HICPX Energy and Wage Sensitive",
+    title: "HICPX Energy-intensive",
     kicker: "ECB methodology",
-    yLeftLabel: "% y/y",
+    yLeftLabel: "%",
     defaultWindow: "10y",
     fixedDomains: { left: { min: -1, max: 10 } },
     startDate: "2018-01-01",
-    seriesOrder: ["hicp_energy_sensitive_yoy_nsa", "hicp_wage_sensitive_yoy_nsa"],
+    seriesOrder: ["hicp_energy_intensive_yoy_nsa", "hicp_energy_intensive_qoq_saar", "hicp_energy_intensive_mom_saar"],
+  },
+  {
+    id: "hicp_energy_intensive_seasonality",
+    tab: "inflation",
+    title: "HICPX Energy-intensive Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["hicp_energy_intensive_mom_nsa_range_min", "hicp_energy_intensive_mom_nsa_range_max", "hicp_energy_intensive_mom_nsa_median", "hicp_energy_intensive_mom_nsa_2022", "hicp_energy_intensive_mom_nsa_2025", "hicp_energy_intensive_mom_nsa_2026"],
+  },
+  {
+    id: "hicp_wage_intensive_rates",
+    tab: "inflation",
+    title: "HICPX Wage-intensive",
+    kicker: "ECB methodology",
+    yLeftLabel: "%",
+    defaultWindow: "10y",
+    fixedDomains: { left: { min: -1, max: 10 } },
+    startDate: "2018-01-01",
+    seriesOrder: ["hicp_wage_intensive_yoy_nsa", "hicp_wage_intensive_qoq_saar", "hicp_wage_intensive_mom_saar"],
+  },
+  {
+    id: "hicp_wage_intensive_seasonality",
+    tab: "inflation",
+    title: "HICPX Wage-intensive Seasonality",
+    kicker: "% MoM NSA",
+    yLeftLabel: "% m/m NSA",
+    chartType: "seasonality",
+    seriesOrder: ["hicp_wage_intensive_mom_nsa_range_min", "hicp_wage_intensive_mom_nsa_range_max", "hicp_wage_intensive_mom_nsa_median", "hicp_wage_intensive_mom_nsa_2022", "hicp_wage_intensive_mom_nsa_2025", "hicp_wage_intensive_mom_nsa_2026"],
   },
   {
     id: "ecb_pcci_3m_saar",
@@ -1787,9 +1816,6 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
     return { color: "#178f65" };
   }
   const metricId = seriesId.replace("_legacy", "");
-  if (metricId === "hicp_energy_sensitive_yoy_nsa") {
-    return { color: "#11675f" };
-  }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };
   }
