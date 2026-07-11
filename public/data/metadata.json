@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-07-10",
+  "last_updated": "2026-07-11",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
+  "generated_by": "R/run_speakers_update.R",
   "source_links": 25,
   "activity_last_new": {
     "date": "2026-07-04",
@@ -11,5 +11,6 @@
     "date": "2026-05-01",
     "description": "Eurostat HICP / ECB-style PCCI replication: HICP ECB-style PCCI replication 3M MA"
   },
-  "inflation_rows": 17116
+  "inflation_rows": 17116,
+  "speaker_rows": 20
 }
