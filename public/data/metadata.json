@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-07-15",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 25,
   "activity_last_new": {
-    "date": "2026-07-12",
-    "description": "Deutsche Bundesbank: Germany WAI"
+    "date": "2026-06-01",
+    "description": "SP Global PMI: UK"
   },
   "inflation_last_new": {
     "date": "2026-05-01",
     "description": "Eurostat HICP / ECB-style PCCI replication: HICP ECB-style PCCI replication 3M MA"
-  },
-  "speaker_rows": 20
+  }
 }
