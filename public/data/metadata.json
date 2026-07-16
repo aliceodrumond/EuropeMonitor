@@ -8,8 +8,8 @@
     "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
-    "date": "2026-04-01",
-    "description": "ECB Survey of Professional Forecasters: SPF 2Y ahead, SPF 3Q ahead, SPF 7Q ahead, SPF LT"
+    "date": "2026-06-01",
+    "description": "ifo Institute: IFO Food Prices, IFO Mfg prices, IFO Services Prices"
   },
-  "inflation_rows": 17387
+  "inflation_rows": 17409
 }
