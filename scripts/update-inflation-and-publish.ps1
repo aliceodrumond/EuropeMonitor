@@ -230,7 +230,11 @@ function Test-InflationOutput {
     "wage_tracker_ea",
     "ecb_ces_infl_exp_1y",
     "ecb_ces_infl_exp_3y",
-    "ecb_ces_infl_exp_5y"
+    "ecb_ces_infl_exp_5y",
+    "ecb_spf_hicp_3q_ahead",
+    "ecb_spf_hicp_7q_ahead",
+    "ecb_spf_hicp_2y_ahead",
+    "ecb_spf_hicp_lt"
   )) {
     Assert-SeriesRows -Rows $inflation -SeriesId $series -MinimumRows 1
   }

@@ -500,11 +500,19 @@ const charts: ChartDefinition[] = [
   {
     id: "ecb_ces_inflation_expectations",
     tab: "inflation",
-    title: "ECB Consumer Inflation Expectations",
+    title: "ECB Inflation Expectations",
     kicker: "Expectations",
     yLeftLabel: "%",
     defaultWindow: "all",
-    seriesOrder: ["ecb_ces_infl_exp_1y", "ecb_ces_infl_exp_3y", "ecb_ces_infl_exp_5y"],
+    seriesOrder: [
+      "ecb_ces_infl_exp_1y",
+      "ecb_ces_infl_exp_3y",
+      "ecb_ces_infl_exp_5y",
+      "ecb_spf_hicp_3q_ahead",
+      "ecb_spf_hicp_7q_ahead",
+      "ecb_spf_hicp_2y_ahead",
+      "ecb_spf_hicp_lt",
+    ],
   },
   {
     id: "swiss_cpi_headline_rates",
@@ -1821,6 +1829,18 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
   }
   if (metricId === "hicp_headline_pc_pcci_3m_saar_ma3") {
     return { color: "#b9dfd4" };
+  }
+  if (metricId === "ecb_spf_hicp_3q_ahead") {
+    return { color: "#7a4db3", dashArray: "5 4" };
+  }
+  if (metricId === "ecb_spf_hicp_7q_ahead") {
+    return { color: "#c17a2c", dashArray: "5 4" };
+  }
+  if (metricId === "ecb_spf_hicp_2y_ahead") {
+    return { color: "#2f7db7", dashArray: "5 4" };
+  }
+  if (metricId === "ecb_spf_hicp_lt") {
+    return { color: "#11675f", dashArray: "5 4" };
   }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };

@@ -24,6 +24,7 @@ build_inflation_series <- function(project_root) {
   }
   swiss_cpi <- read_swiss_cpi_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
+  spf_expectations <- read_ecb_spf_inflation_expectations_rows()
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
@@ -39,7 +40,8 @@ build_inflation_series <- function(project_root) {
       services_ex_volatiles,
       pcci,
       swiss_cpi,
-      ces_expectations
+      ces_expectations,
+      spf_expectations
     ),
     catalog
   )
@@ -601,6 +603,99 @@ read_ecb_ces_series_rows <- function(definition) {
     frequency = "monthly",
     source_note = "Weighted median, euro area 11."
   )
+}
+
+read_ecb_spf_inflation_expectations_rows <- function() {
+  definitions <- data.frame(
+    key = c(
+      "SPF.A.U2.HICP.POINT.P9M.Q.AVG",
+      "SPF.A.U2.HICP.POINT.P21M.Q.AVG",
+      "SPF.M.U2.HICP.POINT.P24M.Q.AVG",
+      "SPF.Q.U2.HICP.POINT.LT.Q.AVG"
+    ),
+    series_id = c(
+      "ecb_spf_hicp_3q_ahead",
+      "ecb_spf_hicp_7q_ahead",
+      "ecb_spf_hicp_2y_ahead",
+      "ecb_spf_hicp_lt"
+    ),
+    series_name = c("SPF 3Q ahead", "SPF 7Q ahead", "SPF 2Y ahead", "SPF LT"),
+    horizon_months = c(9L, 21L, 24L, NA_integer_),
+    stringsAsFactors = FALSE
+  )
+
+  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    read_ecb_spf_series_rows(definitions[i, ])
+  }))
+}
+
+read_ecb_spf_series_rows <- function(definition) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    return(data.frame())
+  }
+
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, sprintf("ecb_spf_%s.json", definition$series_id))
+  url <- sprintf("https://data.ecb.europa.eu/data-detail-api/%s", definition$key)
+  tryCatch(download_binary_url(url, tmp), error = function(e) NULL)
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  raw <- tryCatch(jsonlite::fromJSON(tmp, flatten = TRUE), error = function(e) NULL)
+  if (is.null(raw) || !is.data.frame(raw) || !nrow(raw)) {
+    return(data.frame())
+  }
+
+  value_col <- if ("OBS_VALUE_AS_IS" %in% names(raw)) "OBS_VALUE_AS_IS" else "OBS"
+  if (!all(c(value_col, "PERIOD") %in% names(raw))) {
+    return(data.frame())
+  }
+
+  values <- suppressWarnings(as.numeric(raw[[value_col]]))
+  horizon_months <- suppressWarnings(as.integer(definition$horizon_months))
+  if (is.na(horizon_months)) {
+    dates <- as.Date(substr(raw$PERIOD, 1, 10))
+  } else {
+    if (!"PERIOD_DATA_COMP" %in% names(raw)) {
+      return(data.frame())
+    }
+    target_end <- as.Date(substr(raw$PERIOD_DATA_COMP, 1, 10))
+    dates <- shift_months_floor(target_end, horizon_months - 1L)
+  }
+
+  valid <- !is.na(dates) & !is.na(values)
+  if (!any(valid)) {
+    return(data.frame())
+  }
+
+  rows <- make_series_frame(
+    dates[valid],
+    "ecb_ces_inflation_expectations",
+    definition$series_id,
+    definition$series_name,
+    "Euro Area",
+    values[valid],
+    unit = "%",
+    source = "ECB Survey of Professional Forecasters",
+    source_url = sprintf("https://data.ecb.europa.eu/data/datasets/SPF/%s", definition$key),
+    frequency = "quarterly",
+    source_note = "Average of point forecasts for HICP inflation. Fixed-horizon rows are dated by survey cycle start; LT uses survey quarter."
+  )
+  rows[order(rows$date), , drop = FALSE]
+}
+
+shift_months_floor <- function(dates, months) {
+  if (!length(dates)) {
+    return(as.Date(character()))
+  }
+  parts <- as.POSIXlt(dates)
+  year <- parts$year + 1900L
+  month <- parts$mon + 1L - as.integer(months)
+  shifted_year <- year + floor((month - 1L) / 12L)
+  shifted_month <- ((month - 1L) %% 12L) + 1L
+  as.Date(sprintf("%04d-%02d-01", shifted_year, shifted_month))
 }
 
 hicp_rate_definitions <- function() {
