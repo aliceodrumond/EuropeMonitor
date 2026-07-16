@@ -210,7 +210,8 @@ function Test-OutputData {
     "hicp_components",
     "expected_selling_prices",
     "wage_tracker",
-    "ecb_ces_inflation_expectations"
+    "ecb_ces_inflation_expectations",
+    "ge_ifo_price_expectations"
   )) {
     Assert-ChartRows -Rows $inflation -ChartId $chart -MinimumRows 1
   }
@@ -275,7 +276,11 @@ function Test-OutputData {
     "ecb_spf_hicp_3q_ahead",
     "ecb_spf_hicp_7q_ahead",
     "ecb_spf_hicp_2y_ahead",
-    "ecb_spf_hicp_lt"
+    "ecb_spf_hicp_lt",
+    "ifo_mfg_prices_de",
+    "ifo_services_prices_de",
+    "ifo_food_prices_de",
+    "ifo_chemical_prices_de"
   )) {
     Assert-SeriesRows -Rows $inflation -SeriesId $series -MinimumRows 1
   }

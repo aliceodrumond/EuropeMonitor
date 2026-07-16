@@ -25,6 +25,7 @@ build_inflation_series <- function(project_root) {
   swiss_cpi <- read_swiss_cpi_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
   spf_expectations <- read_ecb_spf_inflation_expectations_rows()
+  ifo_price_expectations <- read_ifo_price_expectations_rows(project_root)
 
   wage_tracker <- read_ecb_wage_tracker_rows()
 
@@ -41,7 +42,8 @@ build_inflation_series <- function(project_root) {
       pcci,
       swiss_cpi,
       ces_expectations,
-      spf_expectations
+      spf_expectations,
+      ifo_price_expectations
     ),
     catalog
   )
@@ -684,6 +686,186 @@ read_ecb_spf_series_rows <- function(definition) {
     source_note = "Average of point forecasts for HICP inflation. Fixed-horizon rows are dated by survey cycle start; LT uses survey quarter."
   )
   rows[order(rows$date), , drop = FALSE]
+}
+
+read_ifo_price_expectations_rows <- function(project_root) {
+  raw_dir <- file.path(project_root, "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  cache_path <- file.path(raw_dir, "ifo_price_expectations_cache.csv")
+  source_urls <- c(
+    "https://www.ifo.de/en/facts/2023-04-27/fewer-and-fewer-german-companies-plan-increase-prices",
+    "https://www.ifo.de/en/facts/2026-03-30/companies-germany-planning-higher-prices",
+    "https://www.ifo.de/en/facts/2026-04-29/more-companies-germany-planning-price-increases",
+    "https://www.ifo.de/en/facts/2026-05-29/price-pressure-eases-somewhat",
+    "https://www.ifo.de/en/facts/2026-06-30/fewer-companies-germany-want-raise-their-prices"
+  )
+
+  cached <- ifo_price_cache_read(cache_path)
+  parsed <- do.call(rbind, lapply(source_urls, ifo_price_parse_page))
+  rows <- rbind(cached, parsed)
+  if (!nrow(rows)) {
+    return(data.frame())
+  }
+
+  rows$date <- as.Date(rows$date)
+  rows$value <- suppressWarnings(as.numeric(rows$value))
+  rows <- rows[!is.na(rows$date) & is.finite(rows$value), , drop = FALSE]
+  rows$source_rank <- ifo_price_source_date(rows$source_url)
+  rows <- rows[order(rows$date, rows$series_id, rows$source_rank), , drop = FALSE]
+  rows <- rows[!duplicated(paste(rows$date, rows$series_id), fromLast = TRUE), , drop = FALSE]
+  rows$source_rank <- NULL
+  rows <- rows[order(rows$series_id, rows$date), , drop = FALSE]
+  rows$date <- format(rows$date, "%Y-%m-%d")
+  write_csv_utf8(rows, cache_path)
+  rows
+}
+
+ifo_price_cache_read <- function(path) {
+  required <- c("date", "chart_id", "series_id", "series_name", "country", "value", "axis", "unit", "source", "source_url", "frequency", "source_note")
+  if (!file.exists(path) || file.info(path)$size == 0) {
+    return(data.frame())
+  }
+  rows <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(error) data.frame()
+  )
+  if (!nrow(rows) || !all(required %in% names(rows))) {
+    return(data.frame())
+  }
+  rows[, required]
+}
+
+ifo_price_parse_page <- function(url) {
+  tmp <- tempfile(fileext = ".html")
+  ok <- tryCatch(download_binary_url(url, tmp), error = function(error) FALSE)
+  if (!isTRUE(ok) || !file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  html <- paste(readLines(tmp, warn = FALSE, encoding = "UTF-8"), collapse = " ")
+  text <- ifo_price_clean_html(html)
+  current_month <- ifo_price_url_month(url)
+  if (is.na(current_month)) {
+    return(data.frame())
+  }
+
+  rows <- data.frame()
+  rows <- rbind(rows, ifo_price_parse_pair(
+    text,
+    current_month,
+    url,
+    "ifo_mfg_prices_de",
+    "IFO Mfg prices",
+    c(
+      "manufacturing[^.]{0,240}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points",
+      "indicator in manufacturing[^.]{0,160}?to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points,\\s+down from\\s+(-?\\d+(?:\\.\\d+)?)"
+    )
+  ))
+  rows <- rbind(rows, ifo_price_parse_pair(
+    text,
+    current_month,
+    url,
+    "ifo_services_prices_de",
+    "IFO Services Prices",
+    c(
+      "services and trade sectors[^.]{0,240}?from\\s+(-?\\d+(?:\\.\\d+)?)\\*?\\s+and\\s+-?\\d+(?:\\.\\d+)?\\*?,\\s+respectively,\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s+and",
+      "service providers and in trade[^.]{0,260}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s+and\\s+-?\\d+(?:\\.\\d+)?\\s+points,\\s+respectively,\\s+in\\s+[A-Za-z]+\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s+and",
+      "consumer-related service providers[^.]{0,180}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points"
+    )
+  ))
+  rows <- rbind(rows, ifo_price_parse_pair(
+    text,
+    current_month,
+    url,
+    "ifo_food_prices_de",
+    "IFO Food Prices",
+    c(
+      "Food manufacturers[^.]{0,180}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*points\\s+to\\s+(-?\\d+(?:\\.\\d+)?)",
+      "food and beverages \\(from\\s+(-?\\d+(?:\\.\\d+)?)\\s*points\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points\\)"
+    )
+  ))
+  rows <- rbind(rows, ifo_price_parse_pair(
+    text,
+    current_month,
+    url,
+    "ifo_chemical_prices_de",
+    "IFO Chemical prices",
+    c(
+      "chemical industry[^.]{0,180}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points",
+      "chemical industry \\((-?\\d+(?:\\.\\d+)?)\\s*points,\\s+down from\\s+(-?\\d+(?:\\.\\d+)?)\\s*points"
+    )
+  ))
+  rows
+}
+
+ifo_price_parse_pair <- function(text, current_month, source_url, series_id, series_name, patterns) {
+  previous_month <- add_months(current_month, -1)
+  for (i in seq_along(patterns)) {
+    match <- regexec(patterns[[i]], text, ignore.case = TRUE, perl = TRUE)
+    parts <- regmatches(text, match)[[1]]
+    if (length(parts) < 3) {
+      next
+    }
+    first <- suppressWarnings(as.numeric(parts[[2]]))
+    second <- suppressWarnings(as.numeric(parts[[3]]))
+    if (!is.finite(first) || !is.finite(second)) {
+      next
+    }
+    current_first <- grepl("down from", patterns[[i]], fixed = TRUE) && !grepl("from\\\\s+.*to", patterns[[i]])
+    if (current_first) {
+      return(rbind(
+        ifo_price_row(previous_month, series_id, series_name, second, source_url),
+        ifo_price_row(current_month, series_id, series_name, first, source_url)
+      ))
+    }
+    return(rbind(
+      ifo_price_row(previous_month, series_id, series_name, first, source_url),
+      ifo_price_row(current_month, series_id, series_name, second, source_url)
+    ))
+  }
+  data.frame()
+}
+
+ifo_price_row <- function(date, series_id, series_name, value, source_url) {
+  make_series_frame(
+    as.Date(date),
+    "ge_ifo_price_expectations",
+    series_id,
+    series_name,
+    "Germany",
+    value,
+    unit = "balance",
+    source = "ifo Institute",
+    source_url = source_url,
+    frequency = "monthly",
+    source_note = "Balance of companies planning price increases minus decreases; seasonally adjusted. Parsed from ifo monthly price-expectations releases."
+  )
+}
+
+ifo_price_clean_html <- function(html) {
+  text <- gsub("<script[\\s\\S]*?</script>", " ", html, perl = TRUE)
+  text <- gsub("<style[\\s\\S]*?</style>", " ", text, perl = TRUE)
+  text <- gsub("<[^>]+>", " ", text, perl = TRUE)
+  text <- gsub("&nbsp;", " ", text, fixed = TRUE)
+  text <- gsub("&amp;", "&", text, fixed = TRUE)
+  text <- gsub("&minus;|&#8722;", "-", text, perl = TRUE)
+  text <- gsub("\\s+", " ", text, perl = TRUE)
+  trimws(text)
+}
+
+ifo_price_url_month <- function(url) {
+  stamp <- sub("^.*?/facts/(\\d{4}-\\d{2})-\\d{2}/.*$", "\\1", url)
+  if (identical(stamp, url)) {
+    return(as.Date(NA))
+  }
+  as.Date(sprintf("%s-01", stamp))
+}
+
+ifo_price_source_date <- function(urls) {
+  stamp <- sub("^.*?/facts/(\\d{4}-\\d{2}-\\d{2})/.*$", "\\1", urls)
+  dates <- suppressWarnings(as.Date(stamp))
+  dates[is.na(dates)] <- as.Date("1900-01-01")
+  dates
 }
 
 shift_months_floor <- function(dates, months) {

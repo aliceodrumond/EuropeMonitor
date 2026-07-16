@@ -515,6 +515,20 @@ const charts: ChartDefinition[] = [
     ],
   },
   {
+    id: "ge_ifo_price_expectations",
+    tab: "inflation",
+    title: "GE IFO Price Expectations",
+    kicker: "Price plans",
+    yLeftLabel: "Balance",
+    defaultWindow: "all",
+    seriesOrder: [
+      "ifo_mfg_prices_de",
+      "ifo_services_prices_de",
+      "ifo_food_prices_de",
+      "ifo_chemical_prices_de",
+    ],
+  },
+  {
     id: "swiss_cpi_headline_rates",
     tab: "other-inflation",
     title: "Switzerland CPI Headline",
@@ -1841,6 +1855,18 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
   }
   if (metricId === "ecb_spf_hicp_lt") {
     return { color: "#11675f", dashArray: "5 4" };
+  }
+  if (metricId === "ifo_mfg_prices_de") {
+    return { color: "#111111" };
+  }
+  if (metricId === "ifo_services_prices_de") {
+    return { color: "#11675f" };
+  }
+  if (metricId === "ifo_food_prices_de") {
+    return { color: "#d68b2d" };
+  }
+  if (metricId === "ifo_chemical_prices_de") {
+    return { color: "#7a4db3" };
   }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };
