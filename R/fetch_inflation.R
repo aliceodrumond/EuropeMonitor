@@ -17,7 +17,11 @@ build_inflation_series <- function(project_root) {
   hicp_seasonality <- read_hicp_seasonality_rows()
   hicp_sensitive <- read_hicp_energy_wage_sensitive_rows()
   services_ex_volatiles <- read_hicp_services_ex_volatiles_rows()
-  pcci <- read_ecb_pcci_rows()
+  pcci <- if (identical(Sys.getenv("SKIP_PCCI_UPDATE"), "1")) {
+    read_existing_pcci_rows(project_root)
+  } else {
+    read_ecb_pcci_rows()
+  }
   swiss_cpi <- read_swiss_cpi_rows()
   ces_expectations <- read_ecb_ces_inflation_expectations_rows()
 
@@ -41,6 +45,25 @@ build_inflation_series <- function(project_root) {
   )
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
+}
+
+read_existing_pcci_rows <- function(project_root) {
+  pcci_chart_id <- "ecb_pcci_3m_saar"
+  candidates <- c(
+    file.path(project_root, "public/data/inflation_series.csv"),
+    file.path(project_root, "data/processed/inflation_series.csv")
+  )
+  for (path in candidates) {
+    if (!file.exists(path) || file.info(path)$size == 0) next
+    rows <- tryCatch(
+      utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8-BOM"),
+      error = function(error) data.frame()
+    )
+    if (!nrow(rows) || !"chart_id" %in% names(rows)) next
+    pcci <- rows[rows$chart_id == pcci_chart_id, , drop = FALSE]
+    if (nrow(pcci)) return(pcci)
+  }
+  read_ecb_pcci_rows()
 }
 
 swiss_cpi_definitions <- function() {

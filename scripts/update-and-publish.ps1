@@ -16,6 +16,11 @@ $env:NODE_USE_SYSTEM_CA = "1"
 $env:BUILD_OUT_DIR = "pages-dist"
 $env:CLOUDFLARE_API_TOKEN = [Environment]::GetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "User")
 $env:CLOUDFLARE_ACCOUNT_ID = [Environment]::GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID", "User")
+if ($env:FORCE_PCCI_REBUILD -eq "1") {
+  Remove-Item Env:\SKIP_PCCI_UPDATE -ErrorAction SilentlyContinue
+} else {
+  $env:SKIP_PCCI_UPDATE = "1"
+}
 
 function Write-Log {
   param([string]$Message)
