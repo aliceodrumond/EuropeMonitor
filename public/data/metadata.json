@@ -8,8 +8,8 @@
     "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
-    "date": "2026-05-01",
-    "description": "Eurostat HICP / ECB-style PCCI replication: HICP ECB-style PCCI replication 3M MA"
+    "date": "2026-04-01",
+    "description": "ECB Survey of Professional Forecasters: SPF 2Y ahead, SPF 3Q ahead, SPF 7Q ahead, SPF LT"
   },
-  "inflation_rows": 17116
+  "inflation_rows": 17387
 }
