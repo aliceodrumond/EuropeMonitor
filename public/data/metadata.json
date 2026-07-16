@@ -8,8 +8,8 @@
     "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
-    "date": "2026-06-01",
-    "description": "ifo Institute: IFO Food Prices, IFO Mfg prices, IFO Services Prices"
+    "date": "2026-12-01",
+    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
   },
-  "inflation_rows": 17409
+  "inflation_rows": 18990
 }
