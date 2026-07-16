@@ -8,8 +8,8 @@
     "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
-    "date": "2026-12-01",
-    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
+    "date": "2026-01-01",
+    "description": "ECB Survey of Professional Forecasters: SPF 3Q ahead, SPF 7Q ahead"
   },
-  "inflation_rows": 18990
+  "inflation_rows": 18986
 }

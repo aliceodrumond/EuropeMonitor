@@ -611,27 +611,94 @@ read_ecb_ces_series_rows <- function(definition) {
 }
 
 read_ecb_spf_inflation_expectations_rows <- function() {
+  target_year_rows <- read_ecb_spf_target_year_rows()
   definitions <- data.frame(
     key = c(
-      "SPF.A.U2.HICP.POINT.P9M.Q.AVG",
-      "SPF.A.U2.HICP.POINT.P21M.Q.AVG",
       "SPF.M.U2.HICP.POINT.P24M.Q.AVG",
       "SPF.Q.U2.HICP.POINT.LT.Q.AVG"
     ),
     series_id = c(
-      "ecb_spf_hicp_3q_ahead",
-      "ecb_spf_hicp_7q_ahead",
       "ecb_spf_hicp_2y_ahead",
       "ecb_spf_hicp_lt"
     ),
-    series_name = c("SPF 3Q ahead", "SPF 7Q ahead", "SPF 2Y ahead", "SPF LT"),
-    horizon_months = c(9L, 21L, 24L, NA_integer_),
+    series_name = c("SPF 2Y ahead", "SPF LT"),
+    horizon_months = c(24L, NA_integer_),
     stringsAsFactors = FALSE
   )
 
-  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+  fixed_horizon_rows <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
     read_ecb_spf_series_rows(definitions[i, ])
   }))
+  rbind(target_year_rows, fixed_horizon_rows)
+}
+
+read_ecb_spf_target_year_rows <- function() {
+  url <- "https://data-api.ecb.europa.eu/service/data/SPF/Q.U2.HICP.POINT..Q.AVG?format=csvdata"
+  raw_dir <- file.path(getwd(), "data/raw")
+  dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
+  tmp <- file.path(raw_dir, "ecb_spf_hicp_target_years.csv")
+  ok <- tryCatch(download_binary_url(url, tmp), error = function(e) FALSE)
+  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) {
+    return(data.frame())
+  }
+
+  raw <- tryCatch(
+    utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) data.frame()
+  )
+  required <- c("TIME_PERIOD", "FCT_HORIZON", "OBS_VALUE")
+  if (!nrow(raw) || !all(required %in% names(raw))) {
+    return(data.frame())
+  }
+
+  quarter_pattern <- "^([0-9]{4})-Q([1-4])$"
+  valid_quarter <- grepl(quarter_pattern, raw$TIME_PERIOD)
+  valid_target <- grepl("^[0-9]{4}$", raw$FCT_HORIZON)
+  raw <- raw[valid_quarter & valid_target, , drop = FALSE]
+  if (!nrow(raw)) {
+    return(data.frame())
+  }
+
+  survey_year <- as.integer(sub(quarter_pattern, "\\1", raw$TIME_PERIOD))
+  survey_quarter <- as.integer(sub(quarter_pattern, "\\2", raw$TIME_PERIOD))
+  target_year <- as.integer(raw$FCT_HORIZON)
+  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+  dates <- as.Date(sprintf("%04d-%02d-01", survey_year, (survey_quarter - 1L) * 3L + 1L))
+  valid <- !is.na(dates) & !is.na(values) & !is.na(survey_year) & !is.na(target_year)
+  if (!any(valid)) {
+    return(data.frame())
+  }
+
+  raw <- raw[valid, , drop = FALSE]
+  survey_year <- survey_year[valid]
+  target_year <- target_year[valid]
+  dates <- dates[valid]
+  values <- values[valid]
+
+  make_spf_target_year_frame <- function(keep, series_id, series_name) {
+    if (!any(keep)) {
+      return(data.frame())
+    }
+    rows <- make_series_frame(
+      dates[keep],
+      "ecb_ces_inflation_expectations",
+      series_id,
+      series_name,
+      "Euro Area",
+      values[keep],
+      unit = "%",
+      source = "ECB Survey of Professional Forecasters",
+      source_url = "https://data.ecb.europa.eu/data/datasets/SPF",
+      frequency = "quarterly",
+      source_note = "Average of point forecasts for HICP inflation. 3Q/7Q ahead are built from quarterly SPF calendar-year target series by selecting current/next calendar-year forecasts for each survey round."
+    )
+    rows[order(rows$date), , drop = FALSE]
+  }
+
+  rbind(
+    make_spf_target_year_frame(target_year == survey_year, "ecb_spf_hicp_3q_ahead", "SPF 3Q ahead"),
+    make_spf_target_year_frame(target_year == survey_year + 1L, "ecb_spf_hicp_7q_ahead", "SPF 7Q ahead")
+  )
 }
 
 read_ecb_spf_series_rows <- function(definition) {
