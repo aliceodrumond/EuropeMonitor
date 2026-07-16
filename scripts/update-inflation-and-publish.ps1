@@ -160,6 +160,7 @@ function Test-InflationOutput {
     "hicp_headline_core",
     "hicp_components",
     "expected_selling_prices",
+    "hicp_neig_price_pressures",
     "wage_tracker",
     "ecb_ces_inflation_expectations",
     "ge_ifo_price_expectations"
@@ -228,6 +229,10 @@ function Test-InflationOutput {
     "core_goods",
     "esp_services",
     "core_services_expected",
+    "hicp_neig_yoy_nsa",
+    "hicp_neig_qoq_saar_3mma",
+    "ec_industry_prices_6m_lag",
+    "ec_retail_prices_6m_lag",
     "wage_tracker_ea",
     "ecb_ces_infl_exp_1y",
     "ecb_ces_infl_exp_3y",

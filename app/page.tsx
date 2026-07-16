@@ -491,6 +491,21 @@ const charts: ChartDefinition[] = [
     seriesOrder: ["esp_services", "core_services_expected"],
   },
   {
+    id: "hicp_neig_price_pressures",
+    tab: "inflation",
+    title: "EU HICP Non-energy Industrial Goods",
+    kicker: "Price pressures",
+    yLeftLabel: "%",
+    yRightLabel: "Survey balance",
+    fixedDomains: { left: { min: -1, max: 7 } },
+    seriesOrder: [
+      "hicp_neig_yoy_nsa",
+      "hicp_neig_qoq_saar_3mma",
+      "ec_industry_prices_6m_lag",
+      "ec_retail_prices_6m_lag",
+    ],
+  },
+  {
     id: "wage_tracker",
     tab: "inflation",
     title: "Wage Tracker",
@@ -1867,6 +1882,18 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
   }
   if (metricId === "ifo_chemical_prices_de") {
     return { color: "#7a4db3" };
+  }
+  if (metricId === "hicp_neig_yoy_nsa") {
+    return { color: "#111111" };
+  }
+  if (metricId === "hicp_neig_qoq_saar_3mma") {
+    return { color: "#a83f39" };
+  }
+  if (metricId === "ec_industry_prices_6m_lag") {
+    return { color: "#11675f" };
+  }
+  if (metricId === "ec_retail_prices_6m_lag") {
+    return { color: "#d68b2d", dashArray: "6 5" };
   }
   if (metricId.endsWith("_yoy_nsa")) {
     return { color: "#111111" };

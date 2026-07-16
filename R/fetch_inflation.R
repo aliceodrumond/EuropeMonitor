@@ -2,6 +2,7 @@ build_inflation_series <- function(project_root) {
   catalog <- read_series_catalog(project_root)
   hicp <- read_eurostat_hicp_rows()
   services_survey <- read_ec_services_prices_rows(project_root)
+  goods_price_surveys <- read_ec_goods_price_survey_rows(project_root)
 
   expected_services <- services_survey
   hicp_services_expected <- hicp[hicp$series_id == "core_services", ]
@@ -14,6 +15,7 @@ build_inflation_series <- function(project_root) {
   headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
   components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   hicp_rates <- read_hicp_rate_chart_rows(hicp)
+  goods_price_chart <- build_hicp_goods_price_pressure_rows(hicp, hicp_rates, goods_price_surveys)
   hicp_seasonality <- read_hicp_seasonality_rows()
   hicp_sensitive <- read_hicp_energy_wage_sensitive_rows()
   services_ex_volatiles <- read_hicp_services_ex_volatiles_rows()
@@ -32,6 +34,7 @@ build_inflation_series <- function(project_root) {
   inflation <- apply_series_catalog(
     rbind(
       expected_chart,
+      goods_price_chart,
       wage_tracker,
       headline_core,
       components,
@@ -2512,35 +2515,174 @@ wage_sensitive_hicpx_codes <- function() {
 }
 
 read_ec_services_prices_rows <- function(project_root) {
-  zip_url <- "https://ec.europa.eu/economy_finance/db_indicators/surveys/documents/series/nace2_ecfin_2605/services_total_sa_nace2.zip"
-  zip_path <- file.path(project_root, "data/raw/services_total_sa_nace2.zip")
-  download_binary_url(zip_url, zip_path)
-  extract_dir <- file.path(project_root, "data/raw/services_total_sa_nace2")
-  dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
-  utils::unzip(zip_path, files = "services_total_sa_nace2.xlsx", exdir = extract_dir, overwrite = TRUE)
-  workbook_path <- file.path(extract_dir, "services_total_sa_nace2.xlsx")
+  read_ec_survey_price_rows(
+    project_root,
+    sector = "services",
+    sheet = "SERVICES MONTHLY",
+    column = "SERV.EA.TOT.6.BS.M",
+    chart_id = "expected_selling_prices",
+    series_id = "esp_services",
+    series_name = "EC Services prices, 6m lag"
+  )
+}
 
-  values <- openxlsx::read.xlsx(workbook_path, sheet = "SERVICES MONTHLY", colNames = FALSE)
+read_ec_goods_price_survey_rows <- function(project_root) {
+  rbind(
+    read_ec_survey_price_rows(
+      project_root,
+      sector = "industry",
+      sheet = "INDUSTRY MONTHLY",
+      column = "INDU.EA.TOT.6.BS.M",
+      chart_id = "hicp_neig_price_pressures",
+      series_id = "ec_industry_prices_6m_lag",
+      series_name = "EC Industry prices, 6m lag",
+      axis = "right"
+    ),
+    read_ec_survey_price_rows(
+      project_root,
+      sector = "retail",
+      sheet = "RETAIL TRADE MONTHLY",
+      column = "RETA.EA.TOT.6.BS.M",
+      chart_id = "hicp_neig_price_pressures",
+      series_id = "ec_retail_prices_6m_lag",
+      series_name = "EC Retail prices, 6m lag",
+      axis = "right"
+    )
+  )
+}
+
+read_ec_survey_price_rows <- function(
+  project_root,
+  sector,
+  sheet,
+  column,
+  chart_id,
+  series_id,
+  series_name,
+  axis = "left"
+) {
+  workbook_path <- download_ec_survey_workbook(project_root, sector)
+  values <- openxlsx::read.xlsx(workbook_path, sheet = sheet, colNames = FALSE)
   headers <- as.character(unlist(values[1, ], use.names = FALSE))
   date_values <- as.Date(as.numeric(values[-1, 1]), origin = "1899-12-30")
   date_values <- as.Date(format(date_values, "%Y-%m-01"))
-  column <- match("SERV.EA.TOT.6.BS.M", headers)
-  if (is.na(column)) stop("Missing EC Services Survey series: SERV.EA.TOT.6.BS.M")
-  survey <- suppressWarnings(as.numeric(values[-1, column]))
+  column_index <- match(column, headers)
+  if (is.na(column_index)) stop(sprintf("Missing EC survey series: %s", column))
+  survey <- suppressWarnings(as.numeric(values[-1, column_index]))
   valid <- !is.na(date_values) & !is.na(survey)
   lagged_dates <- add_months(date_values[valid], 6)
+  release_code <- attr(workbook_path, "release_code")
+  source_note <- if (is.null(release_code)) {
+    "Seasonally adjusted EC survey balance; shifted forward six months."
+  } else {
+    sprintf("Seasonally adjusted EC survey balance from EC BCS release %s; shifted forward six months.", release_code)
+  }
 
   make_series_frame(
     lagged_dates,
-    "expected_selling_prices",
-    "esp_services",
-    "EC expected prices, 6m lag",
+    chart_id,
+    series_id,
+    series_name,
     "Euro Area",
     survey[valid],
+    axis = axis,
     unit = "balance",
     source = "European Commission Business and Consumer Surveys",
-    source_url = "https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en"
+    source_url = "https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en",
+    frequency = "monthly",
+    source_note = source_note
   )
+}
+
+download_ec_survey_workbook <- function(project_root, sector) {
+  prefix <- switch(
+    sector,
+    services = "services_total_sa_nace2",
+    industry = "industry_total_sa_nace2",
+    retail = "retail_total_sa_nace2",
+    stop(sprintf("Unsupported EC survey sector: %s", sector))
+  )
+  raw_dir <- file.path(project_root, "data/raw")
+  release_codes <- ec_survey_release_codes()
+
+  for (release_code in release_codes) {
+    zip_url <- sprintf(
+      "https://ec.europa.eu/economy_finance/db_indicators/surveys/documents/series/nace2_ecfin_%s/%s.zip",
+      release_code,
+      prefix
+    )
+    zip_path <- file.path(raw_dir, sprintf("%s_%s.zip", prefix, release_code))
+    ok <- tryCatch(download_binary_url(zip_url, zip_path), error = function(error) FALSE)
+    if (!isTRUE(ok) || !ec_survey_zip_is_valid(zip_path)) {
+      next
+    }
+    extract_dir <- file.path(raw_dir, sprintf("%s_%s", prefix, release_code))
+    dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
+    utils::unzip(zip_path, files = sprintf("%s.xlsx", prefix), exdir = extract_dir, overwrite = TRUE)
+    workbook_path <- file.path(extract_dir, sprintf("%s.xlsx", prefix))
+    if (file.exists(workbook_path) && file.info(workbook_path)$size > 0) {
+      attr(workbook_path, "release_code") <- release_code
+      return(workbook_path)
+    }
+  }
+
+  fallback_path <- file.path(raw_dir, prefix, sprintf("%s.xlsx", prefix))
+  if (file.exists(fallback_path) && file.info(fallback_path)$size > 0) {
+    return(fallback_path)
+  }
+  stop(sprintf("Could not download a valid EC survey workbook for %s", sector))
+}
+
+ec_survey_release_codes <- function() {
+  start <- as.Date(format(Sys.Date(), "%Y-%m-01"))
+  unique(format(add_months(start, -(0:18)), "%y%m"))
+}
+
+ec_survey_zip_is_valid <- function(path) {
+  if (!file.exists(path) || file.info(path)$size < 1024) {
+    return(FALSE)
+  }
+  signature <- readBin(path, "raw", n = 2)
+  all(as.integer(signature) == c(0x50L, 0x4bL))
+}
+
+build_hicp_goods_price_pressure_rows <- function(hicp_rows, hicp_rate_rows, survey_rows) {
+  yoy <- hicp_rows[hicp_rows$series_id == "core_goods", , drop = FALSE]
+  if (nrow(yoy)) {
+    yoy$chart_id <- "hicp_neig_price_pressures"
+    yoy$series_id <- "hicp_neig_yoy_nsa"
+    yoy$series_name <- "EU HICP Non-energy industrial goods YoY"
+    yoy$axis <- "left"
+    yoy$unit <- "%"
+  }
+
+  qoq <- hicp_rate_rows[hicp_rate_rows$series_id == "hicp_goods_qoq_saar", , drop = FALSE]
+  qoq_ma <- data.frame()
+  if (nrow(qoq)) {
+    qoq$date_value <- as.Date(qoq$date)
+    qoq <- qoq[order(qoq$date_value), , drop = FALSE]
+    values <- suppressWarnings(as.numeric(qoq$value))
+    ma_values <- rep(NA_real_, length(values))
+    if (length(values) >= 3) {
+      ma_values[3:length(values)] <- vapply(3:length(values), function(i) mean(values[(i - 2):i], na.rm = FALSE), numeric(1))
+    }
+    valid <- is.finite(ma_values)
+    qoq_ma <- make_series_frame(
+      qoq$date_value[valid],
+      "hicp_neig_price_pressures",
+      "hicp_neig_qoq_saar_3mma",
+      "EU HICP Non-energy industrial goods %QoQ SAAR 3MMA",
+      "Euro Area",
+      ma_values[valid],
+      unit = "%",
+      source = "Eurostat HICP / ECB Data Portal",
+      source_url = "https://ec.europa.eu/eurostat/databrowser/product/view/teicp290?lang=en",
+      frequency = "monthly",
+      source_note = "Three-month trailing average of non-energy industrial goods %QoQ SAAR."
+    )
+  }
+
+  rbind(yoy, qoq_ma, survey_rows)
 }
 
 read_ecb_wage_tracker_rows <- function() {
