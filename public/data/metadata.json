@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-07-16",
+  "last_updated": "2026-07-17",
   "data_mode": "source_linked_mock_values",
   "generated_by": "R/run_inflation_update.R",
   "source_links": 25,
@@ -8,8 +8,8 @@
     "description": "SP Global PMI: France, Germany"
   },
   "inflation_last_new": {
-    "date": "2026-01-01",
-    "description": "ECB Survey of Professional Forecasters: SPF 3Q ahead, SPF 7Q ahead"
+    "date": "2026-12-01",
+    "description": "ECB Data Portal: ECB wage tracker"
   },
-  "inflation_rows": 18986
+  "inflation_rows": 19154
 }
