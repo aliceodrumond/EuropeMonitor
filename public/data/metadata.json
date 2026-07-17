@@ -1,8 +1,8 @@
 {
   "last_updated": "2026-07-17",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
-  "source_links": 25,
+  "generated_by": "R/run_daily_update.R",
+  "source_links": 33,
   "activity_last_new": {
     "date": "2026-06-01",
     "description": "SP Global PMI: France, Germany"
@@ -10,7 +10,5 @@
   "inflation_last_new": {
     "date": "2026-12-01",
     "description": "ECB Data Portal: ECB wage tracker"
-  },
-  "inflation_rows": 19154,
-  "speaker_rows": 20
+  }
 }
