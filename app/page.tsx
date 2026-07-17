@@ -518,7 +518,7 @@ const charts: ChartDefinition[] = [
     title: "ECB Inflation Expectations",
     kicker: "Expectations",
     yLeftLabel: "%",
-    defaultWindow: "all",
+    defaultWindow: "5y",
     seriesOrder: [
       "ecb_ces_infl_exp_1y",
       "ecb_ces_infl_exp_3y",
@@ -535,7 +535,8 @@ const charts: ChartDefinition[] = [
     title: "GE IFO Price Expectations",
     kicker: "Price plans",
     yLeftLabel: "Balance",
-    defaultWindow: "all",
+    defaultWindow: "5y",
+    fixedDomains: { left: { min: -30, max: 80 } },
     seriesOrder: [
       "ifo_mfg_prices_de",
       "ifo_services_prices_de",
@@ -1503,7 +1504,7 @@ function ChartSvgContent({
           <path
             className="series-path"
             clipPath={`url(#${clipId})`}
-            d={pathForSeries(item, scaleX, scaleY)}
+            d={pathForSeries(item, scaleX, scaleY, definition)}
             key={item.id}
             stroke={item.color}
             strokeDasharray={item.dashArray}
@@ -1872,16 +1873,16 @@ function styleForSeries(seriesId: string, fallbackColor: string) {
     return { color: "#11675f", dashArray: "5 4" };
   }
   if (metricId === "ifo_mfg_prices_de") {
-    return { color: "#111111" };
+    return { color: "#003399" };
   }
   if (metricId === "ifo_services_prices_de") {
-    return { color: "#11675f" };
+    return { color: "#ff7800" };
   }
   if (metricId === "ifo_food_prices_de") {
-    return { color: "#d68b2d" };
+    return { color: "#cccccc" };
   }
   if (metricId === "ifo_chemical_prices_de") {
-    return { color: "#7a4db3" };
+    return { color: "#8eb4e2" };
   }
   if (metricId === "hicp_neig_yoy_nsa") {
     return { color: "#111111" };
@@ -2229,10 +2230,16 @@ function pathForSeries(
   series: ChartSeries,
   scaleX: (time: number) => number,
   scaleY: (value: number, axis: AxisSide) => number,
+  definition: ChartDefinition,
 ) {
+  const maxGap = definition.id === "ge_ifo_price_expectations"
+    ? 62 * 24 * 60 * 60 * 1000
+    : Number.POSITIVE_INFINITY;
+
   return series.points
     .map((point, index) => {
-      const command = index === 0 ? "M" : "L";
+      const previous = series.points[index - 1];
+      const command = index === 0 || point.time - previous.time > maxGap ? "M" : "L";
       return `${command}${scaleX(point.time).toFixed(2)},${scaleY(point.value, series.axis).toFixed(2)}`;
     })
     .join(" ");
