@@ -228,6 +228,55 @@
                                                              }
                                                          ]
                                             }
+                      },
+                      {
+                          "id":  "2026-07-17",
+                          "date":  "2026-07-17",
+                          "trigger":  "ECB Preview — July 2026",
+                          "coreView":  "ECB Preview: rates on hold in July; the Governing Council will keep optionality open for the September meeting.",
+                          "confidence":  "Medium",
+                          "activity":  [
+                                           "PMIs: manufacturing is holding well above 50, with a small effect from the war probably due to incentives to front-load or stockpile and longer delivery times.",
+                                           "Services fell mainly due to the expectations component. They improved marginally in June versus May, but remain below 50.",
+                                           "GDP tracking is signalling 0.2% q/q SA in Q2 2026 versus -0.2% in Q1, in line with ECB projections. Tracking improved slightly inter-meeting, with a 0.2–0.3% q/q SA bias for Q2, but risks for Q3 from a war resumption.",
+                                           "IFO is marginally better, but still subdued due to the expectations component.",
+                                           "Credit ECB BLS is weak, last update Q2 on 28 April, mainly due to the economic outlook.",
+                                           "Low risk of recession, but low growth. Risk of stagflation."
+                                       ],
+                          "inflation":  [
+                                            "Headline inflation continued to improve from the high in April and should continue the downward trend.",
+                                            "Core also improved at the margin, while still being affected by the war, especially through airline services.",
+                                            "Goods remain at low levels, falling from 0.9% y/y in May to 0.7% in June.",
+                                            "Services fell from 3.5% to 3.2% y/y.",
+                                            "The June final inflation release showed no signs of second-order effects from the energy shock: services ex-volatiles and HICPX energy-intensive inflation remain contained, while HICPX wage-intensive inflation is still sticky but flat."
+                                        ],
+                          "rates":  [
+                                        "The base case changed with the restart of the war between the US and Iran. We think a further 25bp hike in September, after a hold in July, is now slightly more likely and is in line with the ECB baseline scenario.",
+                                        "The scenario remains highly dependent on war developments; the current bias is towards 2.25% rather than 2.75%.",
+                                        "Pricing is +2bp for 23 July, +22bp for 10 September, +13bp for 17 December, +45bp accumulated until end-2026 and +15bp until 13 September 2027."
+                                    ],
+                          "risks":  [
+                                        "The Iranian war started on 28 February and was considered finished on 17 June, but gradually restarted around 7 July. Future developments are now uncertain.",
+                                        "Another risk, less of a game changer but still able to change the call, is that second-order effects from the energy shock appear in July or August data before the September meeting."
+                                    ],
+                          "forecastTable":  {
+                                                "title":  "ECB Scenarios (Jun/26)",
+                                                "marketLabel":  "Mkt Price: +68bps in 2026",
+                                                "columns":  [
+                                                                { "group": "HICP", "years": ["26", "27", "28"] },
+                                                                { "group": "Core HICP", "years": ["26", "27", "28"] },
+                                                                { "group": "GDP", "years": ["26", "27", "28"] },
+                                                                { "group": "Brent, $/b", "years": ["26", "27", "28"] },
+                                                                { "group": "TTF, $/MWh", "years": ["26", "27", "28"] }
+                                                            ],
+                                                "rows":  [
+                                                            { "label": "Baseline", "values": [[3.0, 2.3, 2.0], [2.5, 2.5, 2.2], [0.8, 1.2, 1.5], [97, 82, 77], [46, 38, 28]] },
+                                                            { "label": "Milder", "values": [[2.9, 1.8, 1.8], [2.4, 2.3, 2.1], [0.8, 1.4, 1.6], [82, 70, 66], [39, 32, 24]] },
+                                                            { "label": "Adverse", "values": [[3.3, 3.0, 2.3], [2.5, 2.7, 2.3], [0.7, 0.9, 1.5], [115, 98, 92], [57, 48, 37]] },
+                                                            { "label": "Severe", "values": [[4.0, 5.3, 3.0], [2.5, 3.8, 2.9], [0.5, 0.4, 1.6], [157, 133, 125], [93, 77, 58]] },
+                                                            { "label": "Lgcy Spot", "highlight": true, "values": [[3.2, 1.9, 1.5], [2.6, 2.2, 1.8], [0.7, 1.5, 1.5], [88, 76, 73], [58, 37, 28]] }
+                                                         ]
+                                            }
                       }
                   ]
 }
