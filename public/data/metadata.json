@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-07-21",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 34,
   "activity_last_new": {
     "date": "2026-07-01",
-    "description": "ECB Bank Lending Survey: Consumer Credit, Consumer demand, Corporate, Corporate demand, Cost of capital, Economic outlook, Funding, Industry-firm outlook, Liquidity, Risk on collateral"
+    "description": "ZEW Financial Market Survey: Germany ZEW"
   },
   "inflation_last_new": {
     "date": "2026-06-01",
     "description": "Eurostat HICP: % YoY NSA, % MoM SAAR, % QoQ SAAR"
-  },
-  "inflation_rows": 19648
+  }
 }
