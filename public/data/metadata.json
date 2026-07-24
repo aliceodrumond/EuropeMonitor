@@ -1,7 +1,7 @@
 {
   "last_updated": "2026-07-24",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_inflation_update.R",
   "source_links": 34,
   "activity_last_new": {
     "date": "2026-07-18",
@@ -10,5 +10,6 @@
   "inflation_last_new": {
     "date": "2026-06-01",
     "description": "Eurostat HICP: % YoY NSA, % MoM SAAR, % QoQ SAAR"
-  }
+  },
+  "inflation_rows": 19648
 }
