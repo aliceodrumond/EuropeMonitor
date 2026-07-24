@@ -933,8 +933,11 @@ ifo_price_url_month <- function(url) {
 
 ifo_price_source_date <- function(urls) {
   stamp <- sub("^.*?/facts/(\\d{4}-\\d{2}-\\d{2})/.*$", "\\1", urls)
-  dates <- suppressWarnings(as.Date(stamp))
-  dates[is.na(dates)] <- as.Date("1900-01-01")
+  dates <- rep(as.Date("1900-01-01"), length(stamp))
+  valid <- grepl("^\\d{4}-\\d{2}-\\d{2}$", stamp)
+  if (any(valid)) {
+    dates[valid] <- as.Date(stamp[valid])
+  }
   dates
 }
 
@@ -2595,26 +2598,31 @@ read_ec_services_prices_rows <- function(project_root) {
 
 read_ec_goods_price_survey_rows <- function(project_root) {
   rbind(
-    read_ec_survey_price_rows(
-      project_root,
-      sector = "industry",
-      sheet = "INDUSTRY MONTHLY",
-      column = "INDU.EA.TOT.6.BS.M",
-      chart_id = "hicp_neig_price_pressures",
-      series_id = "ec_industry_prices_6m_lag",
-      series_name = "EC Industry prices, 6m lag",
-      axis = "right"
+    read_ec_survey_price_rows_with_fallback(
+      project_root, "industry", "INDUSTRY MONTHLY", "INDU.EA.TOT.6.BS.M",
+      "hicp_neig_price_pressures", "ec_industry_prices_6m_lag", "EC Industry prices, 6m lag", "right"
     ),
-    read_ec_survey_price_rows(
-      project_root,
-      sector = "retail",
-      sheet = "RETAIL TRADE MONTHLY",
-      column = "RETA.EA.TOT.6.BS.M",
-      chart_id = "hicp_neig_price_pressures",
-      series_id = "ec_retail_prices_6m_lag",
-      series_name = "EC Retail prices, 6m lag",
-      axis = "right"
+    read_ec_survey_price_rows_with_fallback(
+      project_root, "retail", "RETAIL TRADE MONTHLY", "RETA.EA.TOT.6.BS.M",
+      "hicp_neig_price_pressures", "ec_retail_prices_6m_lag", "EC Retail prices, 6m lag", "right"
     )
+  )
+}
+
+read_ec_survey_price_rows_with_fallback <- function(
+  project_root, sector, sheet, column, chart_id, series_id, series_name, axis = "left"
+) {
+  tryCatch(
+    read_ec_survey_price_rows(project_root, sector, sheet, column, chart_id, series_id, series_name, axis),
+    error = function(error) {
+      warning(sprintf("EC %s survey update failed: %s. Retaining the last valid local series.", sector, error$message))
+      previous_path <- file.path(project_root, "data/processed/inflation_series.csv")
+      previous <- tryCatch(
+        utils::read.csv(previous_path, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(read_error) data.frame()
+      )
+      previous[previous$series_id == series_id, , drop = FALSE]
+    }
   )
 }
 
