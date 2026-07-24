@@ -8,8 +8,8 @@
     "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
-    "date": "2026-06-01",
-    "description": "Eurostat HICP: % YoY NSA, % MoM SAAR, % QoQ SAAR"
+    "date": "2026-07-01",
+    "description": "ECB Survey of Professional Forecasters: SPF 2Y ahead, SPF 3Q ahead, SPF 7Q ahead, SPF LT"
   },
-  "inflation_rows": 19648
+  "inflation_rows": 19655
 }
