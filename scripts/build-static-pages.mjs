@@ -189,7 +189,7 @@ ${analyticsSnippet}
         ["hicp_headline_core","inflation","HICP","Headline and core","% y/y"],
         ["hicp_components","inflation","HICP core goods and services","Components","% y/y"],
         ["expected_selling_prices","inflation","Services HICP vs EC Services Survey","Price pressures","Survey balance","% y/y",false,["esp_services","core_services_expected"],{left:{min:-15,max:40},right:{min:-1,max:7}}],
-        ["hicp_neig_price_pressures","inflation","EU HICP Non-energy Industrial Goods","Price pressures","%","Survey balance",false,["hicp_neig_yoy_nsa","hicp_neig_qoq_saar_3mma","ec_industry_prices_6m_lag","ec_retail_prices_6m_lag"],{left:{min:-1,max:7}}],
+        ["hicp_neig_price_pressures","inflation","EU HICP Non-energy Industrial Goods","Price pressures","%","Survey balance",false,["hicp_neig_yoy_nsa","hicp_neig_qoq_saar_3mma","ec_industry_prices_6m_lag","ec_retail_prices_6m_lag"],{left:{min:-1,max:7}},"10y"],
         ["wage_tracker","inflation","Wage Tracker","Wages","% y/y"],
         ["ecb_ces_inflation_expectations","inflation","ECB Inflation Expectations","Expectations","%",null,false,["ecb_ces_infl_exp_1y","ecb_ces_infl_exp_3y","ecb_ces_infl_exp_5y","ecb_spf_hicp_3q_ahead","ecb_spf_hicp_7q_ahead","ecb_spf_hicp_2y_ahead","ecb_spf_hicp_lt"],null,"5y"],
         ["ge_ifo_price_expectations","inflation","GE IFO Price Expectations","Price plans","Balance",null,false,["ifo_mfg_prices_de","ifo_services_prices_de","ifo_food_prices_de","ifo_chemical_prices_de"],{left:{min:-30,max:80}},"5y"],

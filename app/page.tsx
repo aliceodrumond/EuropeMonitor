@@ -497,6 +497,7 @@ const charts: ChartDefinition[] = [
     kicker: "Price pressures",
     yLeftLabel: "%",
     yRightLabel: "Survey balance",
+    defaultWindow: "10y",
     fixedDomains: { left: { min: -1, max: 7 } },
     seriesOrder: [
       "hicp_neig_yoy_nsa",
