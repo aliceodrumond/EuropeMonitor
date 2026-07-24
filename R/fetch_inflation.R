@@ -2726,7 +2726,7 @@ build_hicp_goods_price_pressure_rows <- function(hicp_rows, hicp_rate_rows, surv
   if (nrow(yoy)) {
     yoy$chart_id <- "hicp_neig_price_pressures"
     yoy$series_id <- "hicp_neig_yoy_nsa"
-    yoy$series_name <- "EU HICP Non-energy industrial goods YoY"
+    yoy$series_name <- "EU HICP NEIG YoY"
     yoy$axis <- "left"
     yoy$unit <- "%"
   }
@@ -2746,7 +2746,7 @@ build_hicp_goods_price_pressure_rows <- function(hicp_rows, hicp_rate_rows, surv
       qoq$date_value[valid],
       "hicp_neig_price_pressures",
       "hicp_neig_qoq_saar_3mma",
-      "EU HICP Non-energy industrial goods %QoQ SAAR 3MMA",
+      "EU HICP NEIG %QoQ SAAR 3MMA",
       "Euro Area",
       ma_values[valid],
       unit = "%",
