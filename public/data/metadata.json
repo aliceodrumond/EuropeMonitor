@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-07-27",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 34,
   "activity_last_new": {
-    "date": "2026-07-19",
+    "date": "2026-07-01",
     "description": "Deutsche Bundesbank: Germany WAI"
   },
   "inflation_last_new": {
     "date": "2026-07-01",
     "description": "ECB Survey of Professional Forecasters: SPF 2Y ahead, SPF 3Q ahead, SPF 7Q ahead, SPF LT"
-  },
-  "speaker_rows": 20
+  }
 }
