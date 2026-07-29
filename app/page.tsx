@@ -94,6 +94,7 @@ type ChartSeries = {
   sourceNote: string;
   color: string;
   dashArray?: string;
+  bar?: boolean;
   points: Array<{ date: string; value: number; time: number }>;
 };
 
@@ -512,6 +513,9 @@ const charts: ChartDefinition[] = [
     title: "Wage Tracker",
     kicker: "Wages",
     yLeftLabel: "% y/y",
+    yRightLabel: "Employee coverage (%)",
+    fixedDomains: { left: { min: 0, max: 7 }, right: { min: 25, max: 55 } },
+    seriesOrder: ["wage_tracker_coverage", "wage_tracker_ea", "wage_tracker_ea_monthly", "wage_tracker_unsmoothed", "wage_tracker_excluding"],
   },
   {
     id: "ecb_ces_inflation_expectations",
@@ -1050,7 +1054,7 @@ function TimeSeriesChart({
             <span
               className="legend-swatch"
               style={{
-                background: item.dashArray ? "transparent" : item.color,
+                background: item.dashArray || item.bar ? "transparent" : item.color,
                 borderColor: item.color,
               }}
             />
@@ -1351,6 +1355,7 @@ function ChartSvgContent({
     innerWidth,
     leftTicks,
     margin,
+    rightDomain,
     rightTicks,
     scaleX,
     scaleY,
@@ -1488,6 +1493,16 @@ function ChartSvgContent({
         </text>
       ) : null}
       {series.map((item) =>
+        item.bar ? (
+          <g clipPath={`url(#${clipId})`} key={item.id}>
+            {item.points.map((point) => {
+              const y = scaleY(point.value, item.axis);
+              const baseline = scaleY(rightDomain.min, item.axis);
+              const barWidth = Math.max(1.5, Math.min(8, (innerWidth / Math.max(item.points.length, 1)) * 0.8));
+              return <rect fill={item.color} fillOpacity={0.8} height={Math.max(0, baseline - y)} key={`${item.id}-${point.date}`} width={barWidth} x={scaleX(point.time) - barWidth / 2} y={y} />;
+            })}
+          </g>
+        ) :
         item.id.endsWith("_daily") ? (
           <g clipPath={`url(#${clipId})`} key={item.id}>
             {item.points.map((point) => (
@@ -1839,6 +1854,21 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
 }
 
 function styleForSeries(seriesId: string, fallbackColor: string) {
+  if (seriesId === "wage_tracker_coverage") {
+    return { color: "#e2e2e2", bar: true };
+  }
+  if (seriesId === "wage_tracker_ea") {
+    return { color: "#0057b8" };
+  }
+  if (seriesId === "wage_tracker_ea_monthly") {
+    return { color: "#0057b8", dashArray: "5 4" };
+  }
+  if (seriesId === "wage_tracker_unsmoothed") {
+    return { color: "#ff6f00" };
+  }
+  if (seriesId === "wage_tracker_excluding") {
+    return { color: "#7a3db8" };
+  }
   if (seriesId.endsWith("_range_min") || seriesId.endsWith("_range_max")) {
     return { color: "#c7c7c7" };
   }

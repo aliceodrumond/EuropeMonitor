@@ -2761,40 +2761,47 @@ build_hicp_goods_price_pressure_rows <- function(hicp_rows, hicp_rate_rows, surv
 }
 
 read_ecb_wage_tracker_rows <- function() {
-  url <- "https://data-api.ecb.europa.eu/service/data/EWT/M.U2.N.WT.INWS._T.4F0.GY?format=csvdata"
   raw_dir <- file.path(getwd(), "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
-  tmp <- file.path(raw_dir, "ecb_wage_tracker.csv")
-  command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
-    shQuote(url, type = "sh"),
-    shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+  series <- list(
+    list("INWS", "wage_tracker_ea", "ECB Wage Tracker (Quarterly)", "left", "% y/y", "Q"),
+    list("INWR", "wage_tracker_unsmoothed", "Including One-off Payments (Quarterly)", "left", "% y/y", "Q"),
+    list("INWX", "wage_tracker_excluding", "Excluding One-off Payments (Quarterly)", "left", "% y/y", "Q"),
+    list("COVR", "wage_tracker_coverage", "Employee Coverage (Quarterly)", "right", "%", "Q"),
+    list("INWS", "wage_tracker_ea_monthly", "ECB Wage Tracker (Monthly official)", "left", "% y/y", "M")
   )
-  tryCatch(system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE), error = function(e) NULL)
 
-  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
-    return(data.frame())
-  }
+  frames <- lapply(series, function(spec) {
+    transformation <- if (identical(spec[[1]], "COVR")) "_Z" else "GY"
+    frequency <- spec[[6]]
+    key <- sprintf("%s.U2.N.WT.%s._T.4F0.%s", frequency, spec[[1]], transformation)
+    url <- sprintf("https://data-api.ecb.europa.eu/service/data/EWT/%s", key)
+    tmp <- file.path(raw_dir, sprintf("ecb_wage_tracker_%s_%s.csv", tolower(frequency), tolower(spec[[1]])))
+    command <- sprintf(
+      "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Headers @{Accept='text/csv'} -Uri %s -OutFile %s",
+      shQuote(url, type = "sh"),
+      shQuote(normalizePath(tmp, winslash = "\\", mustWork = FALSE), type = "sh")
+    )
+    tryCatch(system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE), error = function(e) NULL)
+    if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
 
-  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
-  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) {
-    return(data.frame())
-  }
-
-  dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
-  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
-  valid <- !is.na(dates) & !is.na(values)
-
-  make_series_frame(
-    dates[valid],
-    "wage_tracker",
-    "wage_tracker_ea",
-    "ECB wage tracker",
-    "Euro Area",
-    values[valid],
-    unit = "% y/y",
-    source = "ECB Data Portal",
-    source_url = "https://data.ecb.europa.eu/data/datasets/EWT/EWT.M.U2.N.WT.INWS._T.4F0.GY",
-    frequency = "monthly"
-  )
+    raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+    if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) return(data.frame())
+    dates <- if (identical(frequency, "Q")) {
+      quarter <- suppressWarnings(as.integer(sub("^.*-Q", "", raw$TIME_PERIOD)))
+      year <- suppressWarnings(as.integer(substr(raw$TIME_PERIOD, 1, 4)))
+      as.Date(sprintf("%04d-%02d-01", year, quarter * 3L))
+    } else {
+      as.Date(sprintf("%s-01", raw$TIME_PERIOD))
+    }
+    values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+    valid <- !is.na(dates) & !is.na(values)
+    make_series_frame(
+      dates[valid], "wage_tracker", spec[[2]], spec[[3]], "Euro Area", values[valid],
+      axis = spec[[4]], unit = spec[[5]], source = "ECB Data Portal",
+      source_url = sprintf("https://data.ecb.europa.eu/data/datasets/EWT/EWT.%s", key),
+      frequency = if (identical(frequency, "Q")) "quarterly" else "monthly"
+    )
+  })
+  do.call(rbind, frames)
 }

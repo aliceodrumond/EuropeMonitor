@@ -9,7 +9,7 @@
   },
   "inflation_last_new": {
     "date": "2027-03-01",
-    "description": "ECB Data Portal: ECB Wage Tracker, Employee Coverage as a Share of Employees, Excluding One-off Payments, Including One-off Payments"
+    "description": "ECB Data Portal: ECB Wage Tracker (Monthly official)"
   },
-  "inflation_rows": 20173
+  "inflation_rows": 19888
 }
