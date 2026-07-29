@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-07-29",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
-  "source_links": 37,
+  "generated_by": "R/run_daily_update.R",
+  "source_links": 38,
   "activity_last_new": {
-    "date": "2026-07-26",
-    "description": "Deutsche Bundesbank: Germany WAI"
+    "date": "2026-07-01",
+    "description": "SP Global PMI: Composite, Europe, France, Germany, Manufacturing, PMI Composite, Services"
   },
   "inflation_last_new": {
     "date": "2027-03-01",
     "description": "ECB Data Portal: ECB Wage Tracker (Monthly official)"
-  },
-  "inflation_rows": 19888
+  }
 }
