@@ -509,6 +509,12 @@ build_swiss_cpi_seasonality_rows <- function(definition, workbook) {
   )
 }
 
+order_fast_inflation_rows <- function(rows) {
+  rows <- rows[order(rows$chart_id, rows$series_id, rows$date, rows$country), , drop = FALSE]
+  rownames(rows) <- NULL
+  rows
+}
+
 build_inflation_flash_fast_series <- function(project_root) {
   catalog <- read_series_catalog(project_root)
   previous_path <- file.path(project_root, "data/processed/inflation_series.csv")
@@ -546,10 +552,10 @@ build_inflation_flash_fast_series <- function(project_root) {
     ,
     drop = FALSE
   ]
-  inflation <- apply_series_catalog(
+  inflation <- order_fast_inflation_rows(apply_series_catalog(
     rbind(kept, kept_ecb_sa, headline_core, components, hicp_rates, hicp_seasonality),
     catalog
-  )
+  ))
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
 }
@@ -584,7 +590,7 @@ build_inflation_ecb_sa_fast_series <- function(project_root) {
   }
 
   kept <- previous[!previous$series_id %in% official_series_ids, , drop = FALSE]
-  inflation <- apply_series_catalog(rbind(kept, official), catalog)
+  inflation <- order_fast_inflation_rows(apply_series_catalog(rbind(kept, official), catalog))
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
 }
