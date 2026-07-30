@@ -440,24 +440,33 @@ absolute_econostream_url <- function(path) {
   paste0("https://www.econostream-media.com", path)
 }
 
+ascii_speaker_text <- function(value) {
+  converted <- iconv(value, from = "", to = "ASCII//TRANSLIT", sub = "")
+  converted[is.na(converted)] <- value[is.na(converted)]
+  converted
+}
+
 is_ecb_member_headline <- function(headline, member) {
-  grepl("^ECB", headline) &&
+  normalized_headline <- ascii_speaker_text(headline)
+  normalized_headline <- sub("^Exclusive:\\s*", "", normalized_headline, ignore.case = TRUE)
+
+  grepl("^ECB('?s)?\\s", normalized_headline, ignore.case = TRUE, perl = TRUE) &&
     !grepl("Insight|Tone Meter|Weekly Update", headline, ignore.case = TRUE) &&
-    !member %in% c("Insight", "Tone Meter", "ECB")
+    !member %in% c("Insight", "Tone Meter", "ECB", "Survey")
 }
 
 extract_ecb_member <- function(headline) {
+  headline <- ascii_speaker_text(headline)
   known <- names(member_profiles())
   for (member in known) {
-    if (grepl(member, headline, fixed = TRUE)) {
+    if (grepl(tolower(member), tolower(headline), fixed = TRUE)) {
       return(member)
     }
   }
 
   name <- headline
-  name <- sub("^ECB'?s\\s+", "", name)
-  name <- sub("^ECB.s\\s+", "", name)
-  name <- sub("^ECB\\s+", "", name)
+  name <- sub("^Exclusive:\\s*", "", name, ignore.case = TRUE)
+  name <- sub("^ECB('?s)?\\s+", "", name, ignore.case = TRUE, perl = TRUE)
   name <- sub(":.*$", "", name)
   name <- sub("\\s+Says.*$", "", name)
   name <- sub("\\s+Would.*$", "", name)
@@ -472,6 +481,11 @@ extract_ecb_member <- function(headline) {
 }
 
 normalize_ecb_member_name <- function(member) {
+  member_ascii <- trimws(ascii_speaker_text(member))
+  if (grepl("Simkus", member_ascii, ignore.case = TRUE)) return("Simkus")
+  if (grepl("Kazimir", member_ascii, ignore.case = TRUE)) return("Kazimir")
+  if (grepl("Patsalides", member_ascii, ignore.case = TRUE)) return("Patsalides")
+  if (grepl("Zigman", member_ascii, ignore.case = TRUE)) return("Zigman")
   if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kaz", member, fixed = TRUE) || grepl("im", member, fixed = TRUE)) {
@@ -493,7 +507,11 @@ member_profile <- function(member) {
 }
 
 normalize_ecb_member_name_ascii <- function(member) {
-  member <- iconv(member, from = "", to = "ASCII//TRANSLIT", sub = "")
+  member <- trimws(ascii_speaker_text(member))
+  if (grepl("Simkus", member, ignore.case = TRUE)) return("Simkus")
+  if (grepl("Kazimir", member, ignore.case = TRUE)) return("Kazimir")
+  if (grepl("Patsalides", member, ignore.case = TRUE)) return("Patsalides")
+  if (grepl("Zigman", member, ignore.case = TRUE)) return("Zigman")
   if (grepl("Kazaks", member, ignore.case = TRUE)) return("Kazaks")
   if (grepl("Vuj", member, fixed = TRUE)) return("Vujcic")
   if (grepl("Kazimir|Kaimr", member, ignore.case = TRUE) || grepl("im", member, fixed = TRUE)) return("Kazimir")
@@ -507,6 +525,9 @@ member_profiles <- function() {
   list(
     "Vujcic" = list(position = "Vice-President", country = "Croatia"),
     "Kazimir" = list(position = "Governing Council", country = "Slovakia"),
+    "Patsalides" = list(position = "Governing Council", country = "Cyprus"),
+    "Simkus" = list(position = "Governing Council", country = "Lithuania"),
+    "Zigman" = list(position = "Governing Council", country = "Croatia"),
     "Escriva" = list(position = "Governing Council", country = "Spain"),
     "Lagarde" = list(position = "President", country = "ECB"),
     "Lane" = list(position = "Chief Economist", country = "Ireland"),
