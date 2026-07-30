@@ -73,7 +73,7 @@ for (const [geo, country] of Object.entries(countries)) {
     `?lang=en&unit=I15&geo=${geo}`;
   const currentUrl =
     `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_fpd` +
-    `?lang=en&unit=I25&release=FIN&geo=${geo}`;
+    `?lang=en&unit=I25&geo=${geo}`;
   const weightsUrl =
     `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw` +
     `?lang=en&geo=${geo}`;
@@ -109,18 +109,22 @@ for (const [geo, country] of Object.entries(countries)) {
       }))
       .filter((row) => Number.isFinite(row.index));
     const current = currentTimes
-      .map((period) => ({
-        period,
-        date: `${period}-01`,
-        index: valueAt(currentJson, {
+      .map((period) => {
+        const selection = {
           freq: "M",
           unit: "I25",
-          release: "FIN",
           coicop18: component.currentCode || component.code,
           geo,
           time: period,
-        }),
-      }))
+        };
+        const finalIndex = valueAt(currentJson, { ...selection, release: "FIN" });
+        const flashIndex = valueAt(currentJson, { ...selection, release: "FLS" });
+        // A flash observation is eligible solely for a month without its final
+        // release.  Eurostat's FIN value always replaces FLS when available.
+        const index = Number.isFinite(finalIndex) ? finalIndex : flashIndex;
+        const release = Number.isFinite(finalIndex) ? "FIN" : "FLS";
+        return { period, date: `${period}-01`, index, release };
+      })
       .filter((row) => Number.isFinite(row.index));
     const legacyMap = new Map(legacy.map((row) => [row.period, row.index]));
     const common = current.filter((row) => legacyMap.has(row.period));
@@ -137,6 +141,7 @@ for (const [geo, country] of Object.entries(countries)) {
         country,
         component: key,
         nsa_index: row.index.toFixed(8),
+        release: row.release || "FIN",
       }),
     );
 
@@ -179,6 +184,7 @@ for (const [geo, country] of Object.entries(countries)) {
         country,
         value: yoy,
         unit: "% y/y",
+        note: current.release === "FLS" ? "Eurostat first released data (preliminary); replaced automatically when the final release is available." : "",
       });
       addRow(rows, {
         date: current.date,
@@ -188,6 +194,7 @@ for (const [geo, country] of Object.entries(countries)) {
         country,
         value: mom,
         unit: "% m/m NSA",
+        note: current.release === "FLS" ? "Eurostat first released data (preliminary); replaced automatically when the final release is available." : "",
       });
     }
 
