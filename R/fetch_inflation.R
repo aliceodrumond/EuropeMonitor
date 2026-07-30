@@ -554,6 +554,41 @@ build_inflation_flash_fast_series <- function(project_root) {
   inflation
 }
 
+build_inflation_ecb_sa_fast_series <- function(project_root) {
+  catalog <- read_series_catalog(project_root)
+  previous_path <- file.path(project_root, "data/processed/inflation_series.csv")
+  if (!file.exists(previous_path)) {
+    stop(sprintf("Missing previous inflation dataset for ECB SA update: %s", previous_path))
+  }
+
+  previous <- utils::read.csv(previous_path, stringsAsFactors = FALSE, check.names = FALSE)
+  definitions <- hicp_rate_definitions()
+  official <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    build_hicp_official_sa_rows(definitions[i, ])
+  }))
+  if (is.null(official) || !nrow(official)) {
+    stop("ECB Data Portal returned no official seasonally adjusted HICP rows")
+  }
+
+  official_series_ids <- unique(c(
+    definitions$hoh_series_id,
+    definitions$qoq_series_id,
+    definitions$mom_series_id
+  ))
+  missing_series <- setdiff(official_series_ids, unique(official$series_id))
+  if (length(missing_series)) {
+    stop(sprintf(
+      "ECB Data Portal response is missing official SA series: %s",
+      paste(missing_series, collapse = ", ")
+    ))
+  }
+
+  kept <- previous[!previous$series_id %in% official_series_ids, , drop = FALSE]
+  inflation <- apply_series_catalog(rbind(kept, official), catalog)
+  write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
+  inflation
+}
+
 read_ecb_ces_inflation_expectations_rows <- function() {
   definitions <- data.frame(
     key = c(
@@ -1090,8 +1125,15 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TR
     return(rbind(yoy, legacy))
   }
 
+  official <- build_hicp_official_sa_rows(definition)
+  if (!nrow(official)) return(rbind(yoy, legacy))
+
+  rbind(yoy, official, legacy)
+}
+
+build_hicp_official_sa_rows <- function(definition) {
   sa_index <- read_ecb_hicp_sa_index_rows(definition)
-  if (!nrow(sa_index)) return(rbind(yoy, legacy))
+  if (!nrow(sa_index)) return(data.frame())
   sa_index <- sa_index[order(sa_index$date), ]
   sa_index$mom_saar <- (sa_index$index / c(NA, head(sa_index$index, -1)))^12 * 100 - 100
   sa_index$qoq_saar <- (sa_index$index / c(rep(NA, 3), head(sa_index$index, -3)))^4 * 100 - 100
@@ -1140,7 +1182,7 @@ build_hicp_rate_chart_rows <- function(definition, yoy_rows, include_ecb_sa = TR
     source_note = sa_index$source_note[qoq_valid]
   )
 
-  rbind(yoy, hoh, qoq, mom, legacy)
+  rbind(hoh, qoq, mom)
 }
 
 build_hicp_precise_yoy_rows <- function(definition, yoy_rows, eurostat_input) {

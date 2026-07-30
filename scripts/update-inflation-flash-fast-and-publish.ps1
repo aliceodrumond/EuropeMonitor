@@ -1,3 +1,8 @@
+param(
+  [ValidateSet("LegacyX13", "OfficialEcbSa")]
+  [string]$Mode = "LegacyX13"
+)
+
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -6,7 +11,8 @@ $Git = "C:\Users\alice.drumond\AppData\Local\Programs\Git\cmd\git.exe"
 $Npm = "C:\Program Files\nodejs\npm.cmd"
 $Npx = "C:\Program Files\nodejs\npx.cmd"
 $LogDir = Join-Path $ProjectRoot "logs"
-$LogPath = Join-Path $LogDir ("inflation-flash-fast-update-" + (Get-Date -Format "yyyy-MM-dd") + ".log")
+$ModeSlug = if ($Mode -eq "OfficialEcbSa") { "official-ecb-sa" } else { "legacy-x13" }
+$LogPath = Join-Path $LogDir ("inflation-fast-$ModeSlug-update-" + (Get-Date -Format "yyyy-MM-dd") + ".log")
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 Set-Location $ProjectRoot
@@ -16,6 +22,7 @@ $env:NODE_USE_SYSTEM_CA = "1"
 $env:BUILD_OUT_DIR = "pages-dist"
 $env:CLOUDFLARE_API_TOKEN = [Environment]::GetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "User")
 $env:CLOUDFLARE_ACCOUNT_ID = [Environment]::GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID", "User")
+$env:INFLATION_FAST_MODE = if ($Mode -eq "OfficialEcbSa") { "official_ecb_sa" } else { "legacy_x13" }
 
 function Write-Log {
   param([string]$Message)
@@ -167,29 +174,29 @@ function Invoke-FastInflationPipeline {
     $ErrorActionPreference = $PreviousErrorActionPreference
   }
   if ($HasChanges) {
-    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update fast inflation flash data $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation $Mode data $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
     Invoke-Logged -FilePath $Git -Arguments @("push")
   } else {
-    Write-Log "No fast inflation data changes to commit"
+    Write-Log "No $Mode inflation data changes to commit"
   }
 }
 
-Write-Log "Starting Europe monitor fast inflation flash update"
+Write-Log "Starting Europe monitor fast inflation update in $Mode mode"
 
 $MaxAttempts = 2
 for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
   try {
     if ($Attempt -gt 1) {
-      Write-Log "Retrying fast inflation flash update after previous failure; attempt $Attempt of $MaxAttempts"
+      Write-Log "Retrying $Mode inflation update after previous failure; attempt $Attempt of $MaxAttempts"
     }
     Invoke-FastInflationPipeline
-    Write-Log "Europe monitor fast inflation flash update completed"
+    Write-Log "Europe monitor $Mode inflation update completed"
     exit 0
   } catch {
     $Message = $_.Exception.Message
-    Write-Log "Fast inflation flash update attempt $Attempt of $MaxAttempts failed: $Message"
+    Write-Log "$Mode inflation update attempt $Attempt of $MaxAttempts failed: $Message"
     if ($Attempt -ge $MaxAttempts) {
-      Write-Log "Europe monitor fast inflation flash update FAILED after $MaxAttempts attempts"
+      Write-Log "Europe monitor $Mode inflation update FAILED after $MaxAttempts attempts"
       throw
     }
     Start-Sleep -Seconds 30

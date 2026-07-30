@@ -1,7 +1,7 @@
 {
   "last_updated": "2026-07-30",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_inflation_flash_fast_update.R:legacy_x13",
   "source_links": 38,
   "activity_last_new": {
     "date": "2026-04-01",
@@ -11,5 +11,6 @@
     "date": "2027-01-01",
     "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag"
   },
-  "speaker_rows": 16
+  "speaker_rows": 16,
+  "inflation_rows": 19891
 }

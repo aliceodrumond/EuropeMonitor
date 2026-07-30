@@ -15,13 +15,22 @@ source(file.path(project_root, "R/build_site_data.R"), local = TRUE)
 
 ensure_project_dirs(project_root)
 
-message("Building fast Eurostat HICP flash monitor data...")
+update_mode <- Sys.getenv("INFLATION_FAST_MODE", "legacy_x13")
+if (!update_mode %in% c("legacy_x13", "official_ecb_sa")) {
+  stop(sprintf("Unsupported INFLATION_FAST_MODE: %s", update_mode))
+}
+
+message(sprintf("Building fast inflation monitor data in %s mode...", update_mode))
 public_data <- file.path(project_root, "public/data")
 dir.create(public_data, recursive = TRUE, showWarnings = FALSE)
 inflation_path <- file.path(public_data, "inflation_series.csv")
 metadata_path <- file.path(public_data, "metadata.json")
 
-inflation <- build_inflation_flash_fast_series(project_root)
+inflation <- if (identical(update_mode, "official_ecb_sa")) {
+  build_inflation_ecb_sa_fast_series(project_root)
+} else {
+  build_inflation_flash_fast_series(project_root)
+}
 previous_metadata <- read_metadata_json(metadata_path)
 inflation_last_new <- summarize_new_observations(inflation, inflation_path, previous_metadata$inflation_last_new)
 write_csv_utf8(inflation, inflation_path)
@@ -29,7 +38,7 @@ write_csv_utf8(inflation, inflation_path)
 metadata <- previous_metadata
 metadata$last_updated <- format(Sys.Date(), "%Y-%m-%d")
 metadata$data_mode <- "source_linked_mock_values"
-metadata$generated_by <- "R/run_inflation_flash_fast_update.R"
+metadata$generated_by <- sprintf("R/run_inflation_flash_fast_update.R:%s", update_mode)
 metadata$inflation_rows <- nrow(inflation)
 metadata$inflation_last_new <- inflation_last_new
 if (is.null(metadata$activity_last_new)) {
