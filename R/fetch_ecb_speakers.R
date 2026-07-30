@@ -104,6 +104,9 @@ keep_recent_and_priority_speeches <- function(speakers, previous, max_rows = 20)
     previous[, common_columns, drop = FALSE]
   )
   combined <- dedupe_speaker_rows(combined)
+  invalid_member <- combined$member %in% c("ECB", "Survey", "Comment Recap") |
+    grepl("^(Holds Rates|Insight|Tone Meter)", combined$member, ignore.case = TRUE)
+  combined <- combined[!invalid_member, , drop = FALSE]
   combined$date_value <- as.Date(combined$date)
 
   priority_latest <- do.call(rbind, lapply(priority_members, function(member) {
