@@ -224,7 +224,7 @@ ${analyticsSnippet}
       const countryDefs=[["de","Germany"],["fr","France"],["it","Italy"],["es","Spain"],["be","Belgium"]];
       const componentDefs=[["headline","Headline"],["core","Core"],["neig","NEIG"],["services","Services"]];
       countryDefs.forEach(([geo,country])=>componentDefs.forEach(([key,label])=>{
-        charts.push({id:"country_"+geo+"_"+key+"_rates",tab:"country-inflation",title:country+": "+label+" HICP",kicker:"Inflation",yLeft:"% y/y and QoQ SAAR",yRight:"% m/m SA",order:[geo+"_"+key+"_mom_sa",geo+"_"+key+"_yoy",geo+"_"+key+"_qoq_saar"],defaultWindow:"10y",startDate:"2010-01-01"});
+        charts.push({id:"country_"+geo+"_"+key+"_rates",tab:"country-inflation",title:country+": "+label+(key==="core"?" inflation":" HICP"),kicker:"Inflation",yLeft:"% y/y and QoQ SAAR",yRight:"% m/m SA",order:[geo+"_"+key+"_mom_sa",geo+"_"+key+"_yoy",geo+"_"+key+"_cpi_yoy",geo+"_"+key+"_qoq_saar"],defaultWindow:"10y",startDate:"2010-01-01"});
         charts.push({id:"country_"+geo+"_"+key+"_seasonality",tab:"country-inflation",title:country+": "+label+" seasonality",kicker:"% MoM NSA",yLeft:"% m/m NSA",order:[geo+"_"+key+"_mom_nsa_range_min",geo+"_"+key+"_mom_nsa_range_max",geo+"_"+key+"_mom_nsa_median",geo+"_"+key+"_mom_2022",geo+"_"+key+"_mom_2023",geo+"_"+key+"_mom_2024",geo+"_"+key+"_mom_2025",geo+"_"+key+"_mom_2026"],chartType:"seasonality"});
       }));
       const tabs = [{id:"speakers",label:"ECB Speakers"},{id:"scenario",label:"Scenario Tracker"},{id:"activity",label:"Activity Monitor"},{id:"inflation",label:"Inflation Monitor"},{id:"country-inflation",label:"GE, FR, IT, SP, BE - Inflation Monitor"},{id:"other-inflation",label:"SNB - Inflation Monitor"}];
