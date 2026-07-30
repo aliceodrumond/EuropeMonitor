@@ -131,7 +131,7 @@ dedupe_speaker_rows <- function(speakers) {
     url_key <- tolower(gsub("[^a-z0-9]+", "", speakers$source_url))
     key <- ifelse(
       nzchar(url_key),
-      paste(speakers$member, speakers$date, url_key, sep = "|"),
+      paste(speakers$date, url_key, sep = "|"),
       paste(speakers$member, speakers$date, comments, sep = "|")
     )
   } else {
@@ -272,7 +272,7 @@ speaker_row_keys <- function(speakers) {
     url_key <- tolower(gsub("[^a-z0-9]+", "", speakers$source_url))
     return(ifelse(
       nzchar(url_key),
-      paste(member, speakers$date, url_key, sep = "|"),
+      paste(speakers$date, url_key, sep = "|"),
       paste(member, speakers$date, comments, sep = "|")
     ))
   }
