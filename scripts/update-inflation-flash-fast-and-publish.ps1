@@ -10,6 +10,10 @@ $Rscript = "C:\Program Files\R\R-4.3.1\bin\Rscript.exe"
 $Git = "C:\Users\alice.drumond\AppData\Local\Programs\Git\cmd\git.exe"
 $Npm = "C:\Program Files\nodejs\npm.cmd"
 $Npx = "C:\Program Files\nodejs\npx.cmd"
+$PinkBaseUrl = "http://127.0.0.1:8766"
+$PinkTo = "5531988380196"
+$N8NRoot = "C:\Users\alice.drumond\OneDrive - Legacy Capital Gestora de Recursos Ltda\Documents\N8N"
+$PublishedUrl = "https://legacy-europe-monitor.pages.dev"
 $LogDir = Join-Path $ProjectRoot "logs"
 $ModeSlug = if ($Mode -eq "OfficialEcbSa") { "official-ecb-sa" } else { "legacy-x13" }
 $LogPath = Join-Path $LogDir ("inflation-fast-$ModeSlug-update-" + (Get-Date -Format "yyyy-MM-dd") + ".log")
@@ -29,6 +33,129 @@ function Write-Log {
   $Line = "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") $Message"
   Add-Content -Path $LogPath -Value $Line
   Write-Output $Line
+}
+
+function Test-WhatsPinkHealth {
+  try {
+    Invoke-RestMethod -Method Get -Uri "$PinkBaseUrl/health" -TimeoutSec 5 | Out-Null
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+function Start-WhatsPinkIfNeeded {
+  if (Test-WhatsPinkHealth) {
+    Write-Log "Whats-Pink is reachable at $PinkBaseUrl"
+    return
+  }
+
+  $startScript = Join-Path $N8NRoot "start_whats_pink_server.ps1"
+  if (-not (Test-Path -LiteralPath $startScript)) {
+    throw "Cannot start Whats-Pink; missing $startScript"
+  }
+
+  Write-Log "Whats-Pink is not reachable; starting the local service"
+  Start-Process powershell.exe `
+    -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $startScript) `
+    -WindowStyle Hidden
+
+  for ($attempt = 1; $attempt -le 12; $attempt++) {
+    Start-Sleep -Seconds 5
+    if (Test-WhatsPinkHealth) {
+      Write-Log "Whats-Pink started successfully"
+      return
+    }
+  }
+
+  throw "Whats-Pink did not become reachable after 60 seconds"
+}
+
+function Get-InflationStatusLines {
+  $inflationPath = Join-Path $ProjectRoot "public\data\inflation_series.csv"
+  if (-not (Test-Path -LiteralPath $inflationPath)) {
+    return @("Dados locais: arquivo inflation_series.csv indisponivel")
+  }
+
+  $rows = @(Import-Csv $inflationPath)
+  $suffix = if ($Mode -eq "OfficialEcbSa") { "" } else { "_legacy" }
+  $components = [ordered]@{
+    Headline = "hicp_headline_qoq_saar$suffix"
+    Core = "hicp_core_qoq_saar$suffix"
+    Goods = "hicp_goods_qoq_saar$suffix"
+    Services = "hicp_services_qoq_saar$suffix"
+  }
+
+  $lines = foreach ($entry in $components.GetEnumerator()) {
+    $latest = @($rows | Where-Object { $_.series_id -eq $entry.Value } | Sort-Object date)[-1]
+    if ($null -eq $latest) {
+      "$($entry.Key): indisponivel"
+      continue
+    }
+
+    $dateLabel = try {
+      ([datetime]::ParseExact(
+        $latest.date,
+        "yyyy-MM-dd",
+        [System.Globalization.CultureInfo]::InvariantCulture
+      )).ToString("MM/yyyy")
+    } catch {
+      $latest.date
+    }
+    "$($entry.Key): $dateLabel"
+  }
+
+  return @($lines)
+}
+
+function Send-PinkStatus {
+  param(
+    [ValidateSet("SUCESSO", "FALHA")]
+    [string]$Status,
+    [int]$DurationSeconds,
+    [string]$ErrorMessage = ""
+  )
+
+  try {
+    $modeLabel = if ($Mode -eq "OfficialEcbSa") { "ECB SA oficial" } else { "Eurostat NSA + X-13/X-11 Legacy" }
+    $messageLines = @(
+      "Inflation Monitor - $Status",
+      "Horario: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss') (America/Sao_Paulo)",
+      "Processo: $modeLabel",
+      "Duracao: ${DurationSeconds}s"
+    )
+    $messageLines += Get-InflationStatusLines
+    if ($ErrorMessage) {
+      $messageLines += "Erro: $ErrorMessage"
+    }
+    $messageLines += "Site: $PublishedUrl"
+
+    Start-WhatsPinkIfNeeded
+    $body = @{
+      to = $PinkTo
+      message = ($messageLines -join "`n")
+      label = "Inflation Monitor $Mode $Status"
+      dry_run = $false
+      metadata = @{
+        source = "Europe 2 Inflation Monitor"
+        mode = $Mode
+        status = $Status
+        site = "legacy-europe-monitor"
+        timezone = "America/Sao_Paulo"
+      }
+    } | ConvertTo-Json -Depth 4
+
+    $response = Invoke-RestMethod `
+      -Method Post `
+      -Uri "$PinkBaseUrl/messages" `
+      -ContentType "application/json" `
+      -Headers @{ "X-Whats-Pink-Dry-Run" = "false" } `
+      -Body $body `
+      -TimeoutSec 60
+    Write-Log "Pink status sent to +55 31 98838-0196; sent=$($response.sent), failed=$($response.failed)"
+  } catch {
+    Write-Log "WARNING: Pink status notification failed: $($_.Exception.Message)"
+  }
 }
 
 function Invoke-Logged {
@@ -181,6 +308,7 @@ function Invoke-FastInflationPipeline {
   }
 }
 
+$RunStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Write-Log "Starting Europe monitor fast inflation update in $Mode mode"
 
 $MaxAttempts = 2
@@ -191,13 +319,21 @@ for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
     }
     Invoke-FastInflationPipeline
     Write-Log "Europe monitor $Mode inflation update completed"
+    $RunStopwatch.Stop()
+    Send-PinkStatus -Status "SUCESSO" -DurationSeconds ([int][math]::Round($RunStopwatch.Elapsed.TotalSeconds))
     exit 0
   } catch {
-    $Message = $_.Exception.Message
+    $FailureRecord = $_
+    $Message = $FailureRecord.Exception.Message
     Write-Log "$Mode inflation update attempt $Attempt of $MaxAttempts failed: $Message"
     if ($Attempt -ge $MaxAttempts) {
       Write-Log "Europe monitor $Mode inflation update FAILED after $MaxAttempts attempts"
-      throw
+      $RunStopwatch.Stop()
+      Send-PinkStatus `
+        -Status "FALHA" `
+        -DurationSeconds ([int][math]::Round($RunStopwatch.Elapsed.TotalSeconds)) `
+        -ErrorMessage $Message
+      throw $FailureRecord
     }
     Start-Sleep -Seconds 30
   }
