@@ -1,14 +1,15 @@
 {
   "last_updated": "2026-07-30",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_inflation_update.R",
   "source_links": 38,
   "activity_last_new": {
     "date": "2026-07-01",
     "description": "SP Global PMI: Composite, Europe, France, Germany, Manufacturing, PMI Composite, Services"
   },
   "inflation_last_new": {
-    "date": "2027-03-01",
-    "description": "ECB Data Portal: ECB Wage Tracker (Monthly official)"
-  }
+    "date": "2027-01-01",
+    "description": "European Commission Business and Consumer Surveys: EC Retail prices, 6m lag, EC Services prices, 6m lag"
+  },
+  "inflation_rows": 19890
 }
