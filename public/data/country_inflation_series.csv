@@ -9230,6 +9230,7 @@
 "2026-04-01","country_es_core_rates","es_core_yoy","Core y/y","Spain",3.242542,"left","% y/y","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
 "2026-05-01","country_es_core_rates","es_core_yoy","Core y/y","Spain",3.665235,"left","% y/y","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
 "2026-06-01","country_es_core_rates","es_core_yoy","Core y/y","Spain",3.583482,"left","% y/y","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
+"2026-07-01","country_es_core_rates","es_core_yoy","Core y/y","Spain",3.400000,"left","% y/y","INE","https://www.ine.es/dyngs/Prensa/en/adIPC0726.htm","monthly","National preliminary HICP core; 3.4% year-on-year. Replaced automatically when Eurostat FLS or FIN is available."
 "2022-01-01","country_es_core_seasonality","es_core_mom_2022","2022","Spain",-1.706906,"left","% m/m NSA","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
 "2022-02-01","country_es_core_seasonality","es_core_mom_2022","2022","Spain",0.365589,"left","% m/m NSA","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
 "2022-03-01","country_es_core_seasonality","es_core_mom_2022","2022","Spain",2.253842,"left","% m/m NSA","Eurostat HICP","https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en","monthly",
