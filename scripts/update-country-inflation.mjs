@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const countries = {
   DE: "Germany",
@@ -43,6 +43,42 @@ function valueAt(json, selection) {
 function csvCell(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const next = text[index + 1];
+    if (quoted) {
+      if (character === '"' && next === '"') {
+        field += '"';
+        index += 1;
+      } else if (character === '"') {
+        quoted = false;
+      } else {
+        field += character;
+      }
+    } else if (character === '"') {
+      quoted = true;
+    } else if (character === ",") {
+      row.push(field);
+      field = "";
+    } else if (character === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (character !== "\r") {
+      field += character;
+    }
+  }
+  if (field || row.length) rows.push([...row, field]);
+  const headers = rows.shift() || [];
+  return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header.replace(/^\uFEFF/, ""), cells[index] || ""])));
 }
 
 function addRow(rows, { date, chartId, seriesId, seriesName, country, value, unit, note = "" }) {
@@ -246,12 +282,26 @@ for (const [geo, country] of Object.entries(countries)) {
 }
 
 const keepYears = new Set(["2022", "2023", "2024", "2025", String(currentYear)]);
-const filtered = rows.filter(
+let filtered = rows.filter(
   (row) =>
     !row.chart_id.endsWith("_seasonality") ||
     row.date.startsWith("2000-") ||
     keepYears.has(row.date.slice(0, 4)),
 );
+
+// National preliminary HICP releases can precede Eurostat's FLS feed by a
+// short interval. Retain those explicit observations until Eurostat supplies
+// the same country/series/month, at which point the Eurostat value replaces it.
+const existing = parseCsv(await readFile("public/data/country_inflation_series.csv", "utf8").catch(() => ""));
+const generatedKeys = new Set(filtered.map((row) => `${row.series_id}|${row.date}`));
+filtered = [
+  ...filtered,
+  ...existing.filter(
+    (row) =>
+      row.source_note.includes("National preliminary HICP") &&
+      !generatedKeys.has(`${row.series_id}|${row.date}`),
+  ),
+];
 
 const headers = Object.keys(filtered[0]);
 const csv = [
