@@ -1579,9 +1579,15 @@ read_eurostat_hicp_rows <- function() {
     stringsAsFactors = FALSE
   )
 
-  combined <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+  history <- read_hicp_history_to_2025(getwd(), definitions)
+  latest <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
     read_eurostat_teicp_rows(definitions[i, ])
   }))
+  latest$date <- as.Date(latest$date)
+  latest <- latest[latest$date >= as.Date("2026-01-01"), ]
+  latest$date <- format(latest$date, "%Y-%m-%d")
+
+  combined <- rbind(history, latest)
   combined$date <- as.Date(combined$date)
   combined <- combined[order(combined$series_id, combined$date), ]
   combined <- combined[!duplicated(combined[, c("series_id", "date")], fromLast = TRUE), ]

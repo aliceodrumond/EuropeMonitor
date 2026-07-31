@@ -8,8 +8,8 @@
     "description": "Eurostat NAMQ_10_GDP: GDP %QoQ sa, GDP %QoQ SA"
   },
   "inflation_last_new": {
-    "date": "2026-07-01",
-    "description": "ECB Data Portal: % HoH SAAR, % MoM SAAR, % QoQ SAAR"
+    "date": "2025-07-01",
+    "description": "Eurostat HICP: Core HICP, HICP - Non-energy industrial goods, HICP - Services, HICP inflation rate"
   },
-  "inflation_rows": 18781
+  "inflation_rows": 19929
 }
