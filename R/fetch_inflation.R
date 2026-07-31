@@ -1563,12 +1563,17 @@ read_latest_hicp_release_overrides <- function() {
     return(data.frame())
   }
 
+  cleaned <- gsub("<[^>]+>", " ", article_html)
+  cleaned <- gsub("&nbsp;|&#160;", " ", cleaned)
+  cleaned <- gsub("\\s+", " ", cleaned)
+  cleaned <- trimws(cleaned)
+
   month_match <- regexec(
-    "<h2[^>]*class=\"eui-u-type-heading-2\"[^>]*>([A-Za-z]+) ([0-9]{4})</h2>",
-    article_html,
+    "Euro indicators [0-9]{1,2} [A-Za-z]+ [0-9]{4} Next release: [0-9]{1,2} [A-Za-z]+ [0-9]{4} ([A-Za-z]+) ([0-9]{4}) Annual inflation ",
+    cleaned,
     perl = TRUE
   )
-  month_captures <- regmatches(article_html, month_match)[[1]]
+  month_captures <- regmatches(cleaned, month_match)[[1]]
   if (length(month_captures) < 3) {
     return(data.frame())
   }
@@ -1580,11 +1585,6 @@ read_latest_hicp_release_overrides <- function() {
   if (is.na(release_date)) {
     return(data.frame())
   }
-
-  cleaned <- gsub("<[^>]+>", " ", article_html)
-  cleaned <- gsub("&nbsp;|&#160;", " ", cleaned)
-  cleaned <- gsub("\\s+", " ", cleaned)
-  cleaned <- trimws(cleaned)
 
   row_map <- list(
     hicp_headline = "All-items HICP",
