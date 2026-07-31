@@ -1535,8 +1535,113 @@ read_eurostat_hicp_rows <- function() {
   combined$date <- as.Date(combined$date)
   combined <- combined[order(combined$series_id, combined$date), ]
   combined <- combined[!duplicated(combined[, c("series_id", "date")], fromLast = TRUE), ]
+  combined <- apply_latest_hicp_release_overrides(combined)
   combined$date <- format(combined$date, "%Y-%m-%d")
   combined
+}
+
+read_latest_hicp_release_overrides <- function() {
+  news_url <- "https://ec.europa.eu/eurostat/news/euro-indicators"
+  news_html <- read_url_text(news_url, timeout_seconds = 45)
+  if (!nzchar(news_html)) {
+    return(data.frame())
+  }
+
+  link_match <- regexec(
+    "href=\"(https://ec\\.europa\\.eu/eurostat/product\\?code=[^\"]+)\"[^>]*>Annual inflation [^<]+</a>",
+    news_html,
+    perl = TRUE
+  )
+  captures <- regmatches(news_html, link_match)[[1]]
+  if (length(captures) < 2) {
+    return(data.frame())
+  }
+
+  article_url <- captures[[2]]
+  article_html <- read_url_text(article_url, timeout_seconds = 45)
+  if (!nzchar(article_html)) {
+    return(data.frame())
+  }
+
+  month_match <- regexec(
+    "<h2[^>]*class=\"eui-u-type-heading-2\"[^>]*>([A-Za-z]+) ([0-9]{4})</h2>",
+    article_html,
+    perl = TRUE
+  )
+  month_captures <- regmatches(article_html, month_match)[[1]]
+  if (length(month_captures) < 3) {
+    return(data.frame())
+  }
+
+  release_date <- tryCatch(
+    as.Date(sprintf("01 %s %s", month_captures[[2]], month_captures[[3]]), format = "%d %B %Y"),
+    error = function(error) as.Date(NA)
+  )
+  if (is.na(release_date)) {
+    return(data.frame())
+  }
+
+  cleaned <- gsub("<[^>]+>", " ", article_html)
+  cleaned <- gsub("&nbsp;|&#160;", " ", cleaned)
+  cleaned <- gsub("\\s+", " ", cleaned)
+  cleaned <- trimws(cleaned)
+
+  row_map <- list(
+    hicp_headline = "All-items HICP",
+    hicp_core = "energy, food, alcohol & tobacco",
+    core_goods = "Non-energy industrial goods",
+    core_services = "Services"
+  )
+
+  overrides <- lapply(names(row_map), function(series_id) {
+    label <- row_map[[series_id]]
+    pattern <- sprintf("%s ([0-9\\.r\\- ]+?) (?=All-items excluding:|energy, unprocessed food|energy, seasonal food|tobacco|Food, alcohol & tobacco|processed food, alcohol & tobacco|unprocessed food|Energy|Non-energy industrial goods|Services|r revised Source dataset)", label)
+    match <- regexec(pattern, cleaned, perl = TRUE)
+    captures <- regmatches(cleaned, match)[[1]]
+    if (length(captures) < 2) {
+      return(data.frame())
+    }
+
+    numeric_tokens <- regmatches(captures[[2]], gregexpr("-?[0-9]+(?:\\.[0-9]+)?", captures[[2]], perl = TRUE))[[1]]
+    values <- suppressWarnings(as.numeric(numeric_tokens))
+    values <- values[is.finite(values)]
+    if (length(values) < 3) {
+      return(data.frame())
+    }
+
+    data.frame(
+      date = release_date,
+      series_id = series_id,
+      value = values[length(values) - 1],
+      source = "Eurostat HICP release",
+      source_url = article_url,
+      source_note = "Latest official Eurostat annual inflation release table override.",
+      stringsAsFactors = FALSE
+    )
+  })
+
+  do.call(rbind, overrides)
+}
+
+apply_latest_hicp_release_overrides <- function(rows) {
+  overrides <- read_latest_hicp_release_overrides()
+  if (is.null(overrides) || !nrow(overrides)) {
+    return(rows)
+  }
+
+  rows$date <- as.Date(rows$date)
+  for (i in seq_len(nrow(overrides))) {
+    override <- overrides[i, ]
+    target <- rows$series_id == override$series_id & rows$date == override$date
+    if (!any(target)) {
+      next
+    }
+    rows$value[target] <- override$value
+    rows$source[target] <- override$source
+    rows$source_url[target] <- override$source_url
+    rows$source_note[target] <- override$source_note
+  }
+  rows
 }
 
 read_hicp_history_to_2025 <- function(project_root, definitions) {
