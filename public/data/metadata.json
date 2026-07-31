@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-07-30",
+  "last_updated": "2026-07-31",
   "data_mode": "source_linked_mock_values",
   "generated_by": "R/run_inflation_flash_fast_update.R:official_ecb_sa",
   "source_links": 38,
