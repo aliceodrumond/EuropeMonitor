@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-07-31",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_flash_fast_update.R:official_ecb_sa",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 38,
   "activity_last_new": {
-    "date": "2026-04-01",
-    "description": "Eurostat NAMQ_10_GDP: GDP %QoQ sa, GDP %QoQ SA"
+    "date": "2026-07-25",
+    "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
-    "date": "2025-07-01",
-    "description": "Eurostat HICP: Core HICP, HICP - Non-energy industrial goods, HICP - Services, HICP inflation rate"
-  },
-  "inflation_rows": 19929
+    "date": "2026-07-01",
+    "description": "Eurostat HICP / ECB Data Portal: EU HICP NEIG %QoQ SAAR 3MMA"
+  }
 }
