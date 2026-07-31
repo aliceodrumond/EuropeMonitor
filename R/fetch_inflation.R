@@ -568,19 +568,22 @@ build_inflation_ecb_sa_fast_series <- function(project_root) {
   }
 
   previous <- utils::read.csv(previous_path, stringsAsFactors = FALSE, check.names = FALSE)
+  hicp <- read_eurostat_hicp_rows()
+  headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
+  components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   definitions <- hicp_rate_definitions()
-  official <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
-    build_hicp_official_sa_rows(definitions[i, ])
-  }))
-  if (is.null(official) || !nrow(official)) {
-    stop("ECB Data Portal returned no official seasonally adjusted HICP rows")
-  }
-
+  hicp_rates <- read_hicp_rate_chart_rows(hicp, include_ecb_sa = TRUE)
+  hicp_seasonality <- read_hicp_seasonality_rows()
   official_series_ids <- unique(c(
     definitions$hoh_series_id,
     definitions$qoq_series_id,
     definitions$mom_series_id
   ))
+  official <- hicp_rates[hicp_rates$series_id %in% official_series_ids, , drop = FALSE]
+  if (is.null(official) || !nrow(official)) {
+    stop("ECB Data Portal returned no official seasonally adjusted HICP rows")
+  }
+
   missing_series <- setdiff(official_series_ids, unique(official$series_id))
   if (length(missing_series)) {
     stop(sprintf(
@@ -589,8 +592,17 @@ build_inflation_ecb_sa_fast_series <- function(project_root) {
     ))
   }
 
-  kept <- previous[!previous$series_id %in% official_series_ids, , drop = FALSE]
-  inflation <- order_fast_inflation_rows(apply_series_catalog(rbind(kept, official), catalog))
+  replacement_charts <- c(
+    definitions$chart_id,
+    definitions$seasonality_chart_id,
+    "hicp_headline_core",
+    "hicp_components"
+  )
+  kept <- previous[!previous$chart_id %in% replacement_charts, , drop = FALSE]
+  inflation <- order_fast_inflation_rows(apply_series_catalog(
+    rbind(kept, headline_core, components, hicp_rates, hicp_seasonality),
+    catalog
+  ))
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
 }
@@ -1567,15 +1579,9 @@ read_eurostat_hicp_rows <- function() {
     stringsAsFactors = FALSE
   )
 
-  history <- read_hicp_history_to_2025(getwd(), definitions)
-  latest <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+  combined <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
     read_eurostat_teicp_rows(definitions[i, ])
   }))
-  latest$date <- as.Date(latest$date)
-  latest <- latest[latest$date >= as.Date("2026-01-01"), ]
-  latest$date <- format(latest$date, "%Y-%m-%d")
-
-  combined <- rbind(history, latest)
   combined$date <- as.Date(combined$date)
   combined <- combined[order(combined$series_id, combined$date), ]
   combined <- combined[!duplicated(combined[, c("series_id", "date")], fromLast = TRUE), ]
