@@ -1,0 +1,50 @@
+[
+  {
+    "date": "2026-07-01",
+    "suffix": "ea",
+    "composite": 52.0,
+    "manufacturing": 51.9,
+    "services": 51.7,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-07-01",
+    "suffix": "de",
+    "composite": 51.3,
+    "manufacturing": 52.2,
+    "services": 49.8,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-07-01",
+    "suffix": "fr",
+    "composite": 49.4,
+    "manufacturing": 49.8,
+    "services": 49.6,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-07-01",
+    "suffix": "es",
+    "composite": 56.5,
+    "manufacturing": 50.2,
+    "services": 58.3,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-07-01",
+    "suffix": "it",
+    "composite": 52.5,
+    "manufacturing": 51.3,
+    "services": 52.5,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-07-01",
+    "suffix": "uk",
+    "composite": 52.2,
+    "manufacturing": 51.9,
+    "services": 52.1,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  }
+]

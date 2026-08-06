@@ -643,6 +643,7 @@ read_official_pmi_workbook <- function(project_root) {
   if (!file.exists(workbook_path)) stop("Missing official PMI workbook: data/raw/pmi_official_history.xlsx")
   if (!requireNamespace("openxlsx", quietly = TRUE)) stop("Package 'openxlsx' is required to import official PMI history")
   workbook_path <- readable_pmi_workbook_path(workbook_path, root_workbook_path)
+  final_overrides <- read_pmi_final_overrides(project_root)
   online_flash <- fetch_spglobal_flash_pmi_values(project_root)
 
   definitions <- list(
@@ -673,6 +674,7 @@ read_official_pmi_workbook <- function(project_root) {
         values[[investing_column]] <- NA_real_
       }
     }
+    values <- merge_final_pmi_overrides(values, final_overrides, definition$value_column, countries)
     values <- merge_online_flash_pmi(values, online_flash, definition$value_column, countries)
     if (identical(definition$value_column, "services")) {
       values <- merge_investing_final_pmi(values, fetch_investing_services_pmi_values(), countries, definition$value_column)
@@ -699,6 +701,44 @@ read_official_pmi_workbook <- function(project_root) {
     })
     do.call(rbind, frames)
   })
+}
+
+read_pmi_final_overrides <- function(project_root) {
+  path <- file.path(project_root, "data/raw/pmi_final_overrides.json")
+  if (!file.exists(path)) {
+    return(empty_flash_pmi_values())
+  }
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("Package 'jsonlite' is required to import PMI final overrides")
+  }
+  values <- jsonlite::fromJSON(path, simplifyDataFrame = TRUE)
+  required <- c("date", "suffix", "composite", "manufacturing", "services")
+  missing <- setdiff(required, names(values))
+  if (length(missing)) {
+    stop(sprintf("Missing columns in PMI final overrides: %s", paste(missing, collapse = ", ")))
+  }
+  values$date <- as.Date(values$date)
+  values
+}
+
+merge_final_pmi_overrides <- function(values, overrides, value_column, countries) {
+  if (!nrow(overrides)) {
+    return(values)
+  }
+  for (i in seq_len(nrow(overrides))) {
+    row <- overrides[i, ]
+    country <- countries[countries$suffix == row$suffix, ]
+    if (!nrow(country) || is.na(row[[value_column]]) || is.na(row$date)) {
+      next
+    }
+    if (!row$date %in% values$date) {
+      values[nrow(values) + 1, ] <- NA
+      values$date[nrow(values)] <- row$date
+    }
+    idx <- which(values$date == row$date)[[1]]
+    values[[country$column[[1]]]][idx] <- row[[value_column]]
+  }
+  values[order(values$date), ]
 }
 
 readable_pmi_workbook_path <- function(workbook_path, fallback_path) {
@@ -772,12 +812,12 @@ fetch_investing_services_pmi_values <- function() {
   releases <- data.frame(
     suffix = c("ea", "de", "fr", "es", "uk", "it"),
     url = c(
-      "https://www.investing.com/economic-calendar/european-services-purchasing-managers-index-%28pmi%29-272",
-      "https://www.investing.com/economic-calendar/germany-services-purchasing-managers-index-%28pmi%29-140",
+      "https://www.investing.com/economic-calendar/european-services-pmi-272",
+      "https://www.investing.com/economic-calendar/german-services-pmi-140",
       "https://www.investing.com/economic-calendar/french-services-pmi-341",
-      "https://www.investing.com/economic-calendar/spain-services-purchasing-managers-index-%28pmi%29-668",
-      "https://www.investing.com/economic-calendar/united-kingdom-services-purchasing-managers-index-%28pmi%29-274",
-      "https://www.investing.com/economic-calendar/italy-services-purchasing-managers-index-%28pmi%29-833"
+      "https://www.investing.com/economic-calendar/spanish-services-pmi-668",
+      "https://www.investing.com/economic-calendar/services-pmi-274",
+      "https://www.investing.com/economic-calendar/italian-services-pmi-833"
     ),
     stringsAsFactors = FALSE
   )
