@@ -1045,6 +1045,12 @@ read_official_sentix_rows <- function(project_root) {
     values <- rbind(values, latest[, c("date", "sentix_ea")])
   }
 
+  overrides <- read_sentix_overrides(project_root)
+  if (nrow(overrides)) {
+    values <- values[!values$date %in% overrides$date, ]
+    values <- rbind(values, overrides)
+  }
+
   values <- values[order(values$date), ]
   make_series_frame(
     values$date,
@@ -1058,6 +1064,25 @@ read_official_sentix_rows <- function(project_root) {
     source = "Sentix / Investing.com",
     source_url = "https://www.investing.com/economic-calendar/sentix-investor-confidence-268"
   )
+}
+
+read_sentix_overrides <- function(project_root) {
+  path <- file.path(project_root, "data/raw/sentix_overrides.json")
+  if (!file.exists(path)) {
+    return(data.frame(date = as.Date(character()), sentix_ea = numeric()))
+  }
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("Package 'jsonlite' is required to import Sentix overrides")
+  }
+  values <- jsonlite::fromJSON(path, simplifyDataFrame = TRUE)
+  required <- c("date", "sentix_ea")
+  missing <- setdiff(required, names(values))
+  if (length(missing)) {
+    stop(sprintf("Missing columns in Sentix overrides: %s", paste(missing, collapse = ", ")))
+  }
+  values$date <- as.Date(values$date)
+  values$sentix_ea <- as.numeric(values$sentix_ea)
+  values[!is.na(values$date) & !is.na(values$sentix_ea), required]
 }
 
 fetch_latest_sentix_from_investing <- function() {
