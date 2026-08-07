@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-08-06",
+  "last_updated": "2026-08-07",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_inflation_flash_fast_update.R:official_ecb_sa",
   "source_links": 38,
   "activity_last_new": {
     "date": "2026-08-02",
@@ -10,5 +10,6 @@
   "inflation_last_new": {
     "date": "2026-07-01",
     "description": "Federal Statistical Office: % YoY NSA, % HoH SAAR, % MoM SAAR, % QoQ SAAR"
-  }
+  },
+  "inflation_rows": 19955
 }
