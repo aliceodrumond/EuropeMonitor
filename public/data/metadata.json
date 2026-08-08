@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-08-08",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 38,
   "activity_last_new": {
-    "date": "2026-08-01",
-    "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
+    "date": "2026-07-01",
+    "description": "ZEW Financial Market Survey: Germany ZEW"
   },
   "inflation_last_new": {
     "date": "2026-07-01",
     "description": "Federal Statistical Office: % YoY NSA, % HoH SAAR, % MoM SAAR, % QoQ SAAR"
-  },
-  "speaker_rows": 18
+  }
 }
