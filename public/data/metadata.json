@@ -1,7 +1,7 @@
 {
   "last_updated": "2026-08-14",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
+  "generated_by": "R/run_speakers_update.R",
   "source_links": 38,
   "activity_last_new": {
     "date": "2026-08-08",
@@ -11,5 +11,6 @@
     "date": "2026-06-30",
     "description": "ECB Survey of Professional Forecasters: SPF LT"
   },
-  "inflation_rows": 19955
+  "inflation_rows": 19955,
+  "speaker_rows": 18
 }
