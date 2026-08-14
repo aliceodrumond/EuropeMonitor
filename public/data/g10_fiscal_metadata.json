@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-08-14T20:51:16.191Z",
+  "imf_vintage": "April 2026",
+  "coverage": "G7 core MVP",
+  "history_start": 1980,
+  "history_end": 2031,
+  "sources": {
+    "imf_weo": "https://data.imf.org/Datasets/WEO",
+    "imf_weo_download": "https://data.imf.org/-/media/iData/External-Storage/Documents/2F78EE59F79143A7921E5E203D3AAA80/en/WEOApr2026all.xlsx?download=1",
+    "imf_fiscal_monitor": "https://www.imf.org/external/datamapper/datasets/FM",
+    "oecd_cofog": "https://data-explorer.oecd.org/vis?df[ag]=OECD.GOV.GIP&df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_GOV_COFOG@DF_GOV_COFOG_2025",
+    "sipri": "https://www.sipri.org/databases/milex",
+    "statistics_canada_2019": "https://www150.statcan.gc.ca/n1/daily-quotidien/201127/dq201127a-eng.htm",
+    "statistics_canada_2024": "https://www150.statcan.gc.ca/n1/pub/11-627-m/11-627-m2025056-eng.htm"
+  },
+  "notes": [
+    "No interpolation is applied to missing net-debt or historical fiscal series.",
+    "The 2025 expenditure composition is an estimate using the latest available COFOG shares.",
+    "G7 aggregates in the historical charts use the official IMF Major Advanced Economies series."
+  ]
+}

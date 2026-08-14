@@ -9,6 +9,7 @@
     "dev": "vinext dev",
     "build": "node scripts/build-static-pages.mjs",
     "build:sites": "node scripts/build-static-pages.mjs && node scripts/postbuild-sites.mjs",
+    "update:fiscal-g10": "node scripts/update-g10-fiscal.mjs",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
     "db:generate": "drizzle-kit generate"
@@ -30,6 +31,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "exceljs": "4.4.0",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",

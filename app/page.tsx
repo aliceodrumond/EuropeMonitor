@@ -138,6 +138,37 @@ type FiscalSpreadRow = {
   time: number;
 };
 
+type G10FiscalRow = {
+  scopeCode: string;
+  scopeName: string;
+  year: number;
+  seriesId: string;
+  seriesName: string;
+  value: number;
+  status: "actual" | "estimate" | "projection";
+};
+
+type G10CompositionRow = {
+  scopeCode: string;
+  scopeName: string;
+  year: number;
+  componentId: string;
+  componentName: string;
+  value: number;
+  status: "actual" | "estimate";
+};
+
+const g10Scopes = [
+  ["MAE", "G7 aggregate"], ["USA", "United States"], ["JPN", "Japan"],
+  ["DEU", "Germany"], ["FRA", "France"], ["GBR", "United Kingdom"],
+  ["ITA", "Italy"], ["CAN", "Canada"],
+] as const;
+
+const g10ScopeColors: Record<string, string> = {
+  MAE: "#191919", USA: "#204f86", JPN: "#a83f39", DEU: "#6c5f8d",
+  FRA: "#3f7f52", GBR: "#c47a20", ITA: "#11675f", CAN: "#8c7b57",
+};
+
 const fiscalYears = ["2025", "2026", "2027"];
 const fiscalCountries: FiscalCountry[] = [
   { id: "fr", name: "France", flag: "FR", signal: "risk", thesis: "The euro area's live fiscal-risk story: persistent primary deficits and political execution risk keep OATs under scrutiny.", balance: [-5.1,-5.1,-5.7], debt: [115.6,118.1,120.2], primary: -3.2, interest: 2.1, issuance: "€310bn net M/L", spread: 74, maturity: "8.4 years", ratings: "Aa3 / AA− / AA−", rules: "EDP · 7-year adjustment path" },
@@ -811,16 +842,19 @@ export default function Home() {
       )}
 
       <p className="footer-note">
-        Data mode: {metadata.data_mode ?? "initial mock"}. Data contract:
-        CSVs in public/data.
+        {activeTab === "fiscal"
+          ? "Fiscal data: IMF WEO and Fiscal Monitor, OECD COFOG, SIPRI and Statistics Canada."
+          : `Data mode: ${metadata.data_mode ?? "initial mock"}. Data contract: CSVs in public/data.`}
       </p>
     </main>
   );
 }
 
 function FiscalMonitor() {
-  const [selectedId, setSelectedId] = useState("fr");
+  const [selectedId, setSelectedId] = useState("g10");
   const [spreadHistory, setSpreadHistory] = useState<FiscalSpreadRow[]>([]);
+  const [g10History, setG10History] = useState<G10FiscalRow[]>([]);
+  const [g10Composition, setG10Composition] = useState<G10CompositionRow[]>([]);
   const selected = fiscalCountries.find((country) => country.id === selectedId) ?? fiscalCountries[0];
   const maxSpread = Math.max(...fiscalCountries.map((country) => country.spread));
 
@@ -836,6 +870,27 @@ function FiscalMonitor() {
     }).catch(() => setSpreadHistory([]));
   }, []);
 
+  useEffect(() => {
+    Promise.all([
+      fetchText("/data/g10_fiscal_history.csv"),
+      fetchText("/data/g10_fiscal_composition.csv"),
+    ]).then(([historyText, compositionText]) => {
+      setG10History(parseCsv(historyText).map((row) => ({
+        scopeCode: row.scope_code, scopeName: row.scope_name, year: Number(row.year),
+        seriesId: row.series_id, seriesName: row.series_name, value: Number(row.value),
+        status: row.status as G10FiscalRow["status"],
+      })).filter((row) => Number.isFinite(row.year) && Number.isFinite(row.value)));
+      setG10Composition(parseCsv(compositionText).map((row) => ({
+        scopeCode: row.scope_code, scopeName: row.scope_name, year: Number(row.year),
+        componentId: row.component_id, componentName: row.component_name, value: Number(row.value),
+        status: row.status as G10CompositionRow["status"],
+      })).filter((row) => Number.isFinite(row.year) && Number.isFinite(row.value)));
+    }).catch(() => {
+      setG10History([]);
+      setG10Composition([]);
+    });
+  }, []);
+
   return (
     <section className="fiscal-monitor">
       <div className="fiscal-hero">
@@ -848,6 +903,9 @@ function FiscalMonitor() {
       </div>
 
       <div className="country-rail" role="tablist" aria-label="Country selection">
+        <button aria-selected={selectedId === "g10"} className="country-chip g10-chip" data-active={selectedId === "g10"} onClick={() => setSelectedId("g10")} role="tab" type="button">
+          <span className="country-code">G10</span><span>G10 Monitor</span><i data-signal="supply" />
+        </button>
         {fiscalCountries.map((country) => (
           <button aria-selected={selected.id === country.id} className="country-chip" data-active={selected.id === country.id} key={country.id} onClick={() => setSelectedId(country.id)} role="tab" type="button">
             <span className="country-code">{country.flag}</span><span>{country.name}</span><i data-signal={country.signal} />
@@ -855,6 +913,7 @@ function FiscalMonitor() {
         ))}
       </div>
 
+      {selectedId === "g10" ? <G10FiscalMonitor composition={g10Composition} history={g10History} /> : <>
       <div className="fiscal-layout">
         <article className="fiscal-country-card">
           <div className="fiscal-country-head"><div><p className="panel-kicker">Country view</p><h3>{selected.name}</h3></div><span className="signal-label" data-signal={selected.signal}>{selected.signal}</span></div>
@@ -870,7 +929,7 @@ function FiscalMonitor() {
             <div className="trajectory-row"><span>Balance / GDP</span>{selected.balance.map((value, index) => <strong className={value < -3 ? "negative" : value >= 0 ? "positive" : ""} key={index}>{value.toFixed(1)}%</strong>)}</div>
             <div className="trajectory-row"><span>Debt / GDP</span>{selected.debt.map((value, index) => <strong key={index}>{value.toFixed(1)}%</strong>)}</div>
           </div>
-          <div className="fiscal-details"><div><span>Ratings · Moody's / S&amp;P / Fitch</span><strong>{selected.ratings}</strong></div><div><span>Fiscal framework</span><strong>{selected.rules}</strong></div><div><span>Average maturity</span><strong>{selected.maturity}</strong></div></div>
+          <div className="fiscal-details"><div><span>Ratings · Moody&apos;s / S&amp;P / Fitch</span><strong>{selected.ratings}</strong></div><div><span>Fiscal framework</span><strong>{selected.rules}</strong></div><div><span>Average maturity</span><strong>{selected.maturity}</strong></div></div>
         </article>
 
         <article className="fiscal-spread-card">
@@ -887,8 +946,122 @@ function FiscalMonitor() {
         <div className="fiscal-table-wrap"><table className="fiscal-table"><thead><tr><th>Country</th><th>2026 balance</th><th>2026 debt</th><th>Primary</th><th>Interest</th><th>Issuance</th><th>10Y spread</th><th>EU / national rule</th></tr></thead><tbody>{fiscalCountries.map((country) => <tr data-selected={country.id === selected.id} key={country.id} onClick={() => setSelectedId(country.id)}><td><i data-signal={country.signal} />{country.name}</td><td>{country.balance[1].toFixed(1)}%</td><td>{country.debt[1].toFixed(1)}%</td><td>{country.primary.toFixed(1)}%</td><td>{country.interest.toFixed(1)}%</td><td>{country.issuance}</td><td>{country.id === "de" ? "—" : `${country.spread}bp`}</td><td>{country.rules}</td></tr>)}</tbody></table></div>
         <p className="source-note">Sources: European Commission Spring 2026 forecast; national debt-management offices; Eurostat EDP notifications; rating agencies. UK figures follow the OBR/D​​MO framework. Primary balances, interest costs, ratings, maturities and market spreads use latest available or indicative snapshots and retain their own reference periods.</p>
       </article>
+      </>}
     </section>
   );
+}
+
+function G10FiscalMonitor({ composition, history }: { composition: G10CompositionRow[]; history: G10FiscalRow[] }) {
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["MAE"]);
+  const [startYear, setStartYear] = useState(1980);
+  const toggleScope = (code: string) => {
+    setSelectedScopes((current) => {
+      if (current.includes(code)) return current.length === 1 ? current : current.filter((item) => item !== code);
+      return current.length < 2 ? [...current, code] : [current[0], code];
+    });
+  };
+  const charts = [
+    { title: "General government fiscal balances", kicker: "Fiscal stance", first: "overall_balance", second: "primary_balance", firstLabel: "Overall balance", secondLabel: "Primary balance", zero: true },
+    { title: "General government revenue and primary expenditure", kicker: "Size of government", first: "revenue", second: "primary_expenditure", firstLabel: "Revenue", secondLabel: "Primary expenditure" },
+    { title: "General government gross and net debt", kicker: "Debt stock", first: "gross_debt", second: "net_debt", firstLabel: "Gross debt", secondLabel: "Net debt" },
+  ];
+
+  return <section className="g10-monitor">
+    <div className="g10-intro">
+      <div><p className="panel-kicker">G10 Fiscal Monitor</p><h2>Fiscal trajectories since the pandemic</h2><p>Long-run general-government balances, spending and debt. The first release covers the G7 core with an official IMF aggregate.</p></div>
+      <span className="g10-badge">G7 core · MVP</span>
+    </div>
+    <div className="g10-toolbar">
+      <div className="g10-scope-picker" aria-label="G7 country comparison">
+        {g10Scopes.map(([code, name]) => <button aria-pressed={selectedScopes.includes(code)} data-active={selectedScopes.includes(code)} key={code} onClick={() => toggleScope(code)} type="button"><i style={{ background: g10ScopeColors[code] }} />{name}</button>)}
+      </div>
+      <div className="g10-range-picker" aria-label="History range">
+        {[{ year: 1980, label: "1980–2031" }, { year: 2010, label: "2010–2031" }, { year: 2019, label: "2019–2031" }].map((option) => <button data-active={startYear === option.year} key={option.year} onClick={() => setStartYear(option.year)} type="button">{option.label}</button>)}
+      </div>
+    </div>
+    <p className="g10-selection-note">Select up to two economies. Solid/dashed styles distinguish the two measures; lighter forecast segments show IMF estimates and projections.</p>
+    <div className="g10-chart-grid">
+      {charts.map((chart) => <G10LineChart config={chart} key={chart.title} rows={history} scopes={selectedScopes} startYear={startYear} />)}
+      <G10CompositionChart rows={composition} scopes={selectedScopes} />
+    </div>
+    <div className="g10-method-note"><strong>Methodology.</strong> IMF April 2026 vintage. Primary expenditure equals revenue minus the primary balance. Net-debt gaps are not interpolated. The 2025 expenditure mix is an estimate using the latest available OECD/Statistics Canada functional shares, SIPRI military spending and IMF interest costs.</div>
+  </section>;
+}
+
+function G10LineChart({ config, rows, scopes, startYear }: { config: { title: string; kicker: string; first: string; second: string; firstLabel: string; secondLabel: string; zero?: boolean }; rows: G10FiscalRow[]; scopes: string[]; startYear: number }) {
+  const width = 720, height = 330, margin = { top: 24, right: 20, bottom: 38, left: 54 };
+  const innerWidth = width - margin.left - margin.right, innerHeight = height - margin.top - margin.bottom;
+  const chartRows = rows.filter((row) => scopes.includes(row.scopeCode) && row.year >= startYear && [config.first, config.second].includes(row.seriesId));
+  if (!chartRows.length) return <article className="g10-chart-card"><p className="panel-kicker">{config.kicker}</p><h3>{config.title}</h3><p className="source-note">Waiting for fiscal-history data.</p></article>;
+  const values = chartRows.map((row) => row.value);
+  let min = Math.min(...values), max = Math.max(...values);
+  if (config.zero) { min = Math.min(min, 0); max = Math.max(max, 0); }
+  const padding = Math.max(1, (max - min) * .1); min -= padding; max += padding;
+  const scaleX = (year: number) => margin.left + (year - startYear) / (2031 - startYear) * innerWidth;
+  const scaleY = (value: number) => margin.top + (1 - (value - min) / (max - min)) * innerHeight;
+  const yTicks = Array.from({ length: 5 }, (_, index) => min + (max - min) * index / 4);
+  const xTickCandidates = startYear === 1980 ? [1980, 1990, 2000, 2010, 2020, 2031] : startYear === 2010 ? [2010, 2015, 2020, 2025, 2031] : [2019, 2021, 2023, 2025, 2027, 2031];
+  const makePath = (points: G10FiscalRow[]) => points.map((point, index) => `${index === 0 || point.year - points[index - 1].year > 1 ? "M" : "L"}${scaleX(point.year).toFixed(2)},${scaleY(point.value).toFixed(2)}`).join(" ");
+  const plotted = scopes.flatMap((scopeCode) => [config.first, config.second].map((seriesId, seriesIndex) => {
+    const points = chartRows.filter((row) => row.scopeCode === scopeCode && row.seriesId === seriesId).sort((a, b) => a.year - b.year);
+    const actual = points.filter((point) => point.status === "actual");
+    const forecast = points.filter((point) => point.status !== "actual");
+    const lastActual = actual.at(-1);
+    return { scopeCode, seriesId, seriesIndex, points, actual, forecast: lastActual && forecast.length ? [lastActual, ...forecast] : forecast };
+  }));
+
+  return <article className="g10-chart-card">
+    <div className="g10-chart-head"><div><p className="panel-kicker">{config.kicker}</p><h3>{config.title}</h3></div><span>% of GDP</span></div>
+    <div className="g10-metric-legend"><span><i />{config.firstLabel}</span><span><i data-dashed="true" />{config.secondLabel}</span></div>
+    <svg aria-label={`${config.title}, percent of GDP`} role="img" viewBox={`0 0 ${width} ${height}`}>
+      <rect className="g10-pandemic-band" x={scaleX(2020)} y={margin.top} width={Math.max(0, scaleX(2022) - scaleX(2020))} height={innerHeight} />
+      <rect className="g10-forecast-band" x={scaleX(2025)} y={margin.top} width={Math.max(0, scaleX(2031) - scaleX(2025))} height={innerHeight} />
+      {yTicks.map((tick) => <g key={tick}><line className="grid-line" x1={margin.left} x2={width - margin.right} y1={scaleY(tick)} y2={scaleY(tick)} /><text textAnchor="end" x={margin.left - 8} y={scaleY(tick) + 4}>{tick.toFixed(0)}</text></g>)}
+      {xTickCandidates.map((year) => <text key={year} textAnchor="middle" x={scaleX(year)} y={height - 10}>{year}</text>)}
+      {config.zero && min < 0 && max > 0 ? <line className="g10-zero" x1={margin.left} x2={width - margin.right} y1={scaleY(0)} y2={scaleY(0)} /> : null}
+      <text className="g10-zone-label" x={scaleX(2020) + 5} y={margin.top + 13}>pandemic</text><text className="g10-zone-label" x={scaleX(2025) + 5} y={margin.top + 13}>estimate / projection</text>
+      {plotted.map((series) => <g key={`${series.scopeCode}-${series.seriesId}`}>
+        {series.actual.length ? <path className="g10-line" d={makePath(series.actual)} stroke={g10ScopeColors[series.scopeCode]} strokeDasharray={series.seriesIndex ? "7 5" : undefined} /> : null}
+        {series.forecast.length ? <path className="g10-line g10-line-forecast" d={makePath(series.forecast)} stroke={g10ScopeColors[series.scopeCode]} strokeDasharray={series.seriesIndex ? "9 4 2 4" : "2 4"} /> : null}
+        {series.points.map((point) => <circle className="g10-hit" cx={scaleX(point.year)} cy={scaleY(point.value)} key={point.year} r="7"><title>{`${point.scopeName} · ${point.seriesName} · ${point.year}: ${point.value.toFixed(1)}% (${point.status})`}</title></circle>)}
+      </g>)}
+    </svg>
+    <div className="g10-scope-legend">{scopes.map((code) => <span key={code}><i style={{ background: g10ScopeColors[code] }} />{g10Scopes.find(([scope]) => scope === code)?.[1]}</span>)}</div>
+    <p className="source-note">Source: <a href="https://www.imf.org/external/datamapper/datasets/FM" rel="noreferrer" target="_blank">IMF Fiscal Monitor</a> and <a href="https://data.imf.org/Datasets/WEO" rel="noreferrer" target="_blank">WEO</a>, April 2026 vintage. Missing observations are left blank.</p>
+  </article>;
+}
+
+function G10CompositionChart({ rows, scopes }: { rows: G10CompositionRow[]; scopes: string[] }) {
+  const width = 720, height = 330, margin = { top: 24, right: 20, bottom: 54, left: 54 };
+  const components = [
+    ["mandatory_proxy", "Social protection + health", "#204f86"],
+    ["other_primary", "Other primary", "#b8b3a7"],
+    ["military", "Military", "#a83f39"],
+    ["interest", "Interest", "#c47a20"],
+  ] as const;
+  const bars = scopes.flatMap((scopeCode) => [2019, 2025].map((year) => ({ scopeCode, year, rows: rows.filter((row) => row.scopeCode === scopeCode && row.year === year) })));
+  const totals = bars.map((bar) => bar.rows.reduce((sum, row) => sum + row.value, 0));
+  if (!totals.some((value) => value > 0)) return <article className="g10-chart-card"><p className="panel-kicker">Expenditure mix</p><h3>Breakdown of total government expenditure</h3><p className="source-note">Waiting for composition data.</p></article>;
+  const max = Math.ceil(Math.max(...totals) / 10) * 10, innerWidth = width - margin.left - margin.right, innerHeight = height - margin.top - margin.bottom;
+  const scaleY = (value: number) => margin.top + (1 - value / max) * innerHeight;
+  const yTicks = Array.from({ length: max / 10 + 1 }, (_, index) => index * 10);
+  const barWidth = scopes.length > 1 ? 72 : 104, gap = (innerWidth - bars.length * barWidth) / (bars.length + 1);
+  const shortNames: Record<string, string> = { MAE: "G7", USA: "US", JPN: "JP", DEU: "DE", FRA: "FR", GBR: "UK", ITA: "IT", CAN: "CA" };
+  return <article className="g10-chart-card">
+    <div className="g10-chart-head"><div><p className="panel-kicker">Expenditure mix</p><h3>Breakdown of total government expenditure</h3></div><span>2019 vs 2025e · % GDP</span></div>
+    <div className="g10-component-legend">{components.map(([id, name, color]) => <span key={id}><i style={{ background: color }} />{name}</span>)}</div>
+    <svg aria-label="Breakdown of total government expenditure in 2019 and 2025" role="img" viewBox={`0 0 ${width} ${height}`}>
+      {yTicks.map((tick) => <g key={tick}><line className="grid-line" x1={margin.left} x2={width - margin.right} y1={scaleY(tick)} y2={scaleY(tick)} /><text textAnchor="end" x={margin.left - 8} y={scaleY(tick) + 4}>{tick}</text></g>)}
+      {bars.map((bar, barIndex) => {
+        const x = margin.left + gap + barIndex * (barWidth + gap); let accumulated = 0;
+        return <g key={`${bar.scopeCode}-${bar.year}`}>{components.map(([id, name, color]) => {
+          const value = bar.rows.find((row) => row.componentId === id)?.value ?? 0, y = scaleY(accumulated + value), rectHeight = scaleY(accumulated) - y; accumulated += value;
+          return <g key={id}><rect fill={color} height={rectHeight} width={barWidth} x={x} y={y}><title>{`${name}: ${value.toFixed(1)}% of GDP`}</title></rect>{rectHeight > 18 ? <text className="g10-bar-value" textAnchor="middle" x={x + barWidth / 2} y={y + rectHeight / 2 + 4}>{value.toFixed(1)}</text> : null}</g>;
+        })}<text className="g10-bar-label" textAnchor="middle" x={x + barWidth / 2} y={height - 27}>{shortNames[bar.scopeCode]}</text><text className="g10-bar-year" textAnchor="middle" x={x + barWidth / 2} y={height - 10}>{bar.year === 2025 ? "2025e" : "2019"}</text></g>;
+      })}
+    </svg>
+    <p className="source-note">Sources: IMF, <a href="https://data-explorer.oecd.org/vis?df[ag]=OECD.GOV.GIP&df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_GOV_COFOG@DF_GOV_COFOG_2025" rel="noreferrer" target="_blank">OECD COFOG</a>, Statistics Canada and <a href="https://www.sipri.org/databases/milex" rel="noreferrer" target="_blank">SIPRI</a>. “Mandatory” is a harmonised proxy for social protection plus health; other primary expenditure is the residual.</p>
+  </article>;
 }
 
 function FiscalSpreadHistory({ rows }: { rows: FiscalSpreadRow[] }) {
@@ -905,14 +1078,14 @@ function FiscalSpreadHistory({ rows }: { rows: FiscalSpreadRow[] }) {
     <article className="fiscal-matrix-card fiscal-history-card">
       <div className="panel-head"><div><p className="panel-kicker">History since 1990</p><h3 className="panel-title">10Y sovereign spreads vs Bund</h3></div><span className="asof">Monthly · basis points</span></div>
       <div className="spread-small-grid">
-        {configs.map(([code, name, color]) => <FiscalSpreadChart code={code} color={color} key={code} maxTime={maxTime} minTime={minTime} name={name} rows={rows.filter((row) => row.country === code)} />)}
+        {configs.map(([code, name, color]) => <FiscalSpreadChart color={color} key={code} maxTime={maxTime} minTime={minTime} name={name} rows={rows.filter((row) => row.country === code)} />)}
       </div>
       <p className="source-note">Source: <a href="https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table" rel="noreferrer" target="_blank">Eurostat / ECB Maastricht criterion long-term interest rates</a>. Greece starts in September 1992. The UK series is a Gilt–Bund yield differential and therefore also reflects different currencies and monetary regimes.</p>
     </article>
   );
 }
 
-function FiscalSpreadChart({ code, color, maxTime, minTime, name, rows }: { code: string; color: string; maxTime: number; minTime: number; name: string; rows: FiscalSpreadRow[] }) {
+function FiscalSpreadChart({ color, maxTime, minTime, name, rows }: { color: string; maxTime: number; minTime: number; name: string; rows: FiscalSpreadRow[] }) {
   if (!rows.length) return null;
   const width = 520, height = 250, margin = { top: 18, right: 18, bottom: 30, left: 48 };
   const innerWidth = width - margin.left - margin.right, innerHeight = height - margin.top - margin.bottom;
@@ -1037,6 +1210,16 @@ function TimeSeriesChart({
     return <SeasonalityChart definition={definition} rows={rows} />;
   }
 
+  return <StandardTimeSeriesChart definition={definition} rows={rows} />;
+}
+
+function StandardTimeSeriesChart({
+  definition,
+  rows,
+}: {
+  definition: ChartDefinition;
+  rows: SeriesRow[];
+}) {
   const [windowKey, setWindowKey] = useState<WindowKey>(definition.defaultWindow ?? "all");
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
     () => new Set(defaultHiddenSeries(definition)),
