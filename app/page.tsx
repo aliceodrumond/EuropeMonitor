@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type TabId = "activity" | "inflation" | "other-inflation" | "scenario" | "speakers";
+type TabId = "activity" | "inflation" | "other-inflation" | "scenario" | "speakers" | "fiscal";
 type AxisSide = "left" | "right";
 type WindowKey = "all" | "10y" | "5y" | "2y" | "1y" | "6m";
 type SeasonalSource = "ecb" | "legacy";
@@ -66,7 +66,7 @@ type LastNewObservation = {
 
 type ChartDefinition = {
   id: string;
-  tab: Exclude<TabId, "speakers">;
+  tab: Exclude<TabId, "speakers" | "fiscal">;
   title: string;
   kicker: string;
   yLeftLabel: string;
@@ -121,6 +121,24 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "activity", label: "Activity Monitor" },
   { id: "inflation", label: "Inflation Monitor" },
   { id: "other-inflation", label: "Other - Inflation Monitor" },
+  { id: "fiscal", label: "Fiscal Monitor" },
+];
+
+type FiscalCountry = {
+  id: string; name: string; flag: string; signal: "risk" | "supply" | "improving" | "watch";
+  thesis: string; balance: number[]; debt: number[]; primary: number; interest: number;
+  issuance: string; spread: number; maturity: string; ratings: string; rules: string;
+};
+
+const fiscalYears = ["2025", "2026", "2027"];
+const fiscalCountries: FiscalCountry[] = [
+  { id: "fr", name: "France", flag: "FR", signal: "risk", thesis: "The euro area's live fiscal-risk story: persistent primary deficits and political execution risk keep OATs under scrutiny.", balance: [-5.1,-5.1,-5.7], debt: [115.6,118.1,120.2], primary: -3.2, interest: 2.1, issuance: "€310bn net M/L", spread: 74, maturity: "8.4 years", ratings: "Aa3 / AA− / AA−", rules: "EDP · 7-year adjustment path" },
+  { id: "de", name: "Germany", flag: "DE", signal: "supply", thesis: "A regime shift from scarcity to supply as debt-brake reform funds infrastructure and defence.", balance: [-2.7,-3.7,-4.1], debt: [63.5,65.8,68.0], primary: -1.8, interest: 0.9, issuance: "~€512bn gross", spread: 0, maturity: "7.6 years", ratings: "Aaa / AAA / AAA", rules: "Preventive arm · national rule reformed" },
+  { id: "it", name: "Italy", flag: "IT", signal: "improving", thesis: "High debt, but a returning primary surplus and policy stability explain the resilient BTP story.", balance: [-3.1,-2.9,-2.9], debt: [137.1,138.5,139.2], primary: 0.8, interest: 3.9, issuance: "~€350bn gross", spread: 91, maturity: "7.0 years", ratings: "Baa2 / BBB+ / BBB", rules: "EDP · 7-year adjustment path" },
+  { id: "uk", name: "United Kingdom", flag: "UK", signal: "watch", thesis: "A tight fiscal-rule buffer leaves gilts sensitive to growth, inflation and OBR forecast revisions.", balance: [-4.7,-4.3,-3.8], debt: [95.8,97.0,97.4], primary: -1.9, interest: 3.4, issuance: "£299bn gilts", spread: 161, maturity: "14.1 years", ratings: "Aa3 / AA / AA−", rules: "OBR stability rule · limited headroom" },
+  { id: "es", name: "Spain", flag: "ES", signal: "improving", thesis: "Growth and revenue strength continue to compress debt and reinforce the core-periphery inversion.", balance: [-2.4,-2.4,-2.0], debt: [100.7,99.6,98.9], primary: 0.2, interest: 2.6, issuance: "~€285bn gross", spread: 49, maturity: "7.8 years", ratings: "Baa1 / A / A−", rules: "Preventive arm · 4-year plan" },
+  { id: "pt", name: "Portugal", flag: "PT", signal: "improving", thesis: "Primary surpluses and a favourable r−g dynamic keep debt on a steep downward path.", balance: [0.7,-0.1,-0.4], debt: [89.7,87.6,86.0], primary: 2.1, interest: 2.0, issuance: "~€31bn gross", spread: 35, maturity: "7.9 years", ratings: "A3 / A+ / A−", rules: "Preventive arm · 4-year plan" },
+  { id: "gr", name: "Greece", flag: "GR", signal: "improving", thesis: "Long maturity, a large primary surplus and rating upgrades outweigh the still-high debt stock.", balance: [1.3,0.8,0.6], debt: [145.7,138.0,131.5], primary: 3.6, interest: 2.3, issuance: "~€8bn bonds", spread: 58, maturity: "18.5 years", ratings: "Baa3 / BBB / BBB−", rules: "Preventive arm · 4-year plan" },
 ];
 
 const charts: ChartDefinition[] = [
@@ -764,6 +782,8 @@ export default function Home() {
 
       {activeTab === "speakers" ? (
         <SpeakerTable speakers={speakers} />
+      ) : activeTab === "fiscal" ? (
+        <FiscalMonitor />
       ) : activeTab === "scenario" ? (
         <ScenarioTracker scenario={scenario} rows={seriesRows} />
       ) : (
@@ -788,6 +808,70 @@ export default function Home() {
       </p>
     </main>
   );
+}
+
+function FiscalMonitor() {
+  const [selectedId, setSelectedId] = useState("fr");
+  const selected = fiscalCountries.find((country) => country.id === selectedId) ?? fiscalCountries[0];
+  const maxSpread = Math.max(...fiscalCountries.map((country) => country.spread));
+
+  return (
+    <section className="fiscal-monitor">
+      <div className="fiscal-hero">
+        <div>
+          <p className="panel-kicker">Sovereign dashboard · Spring 2026</p>
+          <h2>Fiscal pressure is rotating from risk to supply.</h2>
+          <p>France carries the credibility premium. Germany changes the Bund supply regime. The former periphery keeps closing the gap.</p>
+        </div>
+        <div className="fiscal-legend" aria-label="Signal legend">
+          <span><i data-signal="risk" />Risk</span><span><i data-signal="supply" />Supply</span><span><i data-signal="improving" />Improving</span>
+        </div>
+      </div>
+
+      <div className="country-rail" role="tablist" aria-label="Country selection">
+        {fiscalCountries.map((country) => (
+          <button aria-selected={selected.id === country.id} className="country-chip" data-active={selected.id === country.id} key={country.id} onClick={() => setSelectedId(country.id)} role="tab" type="button">
+            <span className="country-code">{country.flag}</span><span>{country.name}</span><i data-signal={country.signal} />
+          </button>
+        ))}
+      </div>
+
+      <div className="fiscal-layout">
+        <article className="fiscal-country-card">
+          <div className="fiscal-country-head"><div><p className="panel-kicker">Country view</p><h3>{selected.name}</h3></div><span className="signal-label" data-signal={selected.signal}>{selected.signal}</span></div>
+          <p className="country-thesis">{selected.thesis}</p>
+          <div className="fiscal-stat-grid">
+            <FiscalStat label="Primary balance" value={`${selected.primary > 0 ? "+" : ""}${selected.primary.toFixed(1)}%`} note="2025 · GDP" />
+            <FiscalStat label="Interest bill" value={`${selected.interest.toFixed(1)}%`} note="2025 · GDP" />
+            <FiscalStat label="2026 issuance" value={selected.issuance} note="sovereign programme" />
+            <FiscalStat label="10Y spread" value={selected.id === "de" ? "Benchmark" : `${selected.spread}bp`} note="vs Bund · indicative" />
+          </div>
+          <div className="trajectory-block">
+            <div className="trajectory-head"><span>Fiscal trajectory</span>{fiscalYears.map((year) => <b key={year}>{year}</b>)}</div>
+            <div className="trajectory-row"><span>Balance / GDP</span>{selected.balance.map((value, index) => <strong className={value < -3 ? "negative" : value >= 0 ? "positive" : ""} key={index}>{value.toFixed(1)}%</strong>)}</div>
+            <div className="trajectory-row"><span>Debt / GDP</span>{selected.debt.map((value, index) => <strong key={index}>{value.toFixed(1)}%</strong>)}</div>
+          </div>
+          <div className="fiscal-details"><div><span>Ratings · Moody's / S&amp;P / Fitch</span><strong>{selected.ratings}</strong></div><div><span>Fiscal framework</span><strong>{selected.rules}</strong></div><div><span>Average maturity</span><strong>{selected.maturity}</strong></div></div>
+        </article>
+
+        <article className="fiscal-spread-card">
+          <div className="panel-head"><div><p className="panel-kicker">Market pricing</p><h3 className="panel-title">10Y sovereign spread vs Bund</h3></div><span className="asof">Indicative · bp</span></div>
+          <div className="spread-list">{fiscalCountries.filter((country) => country.id !== "de").map((country) => <button className="spread-row" key={country.id} onClick={() => setSelectedId(country.id)} type="button"><span>{country.flag}</span><div><i data-signal={country.signal} style={{ width: `${Math.max(5, country.spread / maxSpread * 100)}%` }} /></div><strong>{country.spread}</strong></button>)}</div>
+          <p className="source-note">Market spreads are an indicative dashboard snapshot and should be connected to the live rates feed before trading use.</p>
+        </article>
+      </div>
+
+      <article className="fiscal-matrix-card">
+        <div className="panel-head"><div><p className="panel-kicker">Cross-country screen</p><h3 className="panel-title">The fiscal map at a glance</h3></div><span className="asof">EC Spring Forecast · 21 May 2026</span></div>
+        <div className="fiscal-table-wrap"><table className="fiscal-table"><thead><tr><th>Country</th><th>2026 balance</th><th>2026 debt</th><th>Primary</th><th>Interest</th><th>Issuance</th><th>10Y spread</th><th>EU / national rule</th></tr></thead><tbody>{fiscalCountries.map((country) => <tr data-selected={country.id === selected.id} key={country.id} onClick={() => setSelectedId(country.id)}><td><i data-signal={country.signal} />{country.name}</td><td>{country.balance[1].toFixed(1)}%</td><td>{country.debt[1].toFixed(1)}%</td><td>{country.primary.toFixed(1)}%</td><td>{country.interest.toFixed(1)}%</td><td>{country.issuance}</td><td>{country.id === "de" ? "—" : `${country.spread}bp`}</td><td>{country.rules}</td></tr>)}</tbody></table></div>
+        <p className="source-note">Sources: European Commission Spring 2026 forecast; national debt-management offices; Eurostat EDP notifications; rating agencies. UK figures follow the OBR/D​​MO framework. Primary balances, interest costs, ratings, maturities and market spreads use latest available or indicative snapshots and retain their own reference periods.</p>
+      </article>
+    </section>
+  );
+}
+
+function FiscalStat({ label, value, note }: { label: string; value: string; note: string }) {
+  return <div className="fiscal-stat"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>;
 }
 
 function TabDataBanner({
