@@ -130,6 +130,14 @@ type FiscalCountry = {
   issuance: string; spread: number; maturity: string; ratings: string; rules: string;
 };
 
+type FiscalSpreadRow = {
+  date: string;
+  country: string;
+  countryName: string;
+  spread: number;
+  time: number;
+};
+
 const fiscalYears = ["2025", "2026", "2027"];
 const fiscalCountries: FiscalCountry[] = [
   { id: "fr", name: "France", flag: "FR", signal: "risk", thesis: "The euro area's live fiscal-risk story: persistent primary deficits and political execution risk keep OATs under scrutiny.", balance: [-5.1,-5.1,-5.7], debt: [115.6,118.1,120.2], primary: -3.2, interest: 2.1, issuance: "€310bn net M/L", spread: 74, maturity: "8.4 years", ratings: "Aa3 / AA− / AA−", rules: "EDP · 7-year adjustment path" },
@@ -812,8 +820,21 @@ export default function Home() {
 
 function FiscalMonitor() {
   const [selectedId, setSelectedId] = useState("fr");
+  const [spreadHistory, setSpreadHistory] = useState<FiscalSpreadRow[]>([]);
   const selected = fiscalCountries.find((country) => country.id === selectedId) ?? fiscalCountries[0];
   const maxSpread = Math.max(...fiscalCountries.map((country) => country.spread));
+
+  useEffect(() => {
+    fetchText("/data/fiscal_spreads.csv").then((text) => {
+      setSpreadHistory(parseCsv(text).map((row) => ({
+        country: row.country,
+        countryName: row.country_name,
+        date: row.date,
+        spread: Number(row.spread_bp),
+        time: parseTime(row.date),
+      })).filter((row) => Number.isFinite(row.spread)));
+    }).catch(() => setSpreadHistory([]));
+  }, []);
 
   return (
     <section className="fiscal-monitor">
@@ -859,6 +880,8 @@ function FiscalMonitor() {
         </article>
       </div>
 
+      <FiscalSpreadHistory rows={spreadHistory} />
+
       <article className="fiscal-matrix-card">
         <div className="panel-head"><div><p className="panel-kicker">Cross-country screen</p><h3 className="panel-title">The fiscal map at a glance</h3></div><span className="asof">EC Spring Forecast · 21 May 2026</span></div>
         <div className="fiscal-table-wrap"><table className="fiscal-table"><thead><tr><th>Country</th><th>2026 balance</th><th>2026 debt</th><th>Primary</th><th>Interest</th><th>Issuance</th><th>10Y spread</th><th>EU / national rule</th></tr></thead><tbody>{fiscalCountries.map((country) => <tr data-selected={country.id === selected.id} key={country.id} onClick={() => setSelectedId(country.id)}><td><i data-signal={country.signal} />{country.name}</td><td>{country.balance[1].toFixed(1)}%</td><td>{country.debt[1].toFixed(1)}%</td><td>{country.primary.toFixed(1)}%</td><td>{country.interest.toFixed(1)}%</td><td>{country.issuance}</td><td>{country.id === "de" ? "—" : `${country.spread}bp`}</td><td>{country.rules}</td></tr>)}</tbody></table></div>
@@ -866,6 +889,44 @@ function FiscalMonitor() {
       </article>
     </section>
   );
+}
+
+function FiscalSpreadHistory({ rows }: { rows: FiscalSpreadRow[] }) {
+  const configs = [
+    ["FR", "France", "#a83f39"], ["IT", "Italy", "#11675f"],
+    ["ES", "Spain", "#204f86"], ["PT", "Portugal", "#6c5f8d"],
+    ["EL", "Greece", "#c47a20"], ["UK", "United Kingdom", "#111111"],
+  ] as const;
+  if (!rows.length) return null;
+  const minTime = parseTime("1990-01-01");
+  const maxTime = Math.max(...rows.map((row) => row.time));
+
+  return (
+    <article className="fiscal-matrix-card fiscal-history-card">
+      <div className="panel-head"><div><p className="panel-kicker">History since 1990</p><h3 className="panel-title">10Y sovereign spreads vs Bund</h3></div><span className="asof">Monthly · basis points</span></div>
+      <div className="spread-small-grid">
+        {configs.map(([code, name, color]) => <FiscalSpreadChart code={code} color={color} key={code} maxTime={maxTime} minTime={minTime} name={name} rows={rows.filter((row) => row.country === code)} />)}
+      </div>
+      <p className="source-note">Source: <a href="https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table" rel="noreferrer" target="_blank">Eurostat / ECB Maastricht criterion long-term interest rates</a>. Greece starts in September 1992. The UK series is a Gilt–Bund yield differential and therefore also reflects different currencies and monetary regimes.</p>
+    </article>
+  );
+}
+
+function FiscalSpreadChart({ code, color, maxTime, minTime, name, rows }: { code: string; color: string; maxTime: number; minTime: number; name: string; rows: FiscalSpreadRow[] }) {
+  if (!rows.length) return null;
+  const width = 520, height = 250, margin = { top: 18, right: 18, bottom: 30, left: 48 };
+  const innerWidth = width - margin.left - margin.right, innerHeight = height - margin.top - margin.bottom;
+  const spreadValues = rows.map((row) => row.spread);
+  const rawMin = Math.min(0, ...spreadValues), rawMax = Math.max(0, ...spreadValues);
+  const padding = Math.max(15, (rawMax - rawMin) * 0.08), min = rawMin - padding, max = rawMax + padding;
+  const scaleX = (time: number) => margin.left + (time - minTime) / (maxTime - minTime) * innerWidth;
+  const scaleY = (value: number) => margin.top + (1 - (value - min) / (max - min)) * innerHeight;
+  const path = rows.map((row, index) => `${index ? "L" : "M"}${scaleX(row.time).toFixed(2)},${scaleY(row.spread).toFixed(2)}`).join(" ");
+  const latest = rows[rows.length - 1], peak = rows.reduce((highest, row) => row.spread > highest.spread ? row : highest);
+  const years = [1990, 2000, 2010, 2020, new Date(maxTime).getFullYear()].filter((year, index, values) => values.indexOf(year) === index);
+  const yTicks = Array.from({ length: 4 }, (_, index) => min + (max - min) * index / 3);
+
+  return <section className="spread-small"><div className="spread-small-head"><h4>{name}</h4><span>Latest {latest.spread.toFixed(0)}bp · Peak {peak.spread.toFixed(0)}bp</span></div><svg aria-label={`${name} 10-year spread versus Bund since 1990`} role="img" viewBox={`0 0 ${width} ${height}`}>{yTicks.map((tick) => <g key={tick}><line className="grid-line" x1={margin.left} x2={width - margin.right} y1={scaleY(tick)} y2={scaleY(tick)} /><text textAnchor="end" x={margin.left - 7} y={scaleY(tick) + 3}>{Math.round(tick)}</text></g>)}{years.map((year) => <text key={year} textAnchor="middle" x={scaleX(parseTime(`${year}-01-01`))} y={height - 8}>{year}</text>)}{min < 0 && max > 0 ? <line className="spread-zero" x1={margin.left} x2={width - margin.right} y1={scaleY(0)} y2={scaleY(0)} /> : null}<path className="spread-history-path" d={path} stroke={color} /><circle cx={scaleX(latest.time)} cy={scaleY(latest.spread)} fill={color} r="3"><title>{latest.date}: {latest.spread} bp</title></circle></svg></section>;
 }
 
 function FiscalStat({ label, value, note }: { label: string; value: string; note: string }) {
