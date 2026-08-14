@@ -820,8 +820,6 @@ function FiscalMonitor() {
       <div className="fiscal-hero">
         <div>
           <p className="panel-kicker">Sovereign dashboard · Spring 2026</p>
-          <h2>Fiscal pressure is rotating from risk to supply.</h2>
-          <p>France carries the credibility premium. Germany changes the Bund supply regime. The former periphery keeps closing the gap.</p>
         </div>
         <div className="fiscal-legend" aria-label="Signal legend">
           <span><i data-signal="risk" />Risk</span><span><i data-signal="supply" />Supply</span><span><i data-signal="improving" />Improving</span>
