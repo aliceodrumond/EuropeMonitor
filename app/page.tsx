@@ -953,7 +953,7 @@ function FiscalMonitor() {
 
 function G10FiscalMonitor({ composition, history }: { composition: G10CompositionRow[]; history: G10FiscalRow[] }) {
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["MAE"]);
-  const [startYear, setStartYear] = useState(1980);
+  const [startYear, setStartYear] = useState(2010);
   const toggleScope = (code: string) => {
     setSelectedScopes((current) => {
       if (current.includes(code)) return current.length === 1 ? current : current.filter((item) => item !== code);
@@ -976,7 +976,7 @@ function G10FiscalMonitor({ composition, history }: { composition: G10Compositio
         {g10Scopes.map(([code, name]) => <button aria-pressed={selectedScopes.includes(code)} data-active={selectedScopes.includes(code)} key={code} onClick={() => toggleScope(code)} type="button"><i style={{ background: g10ScopeColors[code] }} />{name}</button>)}
       </div>
       <div className="g10-range-picker" aria-label="History range">
-        {[{ year: 1980, label: "1980–2031" }, { year: 2010, label: "2010–2031" }, { year: 2019, label: "2019–2031" }].map((option) => <button data-active={startYear === option.year} key={option.year} onClick={() => setStartYear(option.year)} type="button">{option.label}</button>)}
+        {[{ year: 2010, label: "2010–2031" }, { year: 2019, label: "2019–2031" }].map((option) => <button data-active={startYear === option.year} key={option.year} onClick={() => setStartYear(option.year)} type="button">{option.label}</button>)}
       </div>
     </div>
     <p className="g10-selection-note">Select up to two economies. Solid/dashed styles distinguish the two measures; lighter forecast segments show IMF estimates and projections.</p>
@@ -1000,7 +1000,7 @@ function G10LineChart({ config, rows, scopes, startYear }: { config: { title: st
   const scaleX = (year: number) => margin.left + (year - startYear) / (2031 - startYear) * innerWidth;
   const scaleY = (value: number) => margin.top + (1 - (value - min) / (max - min)) * innerHeight;
   const yTicks = Array.from({ length: 5 }, (_, index) => min + (max - min) * index / 4);
-  const xTickCandidates = startYear === 1980 ? [1980, 1990, 2000, 2010, 2020, 2031] : startYear === 2010 ? [2010, 2015, 2020, 2025, 2031] : [2019, 2021, 2023, 2025, 2027, 2031];
+  const xTickCandidates = startYear === 2010 ? [2010, 2015, 2020, 2025, 2031] : [2019, 2021, 2023, 2025, 2027, 2031];
   const makePath = (points: G10FiscalRow[]) => points.map((point, index) => `${index === 0 || point.year - points[index - 1].year > 1 ? "M" : "L"}${scaleX(point.year).toFixed(2)},${scaleY(point.value).toFixed(2)}`).join(" ");
   const plotted = scopes.flatMap((scopeCode) => [config.first, config.second].map((seriesId, seriesIndex) => {
     const points = chartRows.filter((row) => row.scopeCode === scopeCode && row.seriesId === seriesId).sort((a, b) => a.year - b.year);
