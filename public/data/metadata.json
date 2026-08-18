@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-08-18",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 38,
   "activity_last_new": {
-    "date": "2026-08-16",
-    "description": "Deutsche Bundesbank: Germany WAI"
+    "date": "2026-08-01",
+    "description": "ZEW Financial Market Survey: Germany ZEW"
   },
   "inflation_last_new": {
     "date": "2026-06-30",
     "description": "ECB Survey of Professional Forecasters: SPF LT"
-  },
-  "inflation_rows": 19955
+  }
 }
