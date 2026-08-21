@@ -571,6 +571,7 @@ const charts: ChartDefinition[] = [
     kicker: "Wages",
     yLeftLabel: "% y/y",
     yRightLabel: "Employee coverage (%)",
+    defaultWindow: "10y",
     fixedDomains: { left: { min: 0, max: 7 }, right: { min: 25, max: 55 } },
     seriesOrder: ["wage_tracker_coverage", "indeed_wage_tracker_yoy", "ecb_negotiated_wages", "wage_tracker_ea", "wage_tracker_ea_monthly", "wage_tracker_unsmoothed", "wage_tracker_excluding"],
   },
@@ -722,7 +723,6 @@ const palette = [
 const seasonalityLabels = ["Dec -1", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const windows: Array<{ key: WindowKey; label: string; months?: number; years?: number }> = [
-  { key: "all", label: "All" },
   { key: "10y", label: "10Y", years: 10 },
   { key: "5y", label: "5Y", years: 5 },
   { key: "2y", label: "2Y", years: 2 },
@@ -1220,7 +1220,7 @@ function StandardTimeSeriesChart({
   definition: ChartDefinition;
   rows: SeriesRow[];
 }) {
-  const [windowKey, setWindowKey] = useState<WindowKey>(definition.defaultWindow ?? "all");
+  const [windowKey, setWindowKey] = useState<WindowKey>(definition.defaultWindow === "all" ? "10y" : definition.defaultWindow ?? "10y");
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(
     () => new Set(defaultHiddenSeries(definition)),
   );
