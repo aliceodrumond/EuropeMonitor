@@ -2912,5 +2912,50 @@ read_ecb_wage_tracker_rows <- function() {
       frequency = if (identical(frequency, "Q")) "quarterly" else "monthly"
     )
   })
-  do.call(rbind, frames)
+  rbind(
+    do.call(rbind, frames),
+    read_indeed_wage_tracker_rows(raw_dir),
+    read_ecb_negotiated_wages_rows(raw_dir)
+  )
+}
+
+read_indeed_wage_tracker_rows <- function(raw_dir) {
+  url <- "https://raw.githubusercontent.com/hiring-lab/indeed-wage-tracker/main/posted-wage-growth-by-country.csv"
+  tmp <- file.path(raw_dir, "indeed_wage_tracker_country.csv")
+  ok <- tryCatch(download_binary_url(url, tmp), error = function(e) FALSE)
+  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+  required <- c("country", "month", "posted_wage_growth_yoy")
+  if (!all(required %in% names(raw))) return(data.frame())
+  raw <- raw[raw$country == "Euro Area", , drop = FALSE]
+  dates <- as.Date(paste0("01-", raw$month), format = "%d-%b-%y")
+  values <- suppressWarnings(as.numeric(raw$posted_wage_growth_yoy)) * 100
+  valid <- !is.na(dates) & !is.na(values)
+  make_series_frame(
+    dates[valid], "wage_tracker", "indeed_wage_tracker_yoy", "Indeed Wage Tracker", "Euro Area",
+    values[valid], axis = "left", unit = "% y/y", source = "Indeed Hiring Lab",
+    source_url = "https://github.com/hiring-lab/indeed-wage-tracker",
+    frequency = "monthly", source_note = "Year-on-year growth in wages advertised in job postings; monthly measure, not the three-month moving average."
+  )
+}
+
+read_ecb_negotiated_wages_rows <- function(raw_dir) {
+  key <- "Q.U2.N.INWR.000000.4F0.GY.IX"
+  url <- sprintf("https://data-api.ecb.europa.eu/service/data/INW/%s?format=csvdata", key)
+  tmp <- file.path(raw_dir, "ecb_negotiated_wages.csv")
+  ok <- tryCatch(download_binary_url(url, tmp), error = function(e) FALSE)
+  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) return(data.frame())
+  quarter <- suppressWarnings(as.integer(sub("^.*-Q", "", raw$TIME_PERIOD)))
+  year <- suppressWarnings(as.integer(substr(raw$TIME_PERIOD, 1, 4)))
+  dates <- as.Date(sprintf("%04d-%02d-01", year, quarter * 3L))
+  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+  valid <- !is.na(dates) & !is.na(values)
+  make_series_frame(
+    dates[valid], "wage_tracker", "ecb_negotiated_wages", "ECB Negotiated Wages", "Euro Area",
+    values[valid], axis = "left", unit = "% y/y", source = "ECB Data Portal",
+    source_url = sprintf("https://data.ecb.europa.eu/data/datasets/INW/INW.%s", key),
+    frequency = "quarterly", source_note = "Euro area indicator of negotiated wage rates."
+  )
 }

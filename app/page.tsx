@@ -572,7 +572,7 @@ const charts: ChartDefinition[] = [
     yLeftLabel: "% y/y",
     yRightLabel: "Employee coverage (%)",
     fixedDomains: { left: { min: 0, max: 7 }, right: { min: 25, max: 55 } },
-    seriesOrder: ["wage_tracker_coverage", "wage_tracker_ea", "wage_tracker_ea_monthly", "wage_tracker_unsmoothed", "wage_tracker_excluding"],
+    seriesOrder: ["wage_tracker_coverage", "indeed_wage_tracker_yoy", "ecb_negotiated_wages", "wage_tracker_ea", "wage_tracker_ea_monthly", "wage_tracker_unsmoothed", "wage_tracker_excluding"],
   },
   {
     id: "ecb_ces_inflation_expectations",
@@ -2182,6 +2182,12 @@ function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSerie
 function styleForSeries(seriesId: string, fallbackColor: string) {
   if (seriesId === "wage_tracker_coverage") {
     return { color: "#e2e2e2", bar: true };
+  }
+  if (seriesId === "indeed_wage_tracker_yoy") {
+    return { color: "#216e39" };
+  }
+  if (seriesId === "ecb_negotiated_wages") {
+    return { color: "#a83f39", dashArray: "7 4" };
   }
   if (seriesId === "wage_tracker_ea") {
     return { color: "#0057b8" };

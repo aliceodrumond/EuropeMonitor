@@ -275,6 +275,8 @@ function Test-OutputData {
     "ec_industry_prices_6m_lag",
     "ec_retail_prices_6m_lag",
     "wage_tracker_ea",
+    "indeed_wage_tracker_yoy",
+    "ecb_negotiated_wages",
     "ecb_ces_infl_exp_1y",
     "ecb_ces_infl_exp_3y",
     "ecb_ces_infl_exp_5y",
