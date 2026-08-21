@@ -1,16 +1,14 @@
 {
   "last_updated": "2026-08-21",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 38,
   "activity_last_new": {
-    "date": "2026-08-15",
-    "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
+    "date": "2026-08-01",
+    "description": "SP Global PMI: Composite, Europe, France, Germany, Manufacturing, PMI Composite, Services"
   },
   "inflation_last_new": {
     "date": "2026-07-01",
-    "description": "Eurostat HICP: % YoY NSA, % MoM SAAR, % QoQ SAAR, HICP ECB-style PCCI replication, HICP ECB-style PCCI replication 3M MA"
-  },
-  "inflation_rows": 19969,
-  "speaker_rows": 20
+    "description": "ECB Consumer Expectations Survey: 12M inflation expectations, 3Y inflation expectations, 5Y inflation expectations"
+  }
 }
