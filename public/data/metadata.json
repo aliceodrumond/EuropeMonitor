@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-08-22",
+  "last_updated": "2026-08-23",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_speakers_update.R",
   "source_links": 40,
   "activity_last_new": {
     "date": "2026-08-01",
@@ -10,5 +10,6 @@
   "inflation_last_new": {
     "date": "2026-07-01",
     "description": "Indeed Hiring Lab: Indeed Wage Tracker"
-  }
+  },
+  "speaker_rows": 20
 }
