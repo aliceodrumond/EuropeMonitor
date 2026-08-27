@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-08-27",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 40,
   "activity_last_new": {
-    "date": "2026-08-01",
-    "description": "ifo Institute: IFO Business Climate, IFO Business Expectations, IFO Construction, IFO Current Assessment, IFO Manufacturing, IFO Retail, IFO Services"
+    "date": "2026-08-22",
+    "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
     "date": "2026-07-01",
     "description": "Indeed Hiring Lab: Indeed Wage Tracker"
-  },
-  "inflation_rows": 20205
+  }
 }
