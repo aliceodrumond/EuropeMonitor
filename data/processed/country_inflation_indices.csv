@@ -365,7 +365,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,DE,Germany,headline,135.43832323,FIN
 2026-05-01,DE,Germany,headline,135.28002384,FIN
 2026-06-01,DE,Germany,headline,134.97661667,FIN
-2026-07-01,DE,Germany,headline,136.13747889,FLS
+2026-07-01,DE,Germany,headline,136.13747889,FIN
 1996-01-01,DE,Germany,core,80.90807650,FIN
 1996-02-01,DE,Germany,core,81.35972649,FIN
 1996-03-01,DE,Germany,core,81.33463482,FIN
@@ -732,7 +732,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,DE,Germany,core,127.98004162,FIN
 2026-05-01,DE,Germany,core,128.49442077,FIN
 2026-06-01,DE,Germany,core,128.69515410,FIN
-2026-07-01,DE,Germany,core,129.38517491,FLS
+2026-07-01,DE,Germany,core,129.38517491,FIN
 1996-01-01,DE,Germany,core_exvolatile,79.08975402,FIN
 1996-02-01,DE,Germany,core_exvolatile,79.46397540,FIN
 1996-03-01,DE,Germany,core_exvolatile,79.43816703,FIN
@@ -1099,7 +1099,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,DE,Germany,core_exvolatile,131.44203531,FIN
 2026-05-01,DE,Germany,core_exvolatile,131.89368181,FIN
 2026-06-01,DE,Germany,core_exvolatile,132.08724459,FIN
-2026-07-01,DE,Germany,core_exvolatile,132.71954969,FLS
+2026-07-01,DE,Germany,core_exvolatile,132.71954969,FIN
 1996-01-01,DE,Germany,neig,91.01140036,FIN
 1996-02-01,DE,Germany,neig,91.19437463,FIN
 1996-03-01,DE,Germany,neig,91.21877119,FIN
@@ -1466,7 +1466,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,DE,Germany,neig,123.28806104,FIN
 2026-05-01,DE,Germany,neig,123.62961301,FIN
 2026-06-01,DE,Germany,neig,123.21487133,FIN
-2026-07-01,DE,Germany,neig,123.44663874,FLS
+2026-07-01,DE,Germany,neig,123.44663874,FIN
 1996-01-01,DE,Germany,services,74.38321651,FIN
 1996-02-01,DE,Germany,services,75.04598677,FIN
 1996-03-01,DE,Germany,services,74.96951328,FIN
@@ -1833,7 +1833,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,DE,Germany,services,130.71868891,FIN
 2026-05-01,DE,Germany,services,131.35596801,FIN
 2026-06-01,DE,Germany,services,131.92951920,FIN
-2026-07-01,DE,Germany,services,132.89818343,FLS
+2026-07-01,DE,Germany,services,132.89818343,FIN
 1996-01-01,FR,France,headline,74.12295100,FIN
 1996-02-01,FR,France,headline,74.40914000,FIN
 1996-03-01,FR,France,headline,74.89441700,FIN
@@ -2200,7 +2200,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,FR,France,headline,127.62785100,FIN
 2026-05-01,FR,France,headline,127.80205300,FIN
 2026-06-01,FR,France,headline,127.36654800,FIN
-2026-07-01,FR,France,headline,128.15045700,FLS
+2026-07-01,FR,France,headline,128.16290000,FIN
 1996-01-01,FR,France,core,78.83401259,FIN
 1996-02-01,FR,France,core,79.16175607,FIN
 1996-03-01,FR,France,core,79.66507642,FIN
@@ -2567,7 +2567,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,FR,France,core,118.91235841,FIN
 2026-05-01,FR,France,core,118.94747378,FIN
 2026-06-01,FR,France,core,119.14646089,FIN
-2026-07-01,FR,France,core,119.80194786,FLS
+2026-07-01,FR,France,core,119.79024273,FIN
 1996-01-01,FR,France,core_exvolatile,76.88626460,FIN
 1996-02-01,FR,France,core_exvolatile,77.17558263,FIN
 1996-03-01,FR,France,core_exvolatile,77.59750474,FIN
@@ -2934,7 +2934,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,FR,France,core_exvolatile,122.29713929,FIN
 2026-05-01,FR,France,core_exvolatile,122.33330404,FIN
 2026-06-01,FR,France,core_exvolatile,122.49001797,FIN
-2026-07-01,FR,France,core_exvolatile,123.05659910,FLS
+2026-07-01,FR,France,core_exvolatile,123.05659910,FIN
 1996-01-01,FR,France,neig,94.85949430,FIN
 1996-02-01,FR,France,neig,95.38497102,FIN
 1996-03-01,FR,France,neig,96.46876674,FIN
@@ -3301,7 +3301,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,FR,France,neig,110.03263442,FIN
 2026-05-01,FR,France,neig,110.15305617,FIN
 2026-06-01,FR,France,neig,109.71515890,FIN
-2026-07-01,FR,France,neig,107.27388167,FLS
+2026-07-01,FR,France,neig,107.28482910,FIN
 1996-01-01,FR,France,services,69.62634275,FIN
 1996-02-01,FR,France,services,69.82018676,FIN
 1996-03-01,FR,France,services,69.96556976,FIN
@@ -3668,7 +3668,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,FR,France,services,123.72093478,FIN
 2026-05-01,FR,France,services,123.68458903,FIN
 2026-06-01,FR,France,services,124.22977529,FIN
-2026-07-01,FR,France,services,126.55590333,FLS
+2026-07-01,FR,France,services,126.54378808,FIN
 1996-01-01,IT,Italy,headline,67.48328358,FIN
 1996-02-01,IT,Italy,headline,67.73184080,FIN
 1996-03-01,IT,Italy,headline,67.98039801,FIN
@@ -4035,7 +4035,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,IT,Italy,headline,128.37980100,FIN
 2026-05-01,IT,Italy,headline,128.75263682,FIN
 2026-06-01,IT,Italy,headline,128.75263682,FIN
-2026-07-01,IT,Italy,headline,127.50985075,FLS
+2026-07-01,IT,Italy,headline,127.50985075,FIN
 1999-12-01,IT,Italy,core,75.45133531,FIN
 2000-01-01,IT,Italy,core,75.56795252,FIN
 2000-02-01,IT,Italy,core,75.80118694,FIN
@@ -4355,7 +4355,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,IT,Italy,core,119.41602374,FIN
 2026-05-01,IT,Italy,core,119.88249258,FIN
 2026-06-01,IT,Italy,core,120.11572700,FIN
-2026-07-01,IT,Italy,core,118.24985163,FLS
+2026-07-01,IT,Italy,core,118.24985163,FIN
 1999-12-01,IT,Italy,core_exvolatile,74.51199207,FIN
 2000-01-01,IT,Italy,core_exvolatile,74.63102081,FIN
 2000-02-01,IT,Italy,core_exvolatile,74.86907830,FIN
@@ -4675,7 +4675,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,IT,Italy,core_exvolatile,121.64737364,FIN
 2026-05-01,IT,Italy,core_exvolatile,122.00445986,FIN
 2026-06-01,IT,Italy,core_exvolatile,122.12348860,FIN
-2026-07-01,IT,Italy,core_exvolatile,120.69514371,FLS
+2026-07-01,IT,Italy,core_exvolatile,120.57611497,FIN
 1999-12-01,IT,Italy,neig,81.07110676,FIN
 2000-01-01,IT,Italy,neig,81.07110676,FIN
 2000-02-01,IT,Italy,neig,81.18246817,FIN
@@ -4995,7 +4995,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,IT,Italy,neig,114.36816846,FIN
 2026-05-01,IT,Italy,neig,114.36816846,FIN
 2026-06-01,IT,Italy,neig,114.36816846,FIN
-2026-07-01,IT,Italy,neig,108.68873653,FLS
+2026-07-01,IT,Italy,neig,108.57737512,FIN
 1999-12-01,IT,Italy,services,71.58764940,FIN
 2000-01-01,IT,Italy,services,71.70816733,FIN
 2000-02-01,IT,Italy,services,72.19023904,FIN
@@ -5315,7 +5315,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,IT,Italy,services,123.16932271,FIN
 2026-05-01,IT,Italy,services,123.89243028,FIN
 2026-06-01,IT,Italy,services,124.37450199,FIN
-2026-07-01,IT,Italy,services,124.97709163,FLS
+2026-07-01,IT,Italy,services,124.97709163,FIN
 1996-01-01,ES,Spain,headline,63.95636292,FIN
 1996-02-01,ES,Spain,headline,64.08300918,FIN
 1996-03-01,ES,Spain,headline,64.34896633,FIN
@@ -5682,7 +5682,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,ES,Spain,headline,130.90157765,FIN
 2026-05-01,ES,Spain,headline,131.01555929,FIN
 2026-06-01,ES,Spain,headline,131.81343074,FIN
-2026-07-01,ES,Spain,headline,131.71211373,FLS
+2026-07-01,ES,Spain,headline,131.78810149,FIN
 2000-12-01,ES,Spain,core,77.16946362,FIN
 2001-01-01,ES,Spain,core,76.54548413,FIN
 2001-02-01,ES,Spain,core,76.56948334,FIN
@@ -5990,7 +5990,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,ES,Spain,core,124.17191875,FIN
 2026-05-01,ES,Spain,core,124.55590613,FIN
 2026-06-01,ES,Spain,core,125.21588444,FIN
-2026-07-01,ES,Spain,core,124.62790377,FLS
+2026-07-01,ES,Spain,core,124.61590416,FIN
 2000-12-01,ES,Spain,core_exvolatile,74.90094731,FIN
 2001-01-01,ES,Spain,core_exvolatile,74.46785080,FIN
 2001-02-01,ES,Spain,core_exvolatile,74.50497336,FIN
@@ -6298,7 +6298,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,ES,Spain,core_exvolatile,127.71397276,FIN
 2026-05-01,ES,Spain,core_exvolatile,128.04807578,FIN
 2026-06-01,ES,Spain,core_exvolatile,128.58016578,FIN
-2026-07-01,ES,Spain,core_exvolatile,128.03570160,FLS
+2026-07-01,ES,Spain,core_exvolatile,128.02332741,FIN
 2000-12-01,ES,Spain,neig,89.74773223,FIN
 2001-01-01,ES,Spain,neig,87.56628723,FIN
 2001-02-01,ES,Spain,neig,87.44509584,FIN
@@ -6606,7 +6606,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,ES,Spain,neig,114.19534061,FIN
 2026-05-01,ES,Spain,neig,114.10720142,FIN
 2026-06-01,ES,Spain,neig,113.85380124,FIN
-2026-07-01,ES,Spain,neig,109.75532881,FLS
+2026-07-01,ES,Spain,neig,109.76634621,FIN
 2000-12-01,ES,Spain,services,68.91275151,FIN
 2001-01-01,ES,Spain,services,69.36267154,FIN
 2001-02-01,ES,Spain,services,69.48764932,FIN
@@ -6914,7 +6914,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,ES,Spain,services,129.23952907,FIN
 2026-05-01,ES,Spain,services,129.82692467,FIN
 2026-06-01,ES,Spain,services,130.87673808,FIN
-2026-07-01,ES,Spain,services,131.81407148,FLS
+2026-07-01,ES,Spain,services,131.78907592,FIN
 1996-01-01,BE,Belgium,headline,69.90205260,FIN
 1996-02-01,BE,Belgium,headline,69.98334981,FIN
 1996-03-01,BE,Belgium,headline,70.11884517,FIN
@@ -7281,7 +7281,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,BE,Belgium,headline,140.46803243,FIN
 2026-05-01,BE,Belgium,headline,140.00734823,FIN
 2026-06-01,BE,Belgium,headline,139.84475381,FIN
-2026-07-01,BE,Belgium,headline,138.93693494,FLS
+2026-07-01,BE,Belgium,headline,139.07243029,FIN
 1998-12-01,BE,Belgium,core,77.08336993,FIN
 1999-01-01,BE,Belgium,core,77.27395021,FIN
 1999-02-01,BE,Belgium,core,77.60428936,FIN
@@ -7613,7 +7613,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,BE,Belgium,core,130.53478534,FIN
 2026-05-01,BE,Belgium,core,130.71266026,FIN
 2026-06-01,BE,Belgium,core,131.01758871,FIN
-2026-07-01,BE,Belgium,core,129.22613409,FLS
+2026-07-01,BE,Belgium,core,129.30236620,FIN
 1998-12-01,BE,Belgium,core_exvolatile,75.20596165,FIN
 1999-01-01,BE,Belgium,core_exvolatile,75.37787611,FIN
 1999-02-01,BE,Belgium,core_exvolatile,75.64235988,FIN
@@ -7945,7 +7945,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,BE,Belgium,core_exvolatile,135.40246903,FIN
 2026-05-01,BE,Belgium,core_exvolatile,135.53471091,FIN
 2026-06-01,BE,Belgium,core_exvolatile,135.85209145,FIN
-2026-07-01,BE,Belgium,core_exvolatile,134.42387906,FLS
+2026-07-01,BE,Belgium,core_exvolatile,134.47677581,FIN
 1998-12-01,BE,Belgium,neig,86.50582697,FIN
 1999-01-01,BE,Belgium,neig,86.59988060,FIN
 1999-02-01,BE,Belgium,neig,86.76447446,FIN
@@ -8277,7 +8277,7 @@ date,geo,country,component,nsa_index,release
 2026-04-01,BE,Belgium,neig,120.45918771,FIN
 2026-05-01,BE,Belgium,neig,120.14175670,FIN
 2026-06-01,BE,Belgium,neig,120.15351341,FIN
-2026-07-01,BE,Belgium,neig,112.55868272,FLS
+2026-07-01,BE,Belgium,neig,112.55868272,FIN
 1998-12-01,BE,Belgium,services,70.25150594,FIN
 1999-01-01,BE,Belgium,services,70.53091533,FIN
 1999-02-01,BE,Belgium,services,71.00990287,FIN
@@ -8609,4 +8609,4 @@ date,geo,country,component,nsa_index,release
 2026-04-01,BE,Belgium,services,136.89730011,FIN
 2026-05-01,BE,Belgium,services,137.40289807,FIN
 2026-06-01,BE,Belgium,services,137.89519082,FIN
-2026-07-01,BE,Belgium,services,139.74461493,FLS
+2026-07-01,BE,Belgium,services,139.86436182,FIN
