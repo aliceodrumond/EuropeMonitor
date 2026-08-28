@@ -1,15 +1,15 @@
 {
   "last_updated": "2026-08-28",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_flash_fast_update.R:official_ecb_sa",
+  "generated_by": "R/run_inflation_update.R",
   "source_links": 40,
   "activity_last_new": {
     "date": "2026-08-22",
     "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
-    "date": "2026-07-01",
-    "description": "Indeed Hiring Lab: Indeed Wage Tracker"
+    "date": "2027-02-01",
+    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
   },
-  "inflation_rows": 20205
+  "inflation_rows": 20208
 }
