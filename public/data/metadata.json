@@ -1,7 +1,7 @@
 {
   "last_updated": "2026-09-01",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_inflation_flash_fast_update.R:legacy_x13",
+  "generated_by": "R/run_speakers_update.R",
   "source_links": 40,
   "activity_last_new": {
     "date": "2026-08-30",
