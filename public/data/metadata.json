@@ -1,14 +1,15 @@
 {
   "last_updated": "2026-09-01",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_daily_update.R",
+  "generated_by": "R/run_inflation_update.R",
   "source_links": 40,
   "activity_last_new": {
     "date": "2026-09-01",
     "description": "Deutsche Bundesbank: Germany WAI, Euro Area FCI, Euro Area GDP"
   },
   "inflation_last_new": {
-    "date": "2027-02-01",
-    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
-  }
+    "date": "2026-08-01",
+    "description": "ECB Data Portal: % HoH SAAR, % MoM SAAR, % QoQ SAAR, % YoY NSA, Core HICP, EU HICP NEIG YoY, HICP - Non-energy industrial goods, HICP - Services, HICP - Services, % YoY, HICP inflation rate, EU HICP NEIG %QoQ SAAR 3MMA"
+  },
+  "inflation_rows": 20247
 }
