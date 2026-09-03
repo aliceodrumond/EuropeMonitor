@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "build": "node scripts/build-static-pages.mjs",
+    "build": "node scripts/build-static-pages.mjs && node scripts/postbuild-sites.mjs",
     "build:sites": "node scripts/build-static-pages.mjs && node scripts/postbuild-sites.mjs",
     "update:fiscal-g10": "node scripts/update-g10-fiscal.mjs",
     "start": "vinext start",
