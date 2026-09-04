@@ -101,6 +101,8 @@ type ChartSeries = {
 type HoverPoint = {
   seriesId: string;
   name: string;
+  date: string;
+  frequency: string;
   value: number;
   unit: string;
   color: string;
@@ -1430,7 +1432,7 @@ function StandardTimeSeriesChart({
                   className="tooltip-swatch"
                   style={{ background: point.color }}
                 />
-                <span>{point.name}</span>
+                <span>{point.name} · {formatSeriesPeriod(point.date, point.frequency)}</span>
                 <strong>{formatValue(point.value, point.unit)}</strong>
               </div>
             ))}
@@ -2127,6 +2129,10 @@ function parseCsv(text: string): Array<Record<string, string>> {
 }
 
 function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSeries[] {
+  if (definition.id === "wage_tracker") {
+    const officialQuarterly = new Set(["wage_tracker_coverage", "wage_tracker_ea", "wage_tracker_unsmoothed", "wage_tracker_excluding"]);
+    rows = rows.filter((row) => officialQuarterly.has(row.series_id));
+  }
   const seriesMap = new Map<string, ChartSeries>();
 
   rows.forEach((row) => {
@@ -2552,6 +2558,7 @@ function buildHoverState(
       return {
         color: item.color,
         date: point.date,
+        frequency: item.frequency,
         name: item.name,
         seriesId: item.id,
         time: point.time,
@@ -2577,6 +2584,8 @@ function buildHoverState(
     date: anchor.date,
     points: points.map((point) => ({
       color: point.color,
+      date: point.date,
+      frequency: point.frequency,
       name: point.name,
       seriesId: point.seriesId,
       unit: point.unit,
@@ -2669,6 +2678,10 @@ function formatYear(time: number) {
 }
 
 function defaultHiddenSeries(definition: ChartDefinition) {
+  if (definition.id === "wage_tracker") {
+    return ["indeed_wage_tracker_yoy", "ecb_negotiated_wages", "wage_tracker_ea_monthly"];
+  }
+
   if (definition.id === "pmi_gdp" || definition.id === "pmi_ea_aggregate") {
     return [];
   }
@@ -2678,6 +2691,14 @@ function defaultHiddenSeries(definition: ChartDefinition) {
   }
 
   return (definition.seriesOrder ?? []).filter((seriesId) => !seriesId.endsWith("_ea"));
+}
+
+function formatSeriesPeriod(date: string, frequency: string): string {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (frequency === "quarterly") {
+    return `Q${Math.ceil((parsed.getMonth() + 1) / 3)} ${parsed.getFullYear()}`;
+  }
+  return formatDateLabel(date);
 }
 
 function uniqueSources(series: ChartSeries[]) {
@@ -2694,9 +2715,12 @@ function uniqueSources(series: ChartSeries[]) {
   return [...sourceMap.values()];
 }
 
-function formatDateLabel(date: string, chartId?: string) {
+function formatDateLabel(date: string, chartId?: string): string {
   if (!date) {
     return "";
+  }
+  if (chartId === "wage_tracker") {
+    return formatSeriesPeriod(date, "quarterly");
   }
   if (chartId === "weekly_activity") {
     return new Intl.DateTimeFormat("en-GB", {
