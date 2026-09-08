@@ -68,6 +68,16 @@ Observacao: as series de PMI da SP Global estao linkadas a fonte oficial, mas
 exigem feed licenciado ou importacao manual de CSV para substituir os valores
 mockados por dados reais.
 
+O Flash PMI da area do euro pode ser incluído em
+`data/raw/flash_pmi_euro_area.csv`, com as colunas:
+
+```text
+date,composite,manufacturing,services
+```
+
+Os valores devem vir do release mensal oficial HCOB / S&P Global. O pipeline
+adiciona as tres series "Europe Flash" aos respectivos graficos de PMI.
+
 ## Rodar o Site
 
 O projeto usa o starter Sites/vinext e espera Node.js `>=22.13.0`.
@@ -83,4 +93,26 @@ Se `node` e `npm` nao estiverem no PATH, use o caminho instalado diretamente:
 ```powershell
 $env:Path = 'C:\Program Files\nodejs;' + $env:Path
 & 'C:\Program Files\nodejs\npm.cmd' run build
+```
+
+## Monitoramento de Acesso
+
+O site suporta Cloudflare Web Analytics sem contar acessos internos. Para ativar:
+
+1. Crie um site em Cloudflare Web Analytics para `legacy-europe-monitor.pages.dev`.
+2. Configure o token no ambiente de build como `CF_WEB_ANALYTICS_TOKEN`.
+3. Rebuild/deploy do site.
+
+Para excluir seus proprios acessos, abra uma vez em cada computador/celular:
+
+```text
+https://legacy-europe-monitor.pages.dev/?internal=1
+```
+
+Isso grava `legacyMonitorInternal=1` no `localStorage` daquele navegador e o
+script do Cloudflare Web Analytics deixa de carregar naquele dispositivo. Para
+voltar a contar um navegador como externo, abra:
+
+```text
+https://legacy-europe-monitor.pages.dev/?external=1
 ```

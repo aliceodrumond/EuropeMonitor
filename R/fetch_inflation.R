@@ -162,6 +162,25 @@ read_swiss_cpi_release_cache <- function(project_root) {
   tryCatch(jsonlite::fromJSON(cache_path, simplifyVector = FALSE), error = function(e) list())
 }
 
+build_swiss_cpi_cached_release <- function(cache) {
+  asset_url <- cache$workbook_asset_url %||% NA_character_
+  publication_date <- tryCatch(as.Date(cache$publication_date %||% NA_character_), error = function(e) as.Date(NA))
+  release_month <- tryCatch(as.Date(cache$release_month %||% NA_character_), error = function(e) as.Date(NA))
+  if (!nzchar(asset_url) || is.na(publication_date) || is.na(release_month)) {
+    return(NULL)
+  }
+
+  list(
+    page_url = cache$release_page_url %||% NA_character_,
+    title_month = format(release_month, "%B %Y"),
+    release_month = release_month,
+    publication_date = publication_date,
+    asset_urls = asset_url,
+    gnpdetail_id = suppressWarnings(as.integer(cache$gnpdetail_id %||% NA)),
+    publication_year = suppressWarnings(as.integer(cache$publication_year %||% format(publication_date, "%Y")))
+  )
+}
+
 write_swiss_cpi_release_cache <- function(project_root, cache) {
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     return(invisible(NULL))
@@ -297,14 +316,22 @@ read_swiss_cpi_workbook <- function() {
   }
 
   project_root <- get_project_root()
+  cache <- read_swiss_cpi_release_cache(project_root)
   release <- discover_swiss_cpi_release(project_root)
   if (is.null(release)) {
-    # Manual fallback if BFS changes the release-page structure:
-    # start from https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html
-    # and open the CPI item that appears under "What's new", then follow the attributed
-    # "Tables" documents until you reach the LIK25B25 Excel workbook for the latest month.
-    warning("Swiss CPI release page discovery failed")
-    return(list(index = data.frame(), mom_nsa = data.frame(), yoy_nsa = data.frame()))
+    release <- build_swiss_cpi_cached_release(cache)
+    if (is.null(release)) {
+      # Manual fallback if BFS changes the release-page structure:
+      # start from https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html
+      # and open the CPI item that appears under "What's new", then follow the attributed
+      # "Tables" documents until you reach the LIK25B25 Excel workbook for the latest month.
+      warning("Swiss CPI release page discovery failed")
+      return(list(index = data.frame(), mom_nsa = data.frame(), yoy_nsa = data.frame()))
+    }
+    warning(sprintf(
+      "Swiss CPI release page discovery failed; using cached workbook asset from %s",
+      format(release$publication_date, "%Y-%m-%d")
+    ))
   }
 
   raw_dir <- file.path(project_root, "data/raw")
@@ -1037,6 +1064,12 @@ hicp_rate_definitions <- function() {
   )
 }
 
+euro_area_official_geo <- function() {
+  # Eurostat's changing-composition euro-area aggregate. From January 2026
+  # onward this is EA21, while earlier history keeps the composition then in force.
+  "EA"
+}
+
 read_hicp_rate_chart_rows <- function(yoy_rows, include_ecb_sa = TRUE) {
   definitions <- hicp_rate_definitions()
 
@@ -1336,7 +1369,11 @@ read_ecb_hicp_sa_index_rows <- function(definition) {
 }
 
 read_eurostat_hicp_input_rows <- function(definition) {
-  url <- sprintf("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/%s?lang=en&geo=EA20", definition$dataset)
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/%s?lang=en&geo=%s",
+    definition$dataset,
+    euro_area_official_geo()
+  )
   raw_dir <- file.path(getwd(), "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   tmp <- file.path(raw_dir, sprintf("eurostat_%s_inputs.json", definition$dataset))
@@ -1357,7 +1394,8 @@ read_eurostat_hicp_input_rows <- function(definition) {
 
 read_eurostat_hicp_midx_index <- function(coicop_code, base_series_id) {
   url <- sprintf(
-    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx?lang=en&geo=EA20&coicop=%s&unit=I15",
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx?lang=en&geo=%s&coicop=%s&unit=I15",
+    euro_area_official_geo(),
     utils::URLencode(coicop_code, reserved = TRUE)
   )
   raw_dir <- file.path(getwd(), "data/raw")
@@ -1536,8 +1574,43 @@ read_eurostat_hicp_rows <- function() {
   combined <- combined[order(combined$series_id, combined$date), ]
   combined <- combined[!duplicated(combined[, c("series_id", "date")], fromLast = TRUE), ]
   combined <- apply_latest_hicp_release_overrides(combined)
+  combined <- apply_hicp_flash_precision_overrides(combined)
   combined$date <- format(combined$date, "%Y-%m-%d")
   combined
+}
+
+apply_hicp_flash_precision_overrides <- function(rows) {
+  # Eurostat publishes the flash table rounded to one decimal. Keep a short-lived,
+  # auditable override for the unrounded figure, and let the final release replace it.
+  overrides <- data.frame(
+    date = as.Date("2026-08-01"),
+    valid_through = as.Date("2026-09-16"),
+    series_id = "hicp_headline",
+    value = 3.26,
+    source = "Eurostat HICP flash (unrounded)",
+    source_url = "https://ec.europa.eu/eurostat/web/products-euro-indicators/w/2-01092026-ap",
+    source_note = "Unrounded August 2026 flash estimate; the official Eurostat release table rounds this value to 3.3%.",
+    stringsAsFactors = FALSE
+  )
+
+  active <- overrides[Sys.Date() <= overrides$valid_through, , drop = FALSE]
+  if (!nrow(active)) {
+    return(rows)
+  }
+
+  rows$date <- as.Date(rows$date)
+  for (i in seq_len(nrow(active))) {
+    override <- active[i, ]
+    target <- rows$series_id == override$series_id & rows$date == override$date
+    if (!any(target)) {
+      next
+    }
+    rows$value[target] <- override$value
+    rows$source[target] <- override$source
+    rows$source_url[target] <- override$source_url
+    rows$source_note[target] <- override$source_note
+  }
+  rows
 }
 
 read_latest_hicp_release_overrides <- function() {
@@ -1661,7 +1734,11 @@ read_hicp_history_to_2025 <- function(project_root, definitions) {
 }
 
 read_eurostat_teicp_rows <- function(definition) {
-  url <- sprintf("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/%s?lang=en&geo=EA20", definition$dataset)
+  url <- sprintf(
+    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/%s?lang=en&geo=%s",
+    definition$dataset,
+    euro_area_official_geo()
+  )
   raw_dir <- file.path(getwd(), "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   tmp <- file.path(raw_dir, sprintf("eurostat_%s.json", definition$dataset))
@@ -2923,7 +3000,8 @@ read_indeed_wage_tracker_rows <- function(raw_dir) {
   url <- "https://raw.githubusercontent.com/hiring-lab/indeed-wage-tracker/main/posted-wage-growth-by-country.csv"
   tmp <- file.path(raw_dir, "indeed_wage_tracker_country.csv")
   ok <- tryCatch(download_binary_url(url, tmp), error = function(e) FALSE)
-  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  if (!ok) warning("Indeed Wage Tracker download failed; using the latest valid local file")
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
   raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
   required <- c("country", "month", "posted_wage_growth_yoy")
   if (!all(required %in% names(raw))) return(data.frame())
@@ -2944,7 +3022,8 @@ read_ecb_negotiated_wages_rows <- function(raw_dir) {
   url <- sprintf("https://data-api.ecb.europa.eu/service/data/INW/%s?format=csvdata", key)
   tmp <- file.path(raw_dir, "ecb_negotiated_wages.csv")
   ok <- tryCatch(download_binary_url(url, tmp), error = function(e) FALSE)
-  if (!ok || !file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
+  if (!ok) warning("ECB negotiated wages download failed; using the latest valid local file")
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) return(data.frame())
   raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
   if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) return(data.frame())
   quarter <- suppressWarnings(as.integer(sub("^.*-Q", "", raw$TIME_PERIOD)))
