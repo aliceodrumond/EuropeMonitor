@@ -1039,7 +1039,10 @@ read_official_sentix_rows <- function(project_root) {
   values$sentix_ea <- as.numeric(values$sentix_ea)
   values <- values[!is.na(values$date) & !is.na(values$sentix_ea), c("date", "sentix_ea")]
 
-  latest <- fetch_latest_sentix_from_investing()
+  latest <- fetch_latest_sentix_from_official()
+  if (!nrow(latest)) {
+    latest <- fetch_latest_sentix_from_investing()
+  }
   if (nrow(latest)) {
     values <- values[values$date != latest$date[1], ]
     values <- rbind(values, latest[, c("date", "sentix_ea")])
@@ -1061,8 +1064,8 @@ read_official_sentix_rows <- function(project_root) {
     values$sentix_ea,
     axis = "right",
     unit = "balance",
-    source = "Sentix / Investing.com",
-    source_url = "https://www.investing.com/economic-calendar/sentix-investor-confidence-268"
+    source = "Sentix",
+    source_url = "https://www.sentix.de/index.php/en/"
   )
 }
 
@@ -1120,6 +1123,53 @@ fetch_latest_sentix_from_investing <- function() {
   data.frame(
     date = as.Date(sprintf("%s-%02d-01", parts[3], month)),
     sentix_ea = as.numeric(parts[5]),
+    stringsAsFactors = FALSE
+  )
+}
+
+fetch_latest_sentix_from_official <- function() {
+  url <- "https://www.sentix.de/index.php/en/"
+  html <- fetch_url_text(url)
+  if (!nzchar(html)) {
+    return(data.frame())
+  }
+
+  text <- gsub("<[^>]+>", " ", html, perl = TRUE)
+  text <- gsub("&nbsp;|&#160;", " ", text, perl = TRUE)
+  text <- gsub("&[A-Za-z0-9#]+;", " ", text, perl = TRUE)
+  text <- gsub("\\s+", " ", text, perl = TRUE)
+  pattern <- paste0(
+    "([0-9]{2})\\s+([A-Za-z]+)\\s+([0-9]{4}).{0,9000}?",
+    "Overall Economic Index stands at\\s*([+-]?[0-9]+(?:[\\.,][0-9]+)?)\\s+points"
+  )
+  matches <- regmatches(text, gregexpr(pattern, text, perl = TRUE, ignore.case = TRUE))[[1]]
+  if (!length(matches) || identical(matches, character(0))) {
+    return(data.frame())
+  }
+
+  parts <- regmatches(matches[[length(matches)]], regexec(pattern, matches[[length(matches)]], perl = TRUE, ignore.case = TRUE))[[1]]
+  if (length(parts) < 5) {
+    return(data.frame())
+  }
+
+  month_names <- c(
+    january = 1L, february = 2L, march = 3L, april = 4L,
+    may = 5L, june = 6L, july = 7L, august = 8L,
+    september = 9L, october = 10L, november = 11L, december = 12L
+  )
+  month <- unname(month_names[[tolower(parts[[3]])]])
+  if (is.null(month) || is.na(month)) {
+    return(data.frame())
+  }
+
+  value <- as.numeric(sub(",", ".", parts[[5]], fixed = TRUE))
+  if (!is.finite(value)) {
+    return(data.frame())
+  }
+
+  data.frame(
+    date = as.Date(sprintf("%s-%02d-01", parts[[4]], month)),
+    sentix_ea = value,
     stringsAsFactors = FALSE
   )
 }
