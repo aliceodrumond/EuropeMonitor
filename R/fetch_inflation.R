@@ -588,19 +588,16 @@ build_inflation_flash_fast_series <- function(project_root) {
 }
 
 build_inflation_ecb_sa_fast_series <- function(project_root) {
-  catalog <- read_series_catalog(project_root)
   previous_path <- file.path(project_root, "data/processed/inflation_series.csv")
   if (!file.exists(previous_path)) {
     stop(sprintf("Missing previous inflation dataset for ECB SA update: %s", previous_path))
   }
 
   previous <- utils::read.csv(previous_path, stringsAsFactors = FALSE, check.names = FALSE)
-  hicp <- read_eurostat_hicp_rows()
-  headline_core <- hicp[hicp$series_id %in% c("hicp_headline", "hicp_core"), ]
-  components <- hicp[hicp$series_id %in% c("core_goods", "core_services"), ]
   definitions <- hicp_rate_definitions()
-  hicp_rates <- read_hicp_rate_chart_rows(hicp, include_ecb_sa = TRUE)
-  hicp_seasonality <- read_hicp_seasonality_rows()
+  hicp_rates <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+    build_hicp_official_sa_rows(definitions[i, ])
+  }))
   official_series_ids <- unique(c(
     definitions$hoh_series_id,
     definitions$qoq_series_id,
@@ -619,17 +616,11 @@ build_inflation_ecb_sa_fast_series <- function(project_root) {
     ))
   }
 
-  replacement_charts <- c(
-    definitions$chart_id,
-    definitions$seasonality_chart_id,
-    "hicp_headline_core",
-    "hicp_components"
-  )
-  kept <- previous[!previous$chart_id %in% replacement_charts, , drop = FALSE]
-  inflation <- order_fast_inflation_rows(apply_series_catalog(
-    rbind(kept, headline_core, components, hicp_rates, hicp_seasonality),
-    catalog
-  ))
+  if (any(is.na(official$source) | official$source != "ECB Data Portal")) {
+    stop("Official SA rows must use only ECB Data Portal")
+  }
+  kept <- previous[!previous$series_id %in% official_series_ids, , drop = FALSE]
+  inflation <- order_fast_inflation_rows(rbind(kept, official))
   write_csv_utf8(inflation, file.path(project_root, "data/processed/inflation_series.csv"))
   inflation
 }
