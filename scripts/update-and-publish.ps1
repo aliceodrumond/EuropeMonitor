@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Rscript = "C:\Program Files\R\R-4.3.1\bin\Rscript.exe"
+$Node = "C:\Program Files\nodejs\node.exe"
 $Git = "C:\Users\alice.drumond\AppData\Local\Programs\Git\cmd\git.exe"
 $Npm = "C:\Program Files\nodejs\npm.cmd"
 $Npx = "C:\Program Files\nodejs\npx.cmd"
@@ -59,6 +60,8 @@ function Invoke-Logged {
 }
 
 function Invoke-UpdatePipeline {
+  Invoke-Logged -FilePath $Node -Arguments @("scripts\update-country-inflation.mjs")
+  Invoke-Logged -FilePath $Rscript -Arguments @("scripts\recalculate-country-inflation-x13.R")
   Invoke-Logged -FilePath $Rscript -Arguments @("R\run_daily_update.R")
   Test-OutputData
 
@@ -126,16 +129,19 @@ function Assert-SeriesRows {
 function Test-OutputData {
   $activityPath = Join-Path $ProjectRoot "public\data\activity_series.csv"
   $inflationPath = Join-Path $ProjectRoot "public\data\inflation_series.csv"
+  $countryInflationPath = Join-Path $ProjectRoot "public\data\country_inflation_series.csv"
   $speakersPath = Join-Path $ProjectRoot "public\data\ecb_speakers.csv"
   $metadataPath = Join-Path $ProjectRoot "public\data\metadata.json"
 
   Assert-FileExists $activityPath
   Assert-FileExists $inflationPath
+  Assert-FileExists $countryInflationPath
   Assert-FileExists $speakersPath
   Assert-FileExists $metadataPath
 
   $activity = @(Import-Csv $activityPath)
   $inflation = @(Import-Csv $inflationPath)
+  $countryInflation = @(Import-Csv $countryInflationPath)
   $speakers = @(Import-Csv $speakersPath)
 
   foreach ($chart in @(
@@ -192,6 +198,16 @@ function Test-OutputData {
     "zew_de"
   )) {
     Assert-SeriesRows -Rows $activity -SeriesId $series -MinimumRows 1
+  }
+
+  foreach ($series in @(
+    "de_headline_mom_sa",
+    "fr_headline_mom_sa",
+    "it_headline_mom_sa",
+    "es_headline_mom_sa",
+    "be_headline_mom_sa"
+  )) {
+    Assert-SeriesRows -Rows $countryInflation -SeriesId $series -MinimumRows 1
   }
 
   foreach ($chart in @(
