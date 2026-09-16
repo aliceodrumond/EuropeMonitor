@@ -8,7 +8,7 @@
     "description": "ZEW Financial Market Survey: Germany ZEW"
   },
   "inflation_last_new": {
-    "date": "2027-06-01",
-    "description": "ECB Data Portal: ECB Wage Tracker (Monthly official), ECB Wage Tracker (Quarterly), Employee Coverage (Quarterly), Excluding One-off Payments (Quarterly), Including One-off Payments (Quarterly)"
+    "date": "2027-02-01",
+    "description": "European Commission Business and Consumer Surveys: EC Services prices, 6m lag"
   }
 }
