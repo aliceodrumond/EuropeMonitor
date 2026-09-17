@@ -1,19 +1,24 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+# Operational timezone: America/Sao_Paulo (Sao Paulo, Brazil), independent of the host timezone.
+$BrazilTimeZone = [TimeZoneInfo]::FindSystemTimeZoneById("E. South America Standard Time")
+function Get-BrazilTime { [TimeZoneInfo]::ConvertTimeFromUtc([datetime]::UtcNow, $BrazilTimeZone) }
 $Rscript = "C:\Program Files\R\R-4.3.1\bin\Rscript.exe"
 $Git = "C:\Users\alice.drumond\AppData\Local\Programs\Git\cmd\git.exe"
 $Npm = "C:\Program Files\nodejs\npm.cmd"
 $Npx = "C:\Program Files\nodejs\npx.cmd"
 $LogDir = Join-Path $ProjectRoot "logs"
-$LogPath = Join-Path $LogDir ("inflation-update-" + (Get-Date -Format "yyyy-MM-dd") + ".log")
+$LogPath = Join-Path $LogDir ("inflation-update-" + (Get-BrazilTime).ToString("yyyy-MM-dd") + ".log")
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 Set-Location $ProjectRoot
 
 $env:PATH = "C:\Program Files\nodejs;" + $env:PATH
 $env:NODE_USE_SYSTEM_CA = "1"
-$env:BUILD_OUT_DIR = "pages-dist"
+# Keep this deployment's files separate from other update/build jobs.
+$env:BUILD_OUT_DIR = "outputs/inflation-build-$PID-$([guid]::NewGuid().ToString('N'))"
+$BuildClientPath = Join-Path (Join-Path $ProjectRoot $env:BUILD_OUT_DIR) "client"
 $env:CLOUDFLARE_API_TOKEN = [Environment]::GetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "User")
 $env:CLOUDFLARE_ACCOUNT_ID = [Environment]::GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID", "User")
 if ($env:FORCE_PCCI_REBUILD -eq "1") {
@@ -24,7 +29,7 @@ if ($env:FORCE_PCCI_REBUILD -eq "1") {
 
 function Write-Log {
   param([string]$Message)
-  $Line = "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") $Message"
+  $Line = "$((Get-BrazilTime).ToString('yyyy-MM-dd HH:mm:ss')) BRT (America/Sao_Paulo) $Message"
   $Logged = $false
   for ($Attempt = 1; $Attempt -le 5 -and -not $Logged; $Attempt++) {
     try {
@@ -63,7 +68,7 @@ function Invoke-WranglerDeploy {
     "wrangler",
     "pages",
     "deploy",
-    "pages-dist/client",
+    $BuildClientPath,
     "--project-name",
     "legacy-europe-monitor",
     "--branch",
@@ -93,18 +98,37 @@ function Invoke-InflationPipeline {
   Test-InflationOutput
 
   Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
-  Test-InflationOutput
+  Test-InflationOutput -FilePath (Join-Path $BuildClientPath "data\inflation_series.csv")
+  Assert-InflationArtifactConsistency
 
   Invoke-WranglerDeploy
 
   & $Git add public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
   & $Git diff --cached --quiet
   if ($LASTEXITCODE -ne 0) {
-    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation monitor data $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation monitor data $((Get-BrazilTime).ToString('yyyy-MM-dd HH:mm')) BRT")
     Invoke-Logged -FilePath $Git -Arguments @("push")
   } else {
     Write-Log "No inflation data changes to commit"
   }
+}
+
+function Assert-InflationArtifactConsistency {
+  $paths = @(
+    (Join-Path $ProjectRoot "public\data\inflation_series.csv"),
+    (Join-Path $ProjectRoot "data\processed\inflation_series.csv"),
+    (Join-Path $BuildClientPath "data\inflation_series.csv")
+  )
+  $hashes = @($paths | ForEach-Object {
+    if (-not (Test-Path -LiteralPath $_ -PathType Leaf)) {
+      throw "Missing inflation file before deployment: $_"
+    }
+    (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash
+  })
+  if (@($hashes | Select-Object -Unique).Count -ne 1) {
+    throw "Inflation files diverged before deployment (public, processed, build). A concurrent writer may have changed them; publication stopped."
+  }
+  Write-Log "Validated identical inflation SHA256 for public, processed and deploy artifact: $($hashes[0])"
 }
 
 function Assert-SeriesRows {
@@ -135,10 +159,12 @@ function Assert-ChartRows {
 }
 
 function Test-InflationOutput {
-  $inflationPath = Join-Path $ProjectRoot "public\data\inflation_series.csv"
+  param([string]$FilePath = (Join-Path $ProjectRoot "public\data\inflation_series.csv"))
+  $inflationPath = $FilePath
   if (-not (Test-Path -LiteralPath $inflationPath)) {
     throw "Missing required file: $inflationPath"
   }
+  Write-Log "Validating inflation file: $inflationPath"
   $inflation = @(Import-Csv $inflationPath)
 
   foreach ($chart in @(
@@ -269,26 +295,47 @@ function Test-InflationOutput {
   }
 }
 
-Write-Log "Starting Europe monitor inflation-only update"
-
-$MaxAttempts = 3
-for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
-  try {
-    if ($Attempt -gt 1) {
-      Write-Log "Retrying inflation-only update after previous failure; attempt $Attempt of $MaxAttempts"
+$LockDirectory = Join-Path $ProjectRoot "outputs"
+New-Item -ItemType Directory -Force -Path $LockDirectory | Out-Null
+$LockPath = Join-Path $LockDirectory "inflation-update.lock"
+$UpdateLock = $null
+# FileShare.None coordinates both interactive and Task Scheduler sessions.
+# Keep the lock file; closing the handle releases the lock even after a crash.
+try {
+  while ($null -eq $UpdateLock) {
+    try {
+      $UpdateLock = [IO.File]::Open($LockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    } catch [IO.IOException] {
+      $LockErrorCode = $_.Exception.GetBaseException().HResult -band 0xffff
+      if ($LockErrorCode -notin @(32, 33)) { throw }
+      Write-Log "Waiting for another inflation update to release the workspace lock"
+      Start-Sleep -Seconds 10
     }
-    Invoke-InflationPipeline
-    Write-Log "Europe monitor inflation-only update completed"
-    exit 0
-  } catch {
-    $Message = $_.Exception.Message
-    Write-Log "Inflation-only update attempt $Attempt of $MaxAttempts failed: $Message"
-    if ($Attempt -ge $MaxAttempts) {
-      Write-Log "Europe monitor inflation-only update FAILED after $MaxAttempts attempts"
-      throw
-    }
-    $DelaySeconds = 60 * $Attempt
-    Write-Log "Waiting $DelaySeconds seconds before retrying inflation-only update"
-    Start-Sleep -Seconds $DelaySeconds
   }
+  Write-Log "Starting Europe monitor inflation-only update"
+  Write-Log "Isolated deployment output: $BuildClientPath"
+
+  $MaxAttempts = 3
+  for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+    try {
+      if ($Attempt -gt 1) {
+        Write-Log "Retrying inflation-only update after previous failure; attempt $Attempt of $MaxAttempts"
+      }
+      Invoke-InflationPipeline
+      Write-Log "Europe monitor inflation-only update completed"
+      exit 0
+    } catch {
+      $Message = $_.Exception.Message
+      Write-Log "Inflation-only update attempt $Attempt of $MaxAttempts failed: $Message"
+      if ($Attempt -ge $MaxAttempts) {
+        Write-Log "Europe monitor inflation-only update FAILED after $MaxAttempts attempts"
+        throw
+      }
+      $DelaySeconds = 60 * $Attempt
+      Write-Log "Waiting $DelaySeconds seconds before retrying inflation-only update"
+      Start-Sleep -Seconds $DelaySeconds
+    }
+  }
+} finally {
+  if ($null -ne $UpdateLock) { $UpdateLock.Dispose() }
 }
