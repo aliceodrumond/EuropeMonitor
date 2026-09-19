@@ -8,8 +8,8 @@
     "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
   },
   "inflation_last_new": {
-    "date": "2027-02-01",
-    "description": "European Commission Business and Consumer Surveys: EC Services prices, 6m lag"
+    "date": "2026-08-01",
+    "description": "Eurostat HICP / ECB-style PCCI replication: HICP ECB-style PCCI replication, HICP ECB-style PCCI replication 3M MA"
   },
-  "inflation_rows": 20295
+  "inflation_rows": 20297
 }
