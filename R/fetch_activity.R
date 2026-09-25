@@ -553,11 +553,39 @@ read_ifo_business_climate_rows <- function(project_root) {
     html,
     gregexpr("href=\"([^\"]*gsk-e-[0-9]{6}\\.xlsx[^\"]*)\"", html, perl = TRUE)
   )[[1]]
+  paths <- character()
   if (length(matches) && !identical(matches, character(0))) {
     paths <- sub("^href=\"", "", sub("\"$", "", matches))
-    paths <- sort(unique(paths), decreasing = TRUE)
-    url <- absolute_ifo_url(paths[[1]])
-    tryCatch(download_binary_url(url, workbook_path), error = function(e) NULL)
+  }
+  # The monthly workbook can be published before the download index is updated.
+  paths <- unique(c(sprintf(
+    "/sites/default/files/secure/timeseries/gsk-e-%s.xlsx",
+    format(as.Date(Sys.time(), tz = "America/Sao_Paulo"), "%Y%m")
+  ), sort(unique(paths), decreasing = TRUE)))
+  workbook_month <- function(path) {
+    tryCatch({
+      sheets <- openxlsx::getSheetNames(path)
+      if (!all(c("ifo Business Climate", "Sectors") %in% sheets)) return(as.Date(NA))
+      rows <- openxlsx::read.xlsx(path, sheet = "ifo Business Climate", startRow = 8, colNames = FALSE)
+      dates <- parse_ifo_month(rows[[1]])
+      valid <- !is.na(dates) & !is.na(suppressWarnings(as.numeric(rows[[2]])))
+      if (!any(valid)) return(as.Date(NA))
+      max(dates[valid])
+    }, error = function(e) as.Date(NA))
+  }
+  cached_month <- workbook_month(workbook_path)
+  candidate <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(candidate), add = TRUE)
+  for (path in paths) {
+    unlink(candidate)
+    ok <- suppressWarnings(tryCatch(download_binary_url(absolute_ifo_url(path), candidate), error = function(e) FALSE))
+    if (!isTRUE(ok)) next
+    candidate_month <- workbook_month(candidate)
+    if (is.na(candidate_month)) next
+    if (is.na(cached_month) || candidate_month >= cached_month) {
+      if (!file.copy(candidate, workbook_path, overwrite = TRUE)) stop("Unable to save IFO workbook")
+    }
+    break
   }
 
   if (!file.exists(workbook_path) || file.info(workbook_path)$size == 0) {

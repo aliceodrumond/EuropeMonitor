@@ -1,0 +1,22 @@
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- args[grepl("^--file=", args)]
+script_path <- normalizePath(sub("^--file=", "", file_arg[[1]]), winslash = "/", mustWork = TRUE)
+project_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = TRUE)
+source(file.path(project_root, "R/helpers.R"))
+source(file.path(project_root, "R/fetch_activity.R"))
+source(file.path(project_root, "R/build_site_data.R"))
+ensure_project_dirs(project_root)
+message("Refreshing Activity Monitor...")
+activity <- build_activity_series(project_root)
+stopifnot(nrow(activity) > 0, !anyDuplicated(paste(activity$series_id, activity$date)))
+activity_path <- file.path(project_root, "public/data/activity_series.csv")
+metadata_path <- file.path(project_root, "public/data/metadata.json")
+metadata <- read_metadata_json(metadata_path)
+metadata$activity_last_new <- summarize_new_observations(activity, activity_path, metadata$activity_last_new)
+metadata$last_updated <- format(Sys.Date(), "%Y-%m-%d")
+metadata$generated_by <- "R/run_activity_update.R"
+write_csv_utf8(activity, activity_path)
+write_metadata_json(metadata, metadata_path)
+latest <- activity[grepl("^ifo_", activity$series_id), ]
+print(latest[ave(as.numeric(as.Date(latest$date)), latest$series_id, FUN = max) == as.numeric(as.Date(latest$date)), c("date", "series_id", "value")], row.names = FALSE)
+message(sprintf("Activity rows: %s", nrow(activity)))
