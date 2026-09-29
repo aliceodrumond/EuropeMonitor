@@ -1843,26 +1843,46 @@ read_ecb_pcci_rows <- function() {
   raw_dir <- file.path(getwd(), "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
   tmp <- file.path(raw_dir, "ecb_pcci_3m_saar.csv")
-  download_binary_url(url, tmp)
-  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
-    return(data.frame())
+  download_tmp <- paste0(tmp, ".download")
+  unlink(download_tmp)
+  download_binary_url(url, download_tmp)
+
+  parse_pcci_file <- function(path) {
+    if (!file.exists(path) || file.info(path)$size == 0) return(data.frame())
+    raw <- tryCatch(
+      utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(error) data.frame()
+    )
+    if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) return(data.frame())
+    dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
+    values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
+    valid <- !is.na(dates) & !is.na(values)
+    if (!any(valid)) return(data.frame())
+    data.frame(date = dates[valid], value = values[valid], stringsAsFactors = FALSE)
   }
 
-  raw <- utils::read.csv(tmp, stringsAsFactors = FALSE, check.names = FALSE)
-  if (!all(c("TIME_PERIOD", "OBS_VALUE") %in% names(raw))) {
+  downloaded <- parse_pcci_file(download_tmp)
+  if (nrow(downloaded)) {
+    # Only replace the retained local copy after the download has passed schema
+    # and observation validation. This protects updates during ECB outages.
+    file.copy(download_tmp, tmp, overwrite = TRUE)
+  } else if (file.exists(download_tmp)) {
+    warning("ECB PCCI refresh was invalid; retaining the last valid local copy.")
+  }
+  unlink(download_tmp)
+
+  pcci <- if (nrow(downloaded)) downloaded else parse_pcci_file(tmp)
+  if (!nrow(pcci)) {
     return(data.frame())
   }
-  dates <- as.Date(sprintf("%s-01", raw$TIME_PERIOD))
-  values <- suppressWarnings(as.numeric(raw$OBS_VALUE))
-  valid <- !is.na(dates) & !is.na(values)
 
   official <- make_series_frame(
-    dates[valid],
+    pcci$date,
     "ecb_pcci_3m_saar",
     "ecb_pcci_3m_saar",
     "PCCI 3M SAAR",
     "Euro Area",
-    values[valid],
+    pcci$value,
     unit = "%",
     source = "ECB Data Portal",
     source_url = "https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.PCCI00.3.3MM",

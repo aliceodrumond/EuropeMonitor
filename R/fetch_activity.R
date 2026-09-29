@@ -1549,23 +1549,28 @@ iso_week_end <- function(periods) {
 
 download_binary_url <- function(url, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  download_path <- paste0(path, ".download")
+  unlink(download_path)
   ok <- tryCatch({
-    utils::download.file(url, path, mode = "wb", quiet = TRUE)
-    file.exists(path) && file.info(path)$size > 0
+    utils::download.file(url, download_path, mode = "wb", quiet = TRUE)
+    file.exists(download_path) && file.info(download_path)$size > 0
   }, error = function(e) FALSE)
-  if (ok) {
-    return(TRUE)
+  if (!ok) {
+    command <- sprintf(
+      "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
+      shQuote(url, type = "sh"),
+      shQuote(normalizePath(download_path, winslash = "\\", mustWork = FALSE), type = "sh")
+    )
+    ok <- tryCatch({
+      system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
+      file.exists(download_path) && file.info(download_path)$size > 0
+    }, error = function(e) FALSE)
   }
-
-  command <- sprintf(
-    "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
-    shQuote(url, type = "sh"),
-    shQuote(normalizePath(path, winslash = "\\", mustWork = FALSE), type = "sh")
-  )
-  tryCatch({
-    system2("powershell", c("-NoProfile", "-Command", command), stdout = FALSE, stderr = FALSE)
-    file.exists(path) && file.info(path)$size > 0
-  }, error = function(e) FALSE)
+  if (ok) {
+    ok <- isTRUE(file.copy(download_path, path, overwrite = TRUE))
+  }
+  unlink(download_path)
+  ok
 }
 
 fetch_url_text <- function(url) {
