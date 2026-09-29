@@ -8,7 +8,7 @@
     "description": "Deutsche Bundesbank: Germany WAI"
   },
   "inflation_last_new": {
-    "date": "2027-02-01",
-    "description": "European Commission Business and Consumer Surveys: EC Services prices, 6m lag"
+    "date": "2027-03-01",
+    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
   }
 }
