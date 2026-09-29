@@ -68,7 +68,18 @@ summarize_new_observations <- function(current, previous_path, previous_summary 
     return(if (is.null(previous_summary)) empty_summary else previous_summary)
   }
 
-  added$date_value <- as.Date(added$date)
+  # Cached source artifacts can carry either ISO or locale-formatted dates.
+  # Normalize explicitly so a metadata summary can never block a valid build.
+  raw_dates <- as.character(added$date)
+  added$date_value <- as.Date(raw_dates, format = "%Y-%m-%d")
+  missing_dates <- is.na(added$date_value)
+  added$date_value[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%m/%d/%Y")
+  missing_dates <- is.na(added$date_value)
+  added$date_value[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%d/%m/%Y")
+  added <- added[!is.na(added$date_value), , drop = FALSE]
+  if (!nrow(added)) {
+    return(if (is.null(previous_summary)) empty_summary else previous_summary)
+  }
   latest_date <- max(added$date_value, na.rm = TRUE)
   latest <- added[added$date_value == latest_date, , drop = FALSE]
   latest <- latest[order(latest$source, latest$series_name), , drop = FALSE]

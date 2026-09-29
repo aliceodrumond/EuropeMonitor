@@ -19,6 +19,23 @@ const components = {
 const sourceUrl =
   "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table?lang=en";
 
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function fetchJsonWithRetry(url, label) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt < 4) await sleep(attempt * 3000);
+    }
+  }
+  throw new Error(`${label} failed after 3 attempts: ${lastError?.message || lastError}`);
+}
+
 function dimensionCodes(json, id) {
   const index = json.dimension[id].category.index;
   return Object.entries(index)
@@ -113,19 +130,12 @@ for (const [geo, country] of Object.entries(countries)) {
   const weightsUrl =
     `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_inw` +
     `?lang=en&geo=${geo}`;
-  const [legacyResponse, currentResponse, weightsResponse] = await Promise.all([
-    fetch(legacyUrl),
-    fetch(currentUrl),
-    fetch(weightsUrl),
-  ]);
-  if (!legacyResponse.ok) throw new Error(`Eurostat legacy ${geo}: ${legacyResponse.status}`);
-  if (!currentResponse.ok) throw new Error(`Eurostat current ${geo}: ${currentResponse.status}`);
-  if (!weightsResponse.ok) throw new Error(`Eurostat weights ${geo}: ${weightsResponse.status}`);
-  const [legacyJson, currentJson] = await Promise.all([
-    legacyResponse.json(),
-    currentResponse.json(),
-  ]);
-  const weightsJson = await weightsResponse.json();
+  // Eurostat intermittently resets concurrent long-running responses. Keep the
+  // requests serial and retry each independently so one transient failure does
+  // not leave the country-inflation artifact empty.
+  const legacyJson = await fetchJsonWithRetry(legacyUrl, `Eurostat legacy ${geo}`);
+  const currentJson = await fetchJsonWithRetry(currentUrl, `Eurostat current ${geo}`);
+  const weightsJson = await fetchJsonWithRetry(weightsUrl, `Eurostat weights ${geo}`);
   const legacyTimes = dimensionCodes(legacyJson, "time");
   const currentTimes = dimensionCodes(currentJson, "time");
   const weightTimes = dimensionCodes(weightsJson, "time");

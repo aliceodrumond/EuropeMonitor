@@ -60,7 +60,16 @@ function Invoke-Logged {
 }
 
 function Invoke-UpdatePipeline {
-  Invoke-Logged -FilePath $Node -Arguments @("scripts\update-country-inflation.mjs")
+  try {
+    Invoke-Logged -FilePath $Node -Arguments @("scripts\update-country-inflation.mjs")
+  } catch {
+    $CountryInflationPath = Join-Path $ProjectRoot "public\data\country_inflation_series.csv"
+    $CountryIndicesPath = Join-Path $ProjectRoot "data\processed\country_inflation_indices.csv"
+    if (-not (Test-Path -LiteralPath $CountryInflationPath) -or -not (Test-Path -LiteralPath $CountryIndicesPath)) {
+      throw
+    }
+    Write-Log "Country-inflation refresh failed; retaining the existing validated Eurostat artifacts: $($_.Exception.Message)"
+  }
   Invoke-Logged -FilePath $Rscript -Arguments @("scripts\recalculate-country-inflation-x13.R")
   Invoke-Logged -FilePath $Rscript -Arguments @("R\run_daily_update.R")
   Test-OutputData

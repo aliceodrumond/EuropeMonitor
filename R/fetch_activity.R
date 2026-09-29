@@ -485,10 +485,20 @@ read_ecb_bls_series <- function(project_root, definition) {
     definition$key
   )
   csv_text <- fetch_url_text(url)
+  used_cached_response <- FALSE
+  # The BLS endpoint can be temporarily unavailable.  Retain a previously
+  # validated raw response rather than deleting the whole chart on a transient
+  # network failure; a successful fetch below always refreshes the cache.
+  if (!nzchar(csv_text) && file.exists(raw_path) && file.info(raw_path)$size > 0) {
+    csv_text <- paste(readLines(raw_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    used_cached_response <- TRUE
+  }
   if (!nzchar(csv_text)) {
     return(data.frame())
   }
-  writeLines(csv_text, raw_path, useBytes = TRUE)
+  if (!used_cached_response) {
+    writeLines(csv_text, raw_path, useBytes = TRUE)
+  }
 
   values <- tryCatch(
     utils::read.csv(text = csv_text, stringsAsFactors = FALSE, check.names = FALSE),
@@ -1203,7 +1213,7 @@ fetch_latest_sentix_from_official <- function() {
 }
 
 read_destatis_toll_rows <- function(project_root) {
-  daily_rows <- read_dashboard_daily_toll_rows()
+  daily_rows <- read_dashboard_daily_toll_rows(project_root)
   if (nrow(daily_rows)) {
     return(daily_rows)
   }
@@ -1274,14 +1284,14 @@ read_destatis_monthly_toll_rows <- function() {
   )
 }
 
-read_dashboard_daily_toll_rows <- function() {
+read_dashboard_daily_toll_rows <- function(project_root) {
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     return(data.frame())
   }
 
   raw <- read_dashboard_highcharts_series("detran0225")
   if (!nrow(raw)) {
-    return(data.frame())
+    return(read_cached_daily_toll_rows(project_root))
   }
 
   scale_factor <- read_toll_level_scale(raw)
@@ -1290,7 +1300,7 @@ read_dashboard_daily_toll_rows <- function() {
   raw$avg7 <- trailing_mean(raw$value, 7)
   raw <- raw[!is.na(raw$value) & !is.na(raw$avg7), ]
   if (!nrow(raw)) {
-    return(data.frame())
+    return(read_cached_daily_toll_rows(project_root))
   }
 
   avg_rows <- make_series_frame(
@@ -1318,6 +1328,34 @@ read_dashboard_daily_toll_rows <- function() {
     frequency = "daily"
   )
   rbind(avg_rows, daily_rows)
+}
+
+read_cached_daily_toll_rows <- function(project_root) {
+  path <- file.path(project_root, "data/processed/activity_series.csv")
+  previous <- if (file.exists(path)) {
+    tryCatch(utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) data.frame())
+  } else data.frame()
+  # A failed in-place refresh can already have replaced the processed file.
+  # The last committed public artifact is the durable fallback in that case.
+  if (!nrow(previous)) {
+    committed <- tryCatch(paste(system2("git", c("show", "HEAD:public/data/activity_series.csv"), stdout = TRUE, stderr = FALSE), collapse = "\n"), error = function(e) "")
+    previous <- tryCatch(utils::read.csv(text = committed, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) data.frame())
+  }
+  if (!nrow(previous) || !all(c("series_id", "chart_id", "date") %in% names(previous))) return(data.frame())
+  previous <- previous[previous$series_id == "toll_de_daily" & previous$chart_id == "toll_mileage", , drop = FALSE]
+  if (!nrow(previous)) {
+    committed <- tryCatch(paste(system2("git", c("show", "HEAD:public/data/activity_series.csv"), stdout = TRUE, stderr = FALSE), collapse = "\n"), error = function(e) "")
+    previous <- tryCatch(utils::read.csv(text = committed, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) data.frame())
+    previous <- previous[previous$series_id == "toll_de_daily" & previous$chart_id == "toll_mileage", , drop = FALSE]
+  }
+  if (!nrow(previous)) return(data.frame())
+  raw_dates <- as.character(previous$date)
+  previous$date <- as.Date(raw_dates, format = "%Y-%m-%d")
+  missing_dates <- is.na(previous$date)
+  previous$date[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%m/%d/%Y")
+  missing_dates <- is.na(previous$date)
+  previous$date[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%d/%m/%Y")
+  previous[!is.na(previous$date), , drop = FALSE]
 }
 
 read_dashboard_highcharts_series <- function(topic_id) {
