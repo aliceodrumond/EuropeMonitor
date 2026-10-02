@@ -1071,9 +1071,13 @@ read_hicp_rate_chart_rows <- function(yoy_rows, include_ecb_sa = TRUE) {
 
 read_hicp_seasonality_rows <- function() {
   definitions <- hicp_rate_definitions()
-  do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
+  rows <- do.call(rbind, lapply(seq_len(nrow(definitions)), function(i) {
     build_hicp_seasonality_rows(definitions[i, ])
   }))
+  # Keep historical IDs available while exposing the panel's canonical IDs.
+  aliases <- rows[rows$series_id %in% c("core_goods_mom_nsa_2026", "core_services_mom_nsa_2026"), , drop = FALSE]
+  aliases$series_id <- sub("^core_", "hicp_", aliases$series_id)
+  rbind(rows, aliases)
 }
 
 build_hicp_seasonality_rows <- function(definition) {

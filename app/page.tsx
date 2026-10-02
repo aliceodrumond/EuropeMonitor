@@ -444,7 +444,7 @@ const charts: ChartDefinition[] = [
     kicker: "% MoM NSA",
     yLeftLabel: "% m/m NSA",
     chartType: "seasonality",
-    seriesOrder: ["core_goods_mom_nsa_range_min", "core_goods_mom_nsa_range_max", "core_goods_mom_nsa_median", "core_goods_mom_nsa_2022", "core_goods_mom_nsa_2025", "core_goods_mom_nsa_2026"],
+    seriesOrder: ["core_goods_mom_nsa_range_min", "core_goods_mom_nsa_range_max", "core_goods_mom_nsa_median", "core_goods_mom_nsa_2022", "core_goods_mom_nsa_2025", "hicp_goods_mom_nsa_2026"],
   },
   {
     id: "hicp_services_seasonality",
@@ -453,7 +453,7 @@ const charts: ChartDefinition[] = [
     kicker: "% MoM NSA",
     yLeftLabel: "% m/m NSA",
     chartType: "seasonality",
-    seriesOrder: ["core_services_mom_nsa_range_min", "core_services_mom_nsa_range_max", "core_services_mom_nsa_median", "core_services_mom_nsa_2022", "core_services_mom_nsa_2025", "core_services_mom_nsa_2026"],
+    seriesOrder: ["core_services_mom_nsa_range_min", "core_services_mom_nsa_range_max", "core_services_mom_nsa_median", "core_services_mom_nsa_2022", "core_services_mom_nsa_2025", "hicp_services_mom_nsa_2026"],
   },
   {
     id: "hicp_services_ex_volatiles_rates",
@@ -2129,6 +2129,13 @@ function parseCsv(text: string): Array<Record<string, string>> {
 }
 
 function buildSeries(rows: SeriesRow[], definition: ChartDefinition): ChartSeries[] {
+  if (definition.id === "hicp_goods_seasonality" || definition.id === "hicp_services_seasonality") {
+    const canonicalId = definition.id.replace("_seasonality", "_mom_nsa_2026");
+    const previousId = canonicalId.replace(/^hicp_/, "core_");
+    const hasCanonical = rows.some((row) => row.series_id === canonicalId);
+    rows = rows.filter((row) => !hasCanonical || row.series_id !== previousId)
+      .map((row) => row.series_id === previousId ? { ...row, series_id: canonicalId } : row);
+  }
   if (definition.id === "wage_tracker") {
     const officialQuarterly = new Set(["wage_tracker_coverage", "wage_tracker_ea", "wage_tracker_unsmoothed", "wage_tracker_excluding"]);
     rows = rows.filter((row) => officialQuarterly.has(row.series_id));
