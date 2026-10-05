@@ -2,7 +2,7 @@
   {
     "date": "2026-07-01",
     "suffix": "ea",
-    "composite": 52.0,
+    "composite": 52,
     "manufacturing": 51.9,
     "services": 51.7,
     "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
@@ -50,7 +50,7 @@
   {
     "date": "2026-08-01",
     "suffix": "ea",
-    "composite": 52.0,
+    "composite": 52,
     "manufacturing": 52.7,
     "services": 51.6,
     "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
@@ -68,7 +68,7 @@
     "suffix": "fr",
     "composite": 48.5,
     "manufacturing": 51.1,
-    "services": 48.0,
+    "services": 48,
     "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
   },
   {
@@ -93,6 +93,54 @@
     "composite": 52.5,
     "manufacturing": 51.7,
     "services": 52.5,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "ea",
+    "composite": 53.1,
+    "manufacturing": 52.9,
+    "services": 53,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "de",
+    "composite": 53.8,
+    "manufacturing": 53.9,
+    "services": 52.9,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "fr",
+    "composite": 51.1,
+    "manufacturing": 50.6,
+    "services": 51.2,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "es",
+    "composite": 56.8,
+    "manufacturing": 51,
+    "services": 58.3,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "it",
+    "composite": 51,
+    "manufacturing": 50.4,
+    "services": 51.7,
+    "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
+  },
+  {
+    "date": "2026-09-01",
+    "suffix": "uk",
+    "composite": 52,
+    "manufacturing": 51.9,
+    "services": 52.1,
     "source_url": "https://www.pmi.spglobal.com/Public/Release/PressReleases"
   }
 ]

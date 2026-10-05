@@ -1,0 +1,14 @@
+{
+  "period": "2026-09",
+  "verified_on": "2026-10-05",
+  "values_order": ["composite", "manufacturing", "services"],
+  "countries": {
+    "ea": {"values": [53.1,52.9,53.0], "services_composite_source": "https://www.pmi.spglobal.com/Public/Home/PressRelease/ff25572eb80846618ddf99be5e54083c", "manufacturing_verification": "https://formatresearch.com/en/2026/10/01/settore-manifatturiero-eurozona-e-italia-sp-global-pmi/"},
+    "de": {"values": [53.8,53.9,52.9], "services_composite_source": "https://www.pmi.spglobal.com/Public/Home/PressRelease/5cc5272ec407415795e0da216fbc8a0e", "manufacturing_verification": "https://www.investing.com/news/economic-indicators/german-manufacturing-upturn-holds-firm-in-september-pmi-shows-4926512"},
+    "fr": {"values": [51.1,50.6,51.2], "services_composite_source": "https://www.pmi.spglobal.com/Public/Home/PressRelease/14824e277c4c449a8550e77ed6c4ef7d", "manufacturing_verification": "https://t4t.fxblue.com/calendar/item/HCOB_Manufacturing_PMI_FR"},
+    "es": {"values": [56.8,51.0,58.3], "composite_verification": "https://www.europapress.es/economia/macroeconomia-00338/noticia-actividad-privada-espana-acelera-maximos-2024-pmi-20261005093305.html", "manufacturing_verification": "https://es.investing.com/economic-calendar/spanish-manufacturing-pmi-667", "services_verification": "https://tradingeconomics.com/spain/services-pmi/news/589440"},
+    "it": {"values": [51.0,50.4,51.7], "services_composite_source": "https://www.pmi.spglobal.com/Public/Home/PressRelease/489ff0b78c5844b8a662515352ff8425", "manufacturing_verification": "https://formatresearch.com/en/2026/10/01/settore-manifatturiero-eurozona-e-italia-sp-global-pmi/"},
+    "uk": {"values": [52.0,51.9,52.1], "services_composite_source": "https://www.pmi.spglobal.com/Public/Home/PressRelease/23453dfdab0048ee8a69994752851579", "manufacturing_verification": "https://tradingeconomics.com/united-kingdom/manufacturing-pmi"}
+  },
+  "note": "Five services/composite official PDFs downloaded and verified. Remaining official PDF routes returned HTTP 202 with empty bodies; final values were checked in the named published sources reporting S&P Global results. No forecasts or flash values were used as final."
+}
