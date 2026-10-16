@@ -838,7 +838,10 @@ read_ifo_price_expectations_rows <- function(project_root) {
     "https://www.ifo.de/en/facts/2026-03-30/companies-germany-planning-higher-prices",
     "https://www.ifo.de/en/facts/2026-04-29/more-companies-germany-planning-price-increases",
     "https://www.ifo.de/en/facts/2026-05-29/price-pressure-eases-somewhat",
-    "https://www.ifo.de/en/facts/2026-06-30/fewer-companies-germany-want-raise-their-prices"
+    "https://www.ifo.de/en/facts/2026-06-30/fewer-companies-germany-want-raise-their-prices",
+    "https://www.ifo.de/en/facts/2026-07-30/fewer-companies-germany-planning-price-increases",
+    "https://www.ifo.de/en/facts/2026-09-01/somewhat-fewer-companies-germany-planning-price-increases",
+    "https://www.ifo.de/en/facts/2026-09-30/higher-energy-prices-germany-increasingly-being-passed"
   )
 
   cached <- ifo_price_cache_read(cache_path)
@@ -885,7 +888,7 @@ ifo_price_parse_page <- function(url) {
 
   html <- paste(readLines(tmp, warn = FALSE, encoding = "UTF-8"), collapse = " ")
   text <- ifo_price_clean_html(html)
-  current_month <- ifo_price_url_month(url)
+  current_month <- ifo_price_report_month(text, ifo_price_url_month(url))
   if (is.na(current_month)) {
     return(data.frame())
   }
@@ -899,7 +902,8 @@ ifo_price_parse_page <- function(url) {
     "IFO Mfg prices",
     c(
       "manufacturing[^.]{0,240}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points",
-      "indicator in manufacturing[^.]{0,160}?to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points,\\s+down from\\s+(-?\\d+(?:\\.\\d+)?)"
+      "indicator in manufacturing[^.]{0,160}?to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points,\\s+down from\\s+(-?\\d+(?:\\.\\d+)?)",
+      "manufacturing[^.]{0,240}?(?:fell|rose|climbed)\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points,\\s+(?:down|up)\\s+from\\s+(-?\\d+(?:\\.\\d+)?)"
     )
   ))
   rows <- rbind(rows, ifo_price_parse_pair(
@@ -911,7 +915,9 @@ ifo_price_parse_page <- function(url) {
     c(
       "services and trade sectors[^.]{0,240}?from\\s+(-?\\d+(?:\\.\\d+)?)\\*?\\s+and\\s+-?\\d+(?:\\.\\d+)?\\*?,\\s+respectively,\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s+and",
       "service providers and in trade[^.]{0,260}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s+and\\s+-?\\d+(?:\\.\\d+)?\\s+points,\\s+respectively,\\s+in\\s+[A-Za-z]+\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s+and",
-      "consumer-related service providers[^.]{0,180}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points"
+      "consumer-related service providers[^.]{0,180}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points",
+      "service providers[^.]{0,240}?from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points",
+      "service providers[\\s\\S]{0,240}?dropped\\s+from\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:points)?\\*?\\s+to\\s+(-?\\d+(?:\\.\\d+)?)\\s*points"
     )
   ))
   rows <- rbind(rows, ifo_price_parse_pair(
@@ -952,7 +958,7 @@ ifo_price_parse_pair <- function(text, current_month, source_url, series_id, ser
     if (!is.finite(first) || !is.finite(second)) {
       next
     }
-    current_first <- grepl("down from", patterns[[i]], fixed = TRUE) && !grepl("from\\\\s+.*to", patterns[[i]])
+    current_first <- grepl("\\b(?:down|up)\\s+from\\b", parts[[1]], ignore.case = TRUE, perl = TRUE)
     if (current_first) {
       return(rbind(
         ifo_price_row(previous_month, series_id, series_name, second, source_url),
@@ -1000,6 +1006,17 @@ ifo_price_url_month <- function(url) {
     return(as.Date(NA))
   }
   as.Date(sprintf("%s-01", stamp))
+}
+
+ifo_price_report_month <- function(text, fallback) {
+  hit <- regmatches(
+    text,
+    regexec("\\bIn\\s+(January|February|March|April|May|June|July|August|September|October|November|December),", text, ignore.case = TRUE, perl = TRUE)
+  )[[1]]
+  if (length(hit) < 2 || is.na(fallback)) return(fallback)
+  month <- match(tolower(hit[[2]]), tolower(month.name))
+  if (is.na(month)) return(fallback)
+  as.Date(sprintf("%04d-%02d-01", as.integer(format(fallback, "%Y")), month))
 }
 
 ifo_price_source_date <- function(urls) {
