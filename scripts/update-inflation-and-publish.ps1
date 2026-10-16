@@ -16,6 +16,13 @@ Set-Location $ProjectRoot
 
 $env:PATH = "C:\Program Files\nodejs;" + $env:PATH
 $env:NODE_USE_SYSTEM_CA = "1"
+# Codex runs may inherit a sandbox-only R_LIBS_USER path. Pin the regular
+# per-user library so seasonal/X-13 dependencies remain available.
+$env:R_LIBS_USER = "C:\Users\alice.drumond\AppData\Local\R\win-library\4.3"
+# X-13 cannot reliably write to the sandbox-managed temporary directory.
+$env:TEMP = "C:\Temp"
+$env:TMP = $env:TEMP
+New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 # Keep this deployment's files separate from other update/build jobs.
 $env:BUILD_OUT_DIR = "outputs/inflation-build-$PID-$([guid]::NewGuid().ToString('N'))"
 $BuildClientPath = Join-Path (Join-Path $ProjectRoot $env:BUILD_OUT_DIR) "client"

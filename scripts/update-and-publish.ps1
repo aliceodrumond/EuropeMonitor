@@ -14,6 +14,13 @@ Set-Location $ProjectRoot
 
 $env:PATH = "C:\Program Files\nodejs;" + $env:PATH
 $env:NODE_USE_SYSTEM_CA = "1"
+# Codex runs may inherit a sandbox-only R_LIBS_USER path. Pin the regular
+# per-user library so the X-13 dependency is available to this pipeline.
+$env:R_LIBS_USER = "C:\Users\alice.drumond\AppData\Local\R\win-library\4.3"
+# X-13 cannot reliably write to the sandbox-managed temporary directory.
+$env:TEMP = "C:\Temp"
+$env:TMP = $env:TEMP
+New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 $env:BUILD_OUT_DIR = "pages-dist"
 $env:CLOUDFLARE_API_TOKEN = [Environment]::GetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "User")
 $env:CLOUDFLARE_ACCOUNT_ID = [Environment]::GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID", "User")
