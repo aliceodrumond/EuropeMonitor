@@ -11,13 +11,13 @@
 <meta property="og:url" content="https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys_en" />
 <meta property="og:title" content="Business and consumer surveys" />
 <meta property="og:description" content="Regular harmonised surveys are conducted by the Directorate General for Economic and Financial Affairs for different sectors of the economies in Europe." />
+<meta property="og:image" content="https://economy-finance.ec.europa.eu/sites/default/files/styles/ewcms_metatag_image/public/2026-10/65_logo.png?h=038d7745&amp;itok=2usHPzU8" />
+<meta property="og:image:alt" content="logo" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:description" content="Regular harmonised surveys are conducted by the Directorate General for Economic and Financial Affairs for different sectors of the economies in Europe." />
 <meta name="twitter:title" content="Business and consumer surveys" />
-<meta property="og:image" content="https://economy-finance.ec.europa.eu/profiles/contrib/ewcms/modules/ewcms_seo/assets/images/ec-socialmedia-fallback.png" />
-<meta property="og:image:alt" content="Economy and Finance" />
-<meta name="twitter:image" content="https://economy-finance.ec.europa.eu/profiles/contrib/ewcms/modules/ewcms_seo/assets/images/ec-socialmedia-fallback.png" />
-<meta name="twitter:image:alt" content="Economy and Finance" />
+<meta name="twitter:image" content="https://economy-finance.ec.europa.eu/sites/default/files/styles/ewcms_metatag_image/public/2026-10/65_logo.png?h=038d7745&amp;itok=2usHPzU8" />
+<meta name="twitter:image:alt" content="logo" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
 <meta name="Generator" content="Drupal 11 (https://www.drupal.org)" />
 <meta name="MobileOptimized" content="width" />
@@ -109,7 +109,7 @@
         }
     ],
     "datePublished": "2026-06-29T11:00:05+02:00",
-    "dateModified": "2026-09-29T11:00:07+02:00"
+    "dateModified": "2026-10-21T14:58:42+02:00"
 }</script>
 <link rel="icon" href="/themes/contrib/oe_theme/images/favicons/ec/favicon.ico" type="image/vnd.microsoft.icon" />
 <link rel="alternate" hreflang="en" href="https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/business-and-consumer-surveys_en" />
@@ -392,7 +392,7 @@
       
             
   
-
+  
 
 <div
   class="ecl-page-header ecl-page-header--description-top"
@@ -414,7 +414,13 @@
 >Economic forecast and surveys</a><span 
   class="wt-icon--corner-arrow ecl-icon ecl-icon--fluid ecl-breadcrumb__icon ecl-icon--corner-arrow"
   aria-hidden="true"
-   role="presentation"></span></li><li class="ecl-breadcrumb__segment ecl-breadcrumb__current-page" data-ecl-breadcrumb-item="static" aria-current="page"><span>Business and consumer surveys</span></li></ol></nav><h1 class="ecl-page-header__title"><span>Business and consumer surveys</span></h1><div class="ecl-page-header__description-top"><div class="ecl-page-header__description-container"><p class="ecl-page-header__description">The Directorate General for Economic and Financial Affairs of the European Commission conducts regular harmonised surveys for different sectors of the economies in the European Union (EU) and in the applicant countries.
+   role="presentation"></span></li><li class="ecl-breadcrumb__segment ecl-breadcrumb__current-page" data-ecl-breadcrumb-item="static" aria-current="page"><span>Business and consumer surveys</span></li></ol></nav><h1 class="ecl-page-header__title"><span>Business and consumer surveys</span></h1><div class="ecl-page-header__description-top"><div class="ecl-page-header__description-container"><picture
+  class="ecl-picture ecl-page-header__picture-thumbnail"
+><img
+              class="ecl-page-header__description-thumbnail"
+              src="/sites/default/files/styles/oe_theme_small_no_crop/public/2026-10/65_logo.png?itok=N5mjBERR"
+              alt="logo"
+          ></picture><p class="ecl-page-header__description">The Directorate General for Economic and Financial Affairs of the European Commission conducts regular harmonised surveys for different sectors of the economies in the European Union (EU) and in the applicant countries.
 </p></div></div></div></div></div>
   </div>
 
@@ -455,7 +461,7 @@
   href="/economic-forecast-and-surveys/business-and-consumer-surveys/latest-business-and-consumer-surveys_en"
   class="ecl-link ecl-link--standalone"
    data-untranslated-label="Latest&#x20;business&#x20;and&#x20;consumer&#x20;surveys" data-level="1" data-ecl-title-link
->Latest business and consumer surveys</a></div><div class="ecl-content-block__description">Latest monthly survey releases, annual release schedule and release alerts.</div></div></article></div><div class="ecl-content-item-block__item contextual-region ecl-u-mb-l ecl-col-12 ecl-col-l-4 last-item-column"><article
+>Latest business and consumer surveys</a></div><div class="ecl-content-block__description">Latest monthly survey releases, annual release schedule and release alerts.</div></div></article></div><div class="ecl-content-item-block__item contextual-region ecl-u-mb-l ecl-col-12 ecl-col-l-4 "><article
   class="ecl-navigation-list__item ecl-navigation-list__item--no-border"
   
 ><div
@@ -515,7 +521,19 @@
   href="/economic-forecast-and-surveys/business-and-consumer-surveys/methodology-business-and-consumer-surveys/methodological-concepts_en"
   class="ecl-link ecl-link--standalone"
    data-untranslated-label="Methodological&#x20;Concepts" data-level="2"
->Methodological Concepts</a></li></ul></div></div></article></div><div class="ecl-content-item-block__item contextual-region ecl-u-mb-l ecl-col-12 ecl-col-l-4 last-item-column last-item"><article
+>Methodological Concepts</a></li></ul></div></div></article></div><div class="ecl-content-item-block__item contextual-region ecl-u-mb-l ecl-col-12 ecl-col-l-4 last-item-column"><article
+  class="ecl-navigation-list__item ecl-navigation-list__item--no-border"
+  
+><div
+  class="ecl-content-block ecl-navigation-list__content-block"
+  
+  data-ecl-auto-init="ContentBlock"
+  data-ecl-content-block
+><div class="ecl-content-block__title"><a
+  href="/economic-forecast-and-surveys/business-and-consumer-surveys/65-years-harmonised-eu-business-and-consumer-surveys_en"
+  class="ecl-link ecl-link--standalone"
+   data-untranslated-label="65&#x20;years&#x20;of&#x20;Harmonised&#x20;EU&#x20;Business&#x20;and&#x20;Consumer&#x20;Surveys" data-level="1" data-ecl-title-link
+>65 years of Harmonised EU Business and Consumer Surveys</a></div><div class="ecl-content-block__description">From industrial surveys in six founding Member States to a programme tracking business and consumer sentiment across Europe.</div></div></article></div><div class="ecl-content-item-block__item contextual-region ecl-u-mb-l ecl-col-12 ecl-col-l-4 last-item-column last-item"><article
   class="ecl-navigation-list__item ecl-navigation-list__item--no-border"
   
 ><div
