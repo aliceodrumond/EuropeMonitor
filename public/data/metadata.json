@@ -1,15 +1,14 @@
 {
   "last_updated": "2026-10-23",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_daily_update.R",
   "source_links": 43,
   "activity_last_new": {
     "date": "2026-10-01",
-    "description": "ZEW Financial Market Survey: Germany ZEW"
+    "description": "SP Global PMI: Composite, Europe, France, Germany, Manufacturing, PMI Composite, Services"
   },
   "inflation_last_new": {
-    "date": "2027-03-01",
-    "description": "European Commission Business and Consumer Surveys: EC Services prices, 6m lag"
-  },
-  "speaker_rows": 20
+    "date": "2026-09-01",
+    "description": "ECB Consumer Expectations Survey: 12M inflation expectations, 3Y inflation expectations, 5Y inflation expectations"
+  }
 }
