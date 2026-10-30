@@ -1,15 +1,19 @@
 {
   "last_updated": "2026-10-30",
   "data_mode": "source_linked_mock_values",
-  "generated_by": "R/run_speakers_update.R",
+  "generated_by": "R/run_inflation_update.R",
   "source_links": 43,
   "activity_last_new": {
-    "date": "2026-10-24",
-    "description": "Dashboard Konjunktur / Destatis: Germany toll mileage, 7-day moving average, Germany toll mileage, daily"
+    "date": "2026-10-25",
+    "description": "Deutsche Bundesbank: Germany WAI"
   },
   "inflation_last_new": {
-    "date": "2027-04-01",
-    "description": "European Commission Business and Consumer Surveys: EC Industry prices, 6m lag, EC Retail prices, 6m lag, EC Services prices, 6m lag"
+    "date": "2026-10-01",
+    "description": "ECB SPF Q4 2026; national October HICP flash estimates in Country Inflation"
   },
-  "speaker_rows": 20
+  "inflation_rows": 15053,
+  "country_inflation_last_new": {
+    "date": "2026-10-01",
+    "description": "National preliminary HICP: France, Italy and Spain"
+  }
 }

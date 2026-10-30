@@ -20,7 +20,8 @@ $env:NODE_USE_SYSTEM_CA = "1"
 # per-user library so seasonal/X-13 dependencies remain available.
 $env:R_LIBS_USER = "C:\Users\alice.drumond\AppData\Local\R\win-library\4.3"
 # X-13 cannot reliably write to the sandbox-managed temporary directory.
-$env:TEMP = "C:\Temp"
+# Keep its scratch files inside the project so scheduled runs retain write access.
+$env:TEMP = Join-Path $ProjectRoot ".tmp-r"
 $env:TMP = $env:TEMP
 New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 # Keep this deployment's files separate from other update/build jobs.
@@ -100,8 +101,36 @@ function Invoke-WranglerDeploy {
   }
 }
 
+function Restore-MissingPriorInflationSeries {
+  $inflationPath = Join-Path $ProjectRoot "public\data\inflation_series.csv"
+  $missingIds = @(
+    "ecb_spf_hicp_3q_ahead",
+    "ecb_spf_hicp_7q_ahead",
+    "ecb_spf_hicp_2y_ahead",
+    "ecb_spf_hicp_lt"
+  ) | Where-Object {
+    -not (Select-String -LiteralPath $inflationPath -SimpleMatch (',"' + $_ + '"') -Quiet)
+  }
+  if ($missingIds.Count -eq 0) { return }
+
+  # Retain the last published SPF history if its upstream endpoint is transiently unavailable.
+  $previousLines = @(& $Git show "HEAD:public/data/inflation_series.csv")
+  $restored = @()
+  foreach ($seriesId in $missingIds) {
+    $needle = ',"' + $seriesId + '"'
+    $restored += @($previousLines | Where-Object { $_.Contains($needle) })
+  }
+  if ($restored.Count -eq 0) {
+    throw "Missing inflation series could not be restored from HEAD: $($missingIds -join ', ')"
+  }
+  Add-Content -LiteralPath $inflationPath -Value $restored
+  Copy-Item -LiteralPath $inflationPath -Destination (Join-Path $ProjectRoot "data\processed\inflation_series.csv") -Force
+  Write-Log "Restored $($restored.Count) prior observations for unavailable series: $($missingIds -join ', ')"
+}
+
 function Invoke-InflationPipeline {
   Invoke-Logged -FilePath $Rscript -Arguments @("R\run_inflation_update.R")
+  Restore-MissingPriorInflationSeries
   Test-InflationOutput
 
   Invoke-Logged -FilePath $Npm -Arguments @("run", "build")
@@ -110,7 +139,7 @@ function Invoke-InflationPipeline {
 
   Invoke-WranglerDeploy
 
-  & $Git add public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
+  & $Git add scripts/update-inflation-and-publish.ps1 public/data/inflation_series.csv public/data/metadata.json data/processed/inflation_series.csv data/processed/hicp_pcci_estimate_cache.csv data/raw/eurostat_*.json data/raw/ecb_hicp_sa_*.csv 2>$null
   & $Git diff --cached --quiet
   if ($LASTEXITCODE -ne 0) {
     Invoke-Logged -FilePath $Git -Arguments @("commit", "-m", "Update inflation monitor data $((Get-BrazilTime).ToString('yyyy-MM-dd HH:mm')) BRT")
