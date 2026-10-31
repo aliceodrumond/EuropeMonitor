@@ -299,9 +299,44 @@ let filtered = rows.filter(
     keepYears.has(row.date.slice(0, 4)),
 );
 
-// This monitor is deliberately Eurostat-only. In particular, do not carry
-// national flash estimates forward while waiting for Eurostat to publish the
-// corresponding FLS/FIN observation; absent Eurostat data must remain blank.
+// National preliminary HICP releases can precede Eurostat's FLS feed by a
+// short interval. Retain those explicit observations until Eurostat supplies
+// the same country/series/month, at which point the Eurostat value replaces it.
+const existing = parseCsv(await readFile("public/data/country_inflation_series.csv", "utf8").catch(() => ""));
+const generatedKeys = new Set(filtered.map((row) => `${row.series_id}|${row.date}`));
+// Rounded national rates are observations, never inputs to reconstructed
+// index levels or seasonal adjustment. Eurostat observations take precedence.
+const national = parseCsv(await readFile("data/raw/national_hicp_preliminary.csv", "utf8").catch(() => ""));
+for (const release of national) {
+  if (!countries[release.geo] || !components[release.component]) continue;
+  for (const metric of ["yoy", "mom"]) {
+    if (release[metric] === "" || !Number.isFinite(Number(release[metric]))) continue;
+    const geo = release.geo.toLowerCase();
+    const suffix = metric === "yoy" ? "yoy" : `mom_${release.date.slice(0, 4)}`;
+    const seriesId = `${geo}_${release.component}_${suffix}`;
+    const key = `${seriesId}|${release.date}`;
+    if (generatedKeys.has(key)) continue;
+    filtered.push({
+      date: release.date,
+      chart_id: `country_${geo}_${release.component}_${metric === "yoy" ? "rates" : "seasonality"}`,
+      series_id: seriesId,
+      series_name: metric === "yoy" ? `${components[release.component].label} y/y` : release.date.slice(0, 4),
+      country: countries[release.geo], value: Number(release[metric]), axis: "left",
+      unit: metric === "yoy" ? "% y/y" : "% m/m NSA",
+      source: release.source, source_url: release.source_url, frequency: "monthly",
+      source_note: "National preliminary HICP; published rounded rate. Replaced automatically by Eurostat FLS or FIN. No index or seasonally adjusted rate inferred.",
+    });
+    generatedKeys.add(key);
+  }
+}
+filtered = [
+  ...filtered,
+  ...existing.filter(
+    (row) =>
+      row.source_note.includes("National preliminary HICP") &&
+      !generatedKeys.has(`${row.series_id}|${row.date}`),
+  ),
+];
 
 const headers = Object.keys(filtered[0]);
 const csv = [
