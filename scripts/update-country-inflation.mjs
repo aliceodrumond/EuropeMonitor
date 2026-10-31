@@ -304,6 +304,31 @@ let filtered = rows.filter(
 // the same country/series/month, at which point the Eurostat value replaces it.
 const existing = parseCsv(await readFile("public/data/country_inflation_series.csv", "utf8").catch(() => ""));
 const generatedKeys = new Set(filtered.map((row) => `${row.series_id}|${row.date}`));
+// Rounded national rates are observations, never inputs to reconstructed
+// index levels or seasonal adjustment. Eurostat observations take precedence.
+const national = parseCsv(await readFile("data/raw/national_hicp_preliminary.csv", "utf8").catch(() => ""));
+for (const release of national) {
+  if (!countries[release.geo] || !components[release.component]) continue;
+  for (const metric of ["yoy", "mom"]) {
+    if (release[metric] === "" || !Number.isFinite(Number(release[metric]))) continue;
+    const geo = release.geo.toLowerCase();
+    const suffix = metric === "yoy" ? "yoy" : `mom_${release.date.slice(0, 4)}`;
+    const seriesId = `${geo}_${release.component}_${suffix}`;
+    const key = `${seriesId}|${release.date}`;
+    if (generatedKeys.has(key)) continue;
+    filtered.push({
+      date: release.date,
+      chart_id: `country_${geo}_${release.component}_${metric === "yoy" ? "rates" : "seasonality"}`,
+      series_id: seriesId,
+      series_name: metric === "yoy" ? `${components[release.component].label} y/y` : release.date.slice(0, 4),
+      country: countries[release.geo], value: Number(release[metric]), axis: "left",
+      unit: metric === "yoy" ? "% y/y" : "% m/m NSA",
+      source: release.source, source_url: release.source_url, frequency: "monthly",
+      source_note: "National preliminary HICP; published rounded rate. Replaced automatically by Eurostat FLS or FIN. No index or seasonally adjusted rate inferred.",
+    });
+    generatedKeys.add(key);
+  }
+}
 filtered = [
   ...filtered,
   ...existing.filter(

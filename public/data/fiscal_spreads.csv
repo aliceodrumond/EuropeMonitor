@@ -438,6 +438,8 @@ date,country,country_name,spread_bp,source,source_url
 2026-05-01,FR,France,69.5,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-06-01,FR,France,71.6,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-07-01,FR,France,78,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-08-01,FR,France,81.5,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-09-01,FR,France,96.7,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-01-01,IT,Italy,617,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-02-01,IT,Italy,544,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-03-01,IT,Italy,543,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
@@ -877,6 +879,8 @@ date,country,country_name,spread_bp,source,source_url
 2026-05-01,IT,Italy,79.4,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-06-01,IT,Italy,77,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-07-01,IT,Italy,81.1,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-08-01,IT,Italy,80.1,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-09-01,IT,Italy,88.9,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-01-01,ES,Spain,679,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-02-01,ES,Spain,604,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-03-01,ES,Spain,621,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
@@ -1315,7 +1319,9 @@ date,country,country_name,spread_bp,source,source_url
 2026-04-01,ES,Spain,44.8,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-05-01,ES,Spain,44.3,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-06-01,ES,Spain,44.9,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
-2026-07-01,ES,Spain,46,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-07-01,ES,Spain,46.4,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-08-01,ES,Spain,45,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-09-01,ES,Spain,45.4,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-01-01,PT,Portugal,772,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-02-01,PT,Portugal,672,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-03-01,PT,Portugal,656,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
@@ -1755,6 +1761,8 @@ date,country,country_name,spread_bp,source,source_url
 2026-05-01,PT,Portugal,37.3,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-06-01,PT,Portugal,36.4,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-07-01,PT,Portugal,37.3,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-08-01,PT,Portugal,35.2,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-09-01,PT,Portugal,37.3,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1992-09-01,EL,Greece,1585,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1992-10-01,EL,Greece,1605,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1992-11-01,EL,Greece,1764,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
@@ -2161,6 +2169,8 @@ date,country,country_name,spread_bp,source,source_url
 2026-05-01,EL,Greece,70.5,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-06-01,EL,Greece,67.6,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 2026-07-01,EL,Greece,72,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-08-01,EL,Greece,68.5,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
+2026-09-01,EL,Greece,74.7,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-01-01,UK,United Kingdom,319,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-02-01,UK,United Kingdom,275,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table
 1990-03-01,UK,United Kingdom,377,Eurostat / ECB,https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table

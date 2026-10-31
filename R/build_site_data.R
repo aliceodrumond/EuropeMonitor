@@ -48,6 +48,10 @@ write_metadata_json <- function(metadata, path) {
 
 summarize_new_observations <- function(current, previous_path, previous_summary = NULL) {
   empty_summary <- list(date = "", description = "No new observations in latest update")
+  # Lead-shifted survey series are plotted in future months; those chart
+  # coordinates are not observation dates and must not date the update banner.
+  if (!is.null(previous_summary$date) && nzchar(previous_summary$date) &&
+      as.Date(previous_summary$date) > Sys.Date()) previous_summary <- NULL
   if (!file.exists(previous_path)) {
     return(if (is.null(previous_summary)) empty_summary else previous_summary)
   }
@@ -63,6 +67,7 @@ summarize_new_observations <- function(current, previous_path, previous_summary 
   current$key <- paste(current$date, current$series_id, sep = "|")
   previous$key <- paste(previous$date, previous$series_id, sep = "|")
   added <- current[!current$key %in% previous$key, , drop = FALSE]
+  if (!nrow(added) && is.null(previous_summary)) added <- current
   current$key <- NULL
   if (!nrow(added)) {
     return(if (is.null(previous_summary)) empty_summary else previous_summary)
@@ -76,7 +81,7 @@ summarize_new_observations <- function(current, previous_path, previous_summary 
   added$date_value[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%m/%d/%Y")
   missing_dates <- is.na(added$date_value)
   added$date_value[missing_dates] <- as.Date(raw_dates[missing_dates], format = "%d/%m/%Y")
-  added <- added[!is.na(added$date_value), , drop = FALSE]
+  added <- added[!is.na(added$date_value) & added$date_value <= Sys.Date(), , drop = FALSE]
   if (!nrow(added)) {
     return(if (is.null(previous_summary)) empty_summary else previous_summary)
   }

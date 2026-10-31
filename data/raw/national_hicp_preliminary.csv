@@ -1,0 +1,5 @@
+date,geo,component,yoy,mom,source,source_url
+2026-10-01,FR,headline,3.8,0.4,Insee HICP provisional estimate,https://www.insee.fr/fr/statistiques/9107965
+2026-10-01,IT,headline,5.6,1.2,Istat HICP provisional estimate,https://www.istat.it/comunicato-stampa/prezzi-al-consumo-dati-provvisori-ottobre-2026/
+2026-10-01,ES,headline,4.9,0.5,INE HICP flash estimate,https://ine.es/dyngs/Prensa/es/adIPC1026.htm
+2026-10-01,ES,core,3.1,,INE HICP flash estimate,https://ine.es/dyngs/Prensa/es/adIPC1026.htm

@@ -367,11 +367,11 @@ read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
 
   url <- paste0(
     "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp",
-    "?lang=en&freq=Q&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ&geo=EA20"
+    "?lang=en&freq=Q&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ&geo=EA21"
   )
   raw_dir <- file.path(project_root, "data/raw")
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
-  raw_path <- file.path(raw_dir, "eurostat_namq_10_gdp_qoq_sa.json")
+  raw_path <- file.path(raw_dir, "eurostat_namq_10_gdp_ea21_qoq_sa.json")
 
   command <- sprintf(
     "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 45 -Uri %s -OutFile %s",
@@ -410,7 +410,7 @@ read_eurostat_gdp_qoq_sa_rows <- function(project_root) {
     values[valid],
     axis = "right",
     unit = "% q/q SA",
-    source = "Eurostat NAMQ_10_GDP",
+    source = "Eurostat NAMQ_10_GDP (EA21)",
     source_url = "https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table?lang=en",
     frequency = "quarterly"
   )

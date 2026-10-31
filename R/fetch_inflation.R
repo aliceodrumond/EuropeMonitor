@@ -99,7 +99,7 @@ read_swiss_cpi_rows <- function() {
   }))
 }
 
-read_url_text <- function(url, timeout_seconds = 60) {
+read_inflation_url_text <- function(url, timeout_seconds = 60) {
   curl <- Sys.which("curl.exe")
   if (nzchar(curl)) {
     output <- tryCatch(
@@ -274,7 +274,7 @@ discover_swiss_cpi_release <- function(project_root) {
       publication_year,
       candidate_id
     )
-    html <- read_url_text(page_url, timeout_seconds = 25)
+    html <- read_inflation_url_text(page_url, timeout_seconds = 25)
     if (!nzchar(html) || !grepl("Swiss Consumer Price Index in ", html, fixed = TRUE)) {
       next
     }
@@ -1627,7 +1627,7 @@ apply_hicp_flash_precision_overrides <- function(rows) {
 
 read_latest_hicp_release_overrides <- function() {
   news_url <- "https://ec.europa.eu/eurostat/news/euro-indicators"
-  news_html <- read_url_text(news_url, timeout_seconds = 45)
+  news_html <- read_inflation_url_text(news_url, timeout_seconds = 45)
   if (!nzchar(news_html)) {
     return(data.frame())
   }
@@ -1643,7 +1643,7 @@ read_latest_hicp_release_overrides <- function() {
   }
 
   article_url <- captures[[2]]
-  article_html <- read_url_text(article_url, timeout_seconds = 45)
+  article_html <- read_inflation_url_text(article_url, timeout_seconds = 45)
   if (!nzchar(article_html)) {
     return(data.frame())
   }
