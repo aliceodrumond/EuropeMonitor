@@ -159,7 +159,15 @@ function Assert-InflationArtifactConsistency {
     if (-not (Test-Path -LiteralPath $_ -PathType Leaf)) {
       throw "Missing inflation file before deployment: $_"
     }
-    (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    $stream = $null
+    try {
+      $stream = [System.IO.File]::OpenRead($_)
+      [System.BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace("-", "")
+    } finally {
+      if ($null -ne $stream) { $stream.Dispose() }
+      $algorithm.Dispose()
+    }
   })
   if (@($hashes | Select-Object -Unique).Count -ne 1) {
     throw "Inflation files diverged before deployment (public, processed, build). A concurrent writer may have changed them; publication stopped."
